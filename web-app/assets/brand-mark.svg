@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="brandTitle brandDesc">
+  <title id="brandTitle">Phish Radar AI</title>
+  <desc id="brandDesc">Fishing rod and hook with a radar signal at the tip</desc>
+  <rect width="128" height="128" rx="24" fill="#0f1727"/>
+  <path d="M22 101 77 46" fill="none" stroke="#f5f3f1" stroke-width="9" stroke-linecap="round"/>
+  <path d="m19 105 18-18" fill="none" stroke="#e17a84" stroke-width="12" stroke-linecap="round"/>
+  <path d="M79 44c18 1 28 10 28 25 0 7-2 12-5 17" fill="none" stroke="#29b6e8" stroke-width="4" stroke-linecap="round"/>
+  <path d="M102 82c1 12-6 20-15 20-8 0-14-6-14-13 0-6 4-10 10-10" fill="none" stroke="#e17a84" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="79" cy="44" r="20" fill="#0f1727" stroke="#29b6e8" stroke-width="3"/>
+  <circle cx="79" cy="44" r="13" fill="none" stroke="#e17a84" stroke-width="3" opacity=".72"/>
+  <circle cx="79" cy="44" r="6" fill="#ff5664"/>
+  <path d="M79 44 94 34" fill="none" stroke="#f5f3f1" stroke-width="3" stroke-linecap="round"/>
+</svg>

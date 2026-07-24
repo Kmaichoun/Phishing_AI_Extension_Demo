@@ -1,0 +1,2659 @@
+﻿/*
+  Phish Radar content UI v1.0
+  Fix: remove large dashed outlines that broke Google/Search result layouts.
+  The extension now uses subtle underline + compact badges, and search pages
+  only show visual marks for high-confidence detections.
+*/
+.phish-radar-link-wrap {
+  position: relative !important;
+  text-decoration-line: underline !important;
+  text-decoration-style: dotted !important;
+  text-decoration-thickness: 2px !important;
+  text-decoration-color: rgba(245, 158, 11, .95) !important;
+  text-underline-offset: 3px !important;
+  border-radius: 3px !important;
+}
+
+.phish-radar-link-wrap.phish-radar-high {
+  text-decoration-color: rgba(239, 68, 68, .95) !important;
+  background: rgba(239, 68, 68, .08) !important;
+}
+
+.phish-radar-link-wrap.phish-radar-search-result {
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.phish-radar-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  margin-left: 6px !important;
+  padding: 1px 7px !important;
+  border-radius: 999px !important;
+  font-family: Inter, Arial, sans-serif !important;
+  font-size: 10.5px !important;
+  font-weight: 900 !important;
+  line-height: 1.45 !important;
+  color: #111827 !important;
+  background: #fbbf24 !important;
+  border: 1px solid rgba(17,24,39,.15) !important;
+  z-index: 2147483647 !important;
+  text-decoration: none !important;
+  vertical-align: middle !important;
+  white-space: nowrap !important;
+  pointer-events: auto !important;
+}
+
+.phish-radar-badge.phish-radar-high {
+  color: #fff !important;
+  background: #ef4444 !important;
+}
+
+.phish-radar-badge.phish-radar-compact {
+  font-size: 10px !important;
+  padding: 1px 6px !important;
+  margin-left: 5px !important;
+  opacity: .92 !important;
+}
+
+#phish-radar-mini-panel {
+  position: fixed !important;
+  right: 16px !important;
+  left: auto !important;
+  bottom: 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  z-index: 2147483646 !important;
+  font-family: Inter, Arial, sans-serif !important;
+  background: #111827 !important;
+  color: #fff !important;
+  border: 1px solid rgba(255,255,255,.16) !important;
+  border-radius: 999px !important;
+  box-shadow: 0 18px 60px rgba(0,0,0,.35) !important;
+  padding: 10px 12px !important;
+  max-width: min(560px, calc(100vw - 32px)) !important;
+}
+
+
+#phish-radar-mini-panel.phish-radar-safe-panel {
+  background: rgba(5, 46, 22, .96) !important;
+  border-color: rgba(34, 197, 94, .72) !important;
+  box-shadow: 0 18px 60px rgba(34, 197, 94, .20) !important;
+}
+
+#phish-radar-mini-panel.phish-radar-risk-panel {
+  border-color: rgba(245, 158, 11, .55) !important;
+}
+
+#phish-radar-mini-panel.phish-radar-safe-panel strong::after {
+  content: " ปลอดภัย" !important;
+  display: inline-block !important;
+  margin-left: 6px !important;
+  padding: 1px 7px !important;
+  border-radius: 999px !important;
+  background: #22c55e !important;
+  color: #052e16 !important;
+  font-size: 10px !important;
+  font-weight: 900 !important;
+}
+
+#phish-radar-mini-panel strong { font-weight: 900 !important; white-space: nowrap !important; display: inline-flex !important; align-items: center !important; gap: 5px !important; }
+#phish-radar-mini-panel span { font-size: 13px !important; color: #e5e7eb !important; }
+#phish-radar-mini-panel button {
+  appearance: none !important;
+  border: 0 !important;
+  width: 24px !important;
+  height: 24px !important;
+  border-radius: 50% !important;
+  background: rgba(255,255,255,.14) !important;
+  color: #fff !important;
+  cursor: pointer !important;
+  font-weight: 900 !important;
+}
+
+#phish-radar-overlay {
+  position: fixed !important;
+  inset: 18px !important;
+  max-width: 560px !important;
+  height: max-content !important;
+  margin: 0 auto !important;
+  z-index: 2147483647 !important;
+  font-family: Inter, Arial, sans-serif !important;
+  background: #111827 !important;
+  color: #fff !important;
+  border: 1px solid rgba(255,255,255,.14) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 24px 80px rgba(0,0,0,.45) !important;
+  padding: 18px !important;
+}
+
+#phish-radar-overlay h3 {
+  margin: 0 0 8px !important;
+  font-size: 19px !important;
+  color: #fff !important;
+}
+
+#phish-radar-overlay p {
+  margin: 8px 0 !important;
+  color: #e5e7eb !important;
+  line-height: 1.5 !important;
+}
+
+#phish-radar-overlay ul {
+  margin: 12px 0 !important;
+  padding-left: 22px !important;
+  color: #fef2f2 !important;
+}
+
+#phish-radar-overlay li {
+  margin: 6px 0 !important;
+  line-height: 1.4 !important;
+}
+
+#phish-radar-overlay small { color: #fecaca !important; }
+
+#phish-radar-overlay .phish-radar-actions {
+  display: flex !important;
+  gap: 8px !important;
+  margin-top: 14px !important;
+}
+
+#phish-radar-overlay button {
+  appearance: none !important;
+  border: 0 !important;
+  border-radius: 11px !important;
+  padding: 10px 12px !important;
+  font-weight: 900 !important;
+  cursor: pointer !important;
+}
+
+#phish-radar-overlay .primary { background: #ef4444 !important; color: white !important; }
+#phish-radar-overlay .secondary { background: #374151 !important; color: white !important; }
+
+#phish-radar-clipboard-overlay {
+  position: fixed !important;
+  left: 50% !important;
+  top: 22px !important;
+  transform: translateX(-50%) !important;
+  z-index: 2147483647 !important;
+  width: min(440px, calc(100vw - 28px)) !important;
+  padding: 16px !important;
+  border: 1px solid rgba(239, 68, 68, .26) !important;
+  border-radius: 12px !important;
+  background: #111827 !important;
+  color: #f8fafc !important;
+  box-shadow: 0 16px 46px rgba(15, 23, 42, .34) !important;
+  font-family: Inter, Arial, sans-serif !important;
+  text-align: left !important;
+}
+
+#phish-radar-clipboard-overlay h3 {
+  margin: 0 0 8px !important;
+  font-size: 17px !important;
+  line-height: 1.25 !important;
+  color: #fff !important;
+}
+
+#phish-radar-clipboard-overlay p {
+  margin: 8px 0 !important;
+  color: #e5e7eb !important;
+  line-height: 1.45 !important;
+}
+
+#phish-radar-clipboard-overlay code {
+  display: block !important;
+  overflow-wrap: anywhere !important;
+  margin: 8px 0 !important;
+  padding: 9px 10px !important;
+  border-radius: 8px !important;
+  background: rgba(255, 255, 255, .08) !important;
+  color: #fde68a !important;
+  font-size: 12px !important;
+}
+
+#phish-radar-clipboard-overlay .phish-radar-clipboard-score {
+  color: #fecaca !important;
+  font-weight: 900 !important;
+}
+
+#phish-radar-clipboard-overlay ul {
+  margin: 8px 0 0 !important;
+  padding-left: 18px !important;
+}
+
+#phish-radar-clipboard-overlay li {
+  margin: 5px 0 !important;
+  color: #f3f4f6 !important;
+  line-height: 1.4 !important;
+}
+
+#phish-radar-clipboard-overlay .phish-radar-actions {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  margin-top: 13px !important;
+}
+
+#phish-radar-clipboard-overlay button {
+  appearance: none !important;
+  min-height: 44px !important;
+  border: 1px solid rgba(255,255,255,.14) !important;
+  border-radius: 999px !important;
+  padding: 10px 14px !important;
+  color: #f8fafc !important;
+  background: #334155 !important;
+  font-weight: 900 !important;
+  cursor: pointer !important;
+}
+
+#phish-radar-clipboard-overlay .primary {
+  border-color: #ef4444 !important;
+  background: #ef4444 !important;
+  color: #fff !important;
+}
+
+
+/* v0.8: hover/click detail card for the bottom-right status panel. The card can be pinned so users can scroll it. */
+#phish-radar-mini-panel {
+  cursor: help !important;
+}
+
+#phish-radar-mini-panel::before {
+  content: "" !important;
+  position: absolute !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 100% !important;
+  height: 16px !important;
+  display: none !important;
+}
+
+#phish-radar-mini-panel:hover::before,
+#phish-radar-mini-panel.phish-radar-details-open::before,
+#phish-radar-mini-panel.phish-radar-details-pinned::before {
+  display: block !important;
+}
+
+#phish-radar-mini-panel .phish-radar-hint {
+  display: inline-flex !important;
+  align-items: center !important;
+  padding: 2px 8px !important;
+  border-radius: 999px !important;
+  background: rgba(255,255,255,.12) !important;
+  color: #d1d5db !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  white-space: nowrap !important;
+}
+
+#phish-radar-mini-panel.phish-radar-risk-panel .phish-radar-hint {
+  background: rgba(245, 158, 11, .18) !important;
+  color: #fde68a !important;
+}
+
+#phish-radar-mini-panel .phish-radar-hover-details {
+  position: fixed !important;
+  right: 16px !important;
+  left: auto !important;
+  bottom: 76px !important;
+  width: min(460px, calc(100vw - 32px)) !important;
+  max-height: min(460px, calc(100vh - 100px)) !important;
+  overflow: auto !important;
+  overscroll-behavior: contain !important;
+  scrollbar-width: thin !important;
+  padding: 14px !important;
+  border-radius: 16px !important;
+  background: rgba(17, 24, 39, .98) !important;
+  color: #f9fafb !important;
+  border: 1px solid rgba(255,255,255,.16) !important;
+  box-shadow: 0 24px 80px rgba(0,0,0,.45) !important;
+  opacity: 0 !important;
+  transform: translateY(8px) scale(.98) !important;
+  pointer-events: none !important;
+  transition: opacity .16s ease, transform .16s ease !important;
+  font-family: Inter, Arial, sans-serif !important;
+  text-align: left !important;
+  z-index: 2147483647 !important;
+}
+
+
+#phish-radar-mini-panel:hover .phish-radar-hover-details,
+#phish-radar-mini-panel:focus-within .phish-radar-hover-details,
+#phish-radar-mini-panel.phish-radar-details-open .phish-radar-hover-details,
+#phish-radar-mini-panel.phish-radar-details-pinned .phish-radar-hover-details {
+  opacity: 1 !important;
+  transform: translateY(0) scale(1) !important;
+  pointer-events: auto !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-head {
+  font-size: 15px !important;
+  font-weight: 900 !important;
+  margin: 0 0 8px !important;
+  color: #fff !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-top {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  margin: 0 0 8px !important;
+  position: sticky !important;
+  top: -14px !important;
+  z-index: 2 !important;
+  padding: 4px 0 8px !important;
+  background: rgba(17, 24, 39, .98) !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-top .phish-radar-detail-head {
+  margin: 0 !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-close {
+  appearance: none !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  padding: 5px 9px !important;
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  background: rgba(255,255,255,.12) !important;
+  color: #fff !important;
+  font-size: 12px !important;
+  line-height: 1.2 !important;
+  cursor: pointer !important;
+}
+
+#phish-radar-mini-panel.phish-radar-details-pinned .phish-radar-hover-details {
+  border-color: rgba(96, 165, 250, .55) !important;
+  box-shadow: 0 24px 80px rgba(37, 99, 235, .30) !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-row {
+  font-size: 12.5px !important;
+  line-height: 1.45 !important;
+  margin: 5px 0 !important;
+  color: #e5e7eb !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-note {
+  font-size: 12px !important;
+  line-height: 1.45 !important;
+  margin: 8px 0 10px !important;
+  padding: 8px 10px !important;
+  border-radius: 10px !important;
+  background: rgba(255,255,255,.08) !important;
+  color: #d1d5db !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-item {
+  margin-top: 10px !important;
+  padding: 10px !important;
+  border-radius: 12px !important;
+  background: rgba(255,255,255,.075) !important;
+  border: 1px solid rgba(255,255,255,.10) !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-url {
+  font-size: 12.5px !important;
+  font-weight: 800 !important;
+  line-height: 1.4 !important;
+  color: #fef3c7 !important;
+  word-break: break-word !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-item ul {
+  margin: 7px 0 0 !important;
+  padding-left: 18px !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-item li {
+  font-size: 12px !important;
+  line-height: 1.45 !important;
+  margin: 3px 0 !important;
+  color: #f3f4f6 !important;
+}
+
+
+#phish-radar-mini-panel.phish-radar-details-pinned .phish-radar-hint {
+  background: rgba(59, 130, 246, .26) !important;
+  color: #bfdbfe !important;
+}
+
+#phish-radar-mini-panel .phish-radar-hover-details::-webkit-scrollbar {
+  width: 10px !important;
+}
+
+#phish-radar-mini-panel .phish-radar-hover-details::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,.24) !important;
+  border-radius: 999px !important;
+  border: 2px solid rgba(17, 24, 39, .98) !important;
+}
+
+#phish-radar-mini-panel .phish-radar-hover-details::-webkit-scrollbar-track {
+  background: rgba(255,255,255,.08) !important;
+  border-radius: 999px !important;
+}
+
+/* v0.9: per-link hover warning tooltip. Shows the reason directly near each suspicious link. */
+#phish-radar-link-tooltip {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: min(360px, calc(100vw - 24px)) !important;
+  max-height: min(340px, calc(100vh - 24px)) !important;
+  overflow: auto !important;
+  z-index: 2147483647 !important;
+  padding: 12px 13px !important;
+  border-radius: 14px !important;
+  background: rgba(17, 24, 39, .98) !important;
+  color: #f9fafb !important;
+  border: 1px solid rgba(245, 158, 11, .55) !important;
+  box-shadow: 0 18px 60px rgba(0,0,0,.42) !important;
+  opacity: 0 !important;
+  transform: translateY(6px) scale(.98) !important;
+  pointer-events: none !important;
+  transition: opacity .14s ease, transform .14s ease !important;
+  font-family: Inter, Arial, sans-serif !important;
+  text-align: left !important;
+  line-height: 1.4 !important;
+}
+
+#phish-radar-link-tooltip.phish-radar-link-tooltip-open {
+  opacity: 1 !important;
+  transform: translateY(0) scale(1) !important;
+  pointer-events: auto !important;
+}
+
+#phish-radar-link-tooltip.phish-radar-link-tooltip-high {
+  border-color: rgba(239, 68, 68, .72) !important;
+  box-shadow: 0 20px 70px rgba(239, 68, 68, .22), 0 18px 60px rgba(0,0,0,.42) !important;
+}
+
+#phish-radar-link-tooltip .phish-radar-link-tooltip-title {
+  font-size: 14px !important;
+  font-weight: 900 !important;
+  margin-bottom: 6px !important;
+  color: #fff !important;
+}
+
+#phish-radar-link-tooltip .phish-radar-link-tooltip-score {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  padding: 3px 8px !important;
+  border-radius: 999px !important;
+  color: #111827 !important;
+  background: #fbbf24 !important;
+  margin-bottom: 8px !important;
+}
+
+#phish-radar-link-tooltip.phish-radar-link-tooltip-high .phish-radar-link-tooltip-score {
+  color: #fff !important;
+  background: #ef4444 !important;
+}
+
+#phish-radar-link-tooltip .phish-radar-link-tooltip-url {
+  margin: 4px 0 7px !important;
+  padding: 7px 9px !important;
+  border-radius: 10px !important;
+  background: rgba(255,255,255,.08) !important;
+  color: #fde68a !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  word-break: break-word !important;
+}
+
+#phish-radar-link-tooltip .phish-radar-link-tooltip-mini {
+  margin: 4px 0 7px !important;
+  color: #d1d5db !important;
+  font-size: 11.5px !important;
+  word-break: break-word !important;
+}
+
+#phish-radar-link-tooltip ul {
+  margin: 8px 0 !important;
+  padding-left: 18px !important;
+}
+
+#phish-radar-link-tooltip li {
+  margin: 5px 0 !important;
+  color: #f3f4f6 !important;
+  font-size: 12px !important;
+}
+
+#phish-radar-link-tooltip small {
+  color: #cbd5e1 !important;
+  font-size: 11px !important;
+}
+
+#phish-radar-link-tooltip .phish-radar-link-tooltip-footer {
+  margin-top: 9px !important;
+  padding-top: 8px !important;
+  border-top: 1px solid rgba(255,255,255,.12) !important;
+  color: #bfdbfe !important;
+  font-size: 11.5px !important;
+  font-weight: 700 !important;
+}
+
+
+/* v1.0 clean presentation UI: no messy boxes around search results, stable click-to-open panel. */
+.phish-radar-link-wrap,
+.phish-radar-link-target {
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  border: 0 !important;
+  text-decoration: inherit !important;
+  text-decoration-color: inherit !important;
+}
+
+.phish-radar-link-target.phish-radar-high {
+  text-decoration-line: underline !important;
+  text-decoration-style: dotted !important;
+  text-decoration-thickness: 1.5px !important;
+  text-decoration-color: rgba(239, 68, 68, .65) !important;
+  text-underline-offset: 3px !important;
+}
+
+.phish-radar-flash-target {
+  outline: 2px solid rgba(96, 165, 250, .95) !important;
+  outline-offset: 4px !important;
+  border-radius: 8px !important;
+  background: rgba(59, 130, 246, .10) !important;
+  transition: outline-color .25s ease, background-color .25s ease !important;
+}
+
+.phish-radar-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 3px !important;
+  margin-left: 7px !important;
+  padding: 2px 7px !important;
+  border-radius: 999px !important;
+  font-family: Inter, Arial, sans-serif !important;
+  font-size: 10px !important;
+  font-weight: 900 !important;
+  line-height: 1.25 !important;
+  color: #92400e !important;
+  background: rgba(251, 191, 36, .16) !important;
+  border: 1px solid rgba(245, 158, 11, .70) !important;
+  box-shadow: none !important;
+  z-index: 2147483645 !important;
+  vertical-align: middle !important;
+  white-space: nowrap !important;
+  pointer-events: auto !important;
+  cursor: help !important;
+}
+
+.phish-radar-badge.phish-radar-high {
+  color: #991b1b !important;
+  background: rgba(239, 68, 68, .14) !important;
+  border-color: rgba(239, 68, 68, .72) !important;
+}
+
+.phish-radar-badge.phish-radar-compact {
+  font-size: 9.5px !important;
+  padding: 1px 6px !important;
+  margin-left: 6px !important;
+  opacity: .95 !important;
+}
+
+#phish-radar-mini-panel {
+  right: 16px !important;
+  left: auto !important;
+  bottom: 16px !important;
+  cursor: default !important;
+  transition: transform .22s ease, opacity .22s ease, box-shadow .22s ease !important;
+}
+
+#phish-radar-mini-panel:hover {
+  transform: translateY(-1px) !important;
+}
+
+#phish-radar-mini-panel .phish-radar-hint {
+  appearance: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  padding: 4px 10px !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(255,255,255,.14) !important;
+  background: rgba(255,255,255,.12) !important;
+  color: #e5e7eb !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+}
+
+#phish-radar-mini-panel.phish-radar-risk-panel .phish-radar-hint {
+  background: rgba(245, 158, 11, .18) !important;
+  border-color: rgba(245, 158, 11, .32) !important;
+  color: #fde68a !important;
+}
+
+#phish-radar-mini-panel .phish-radar-hover-details {
+  right: 16px !important;
+  bottom: 74px !important;
+  width: min(430px, calc(100vw - 32px)) !important;
+  max-height: min(430px, calc(100vh - 108px)) !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  transform: translateY(12px) scale(.98) !important;
+  pointer-events: none !important;
+  transition: opacity .22s ease, transform .22s ease, visibility .22s ease !important;
+}
+
+#phish-radar-mini-panel:hover .phish-radar-hover-details,
+#phish-radar-mini-panel:focus-within .phish-radar-hover-details {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+#phish-radar-mini-panel.phish-radar-details-open .phish-radar-hover-details,
+#phish-radar-mini-panel.phish-radar-details-pinned .phish-radar-hover-details {
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: translateY(0) scale(1) !important;
+  pointer-events: auto !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-item {
+  padding: 10px 11px !important;
+  border-radius: 13px !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-actions {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+  margin-top: 8px !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-actions button {
+  appearance: none !important;
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  padding: 5px 8px !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  background: rgba(255,255,255,.09) !important;
+  color: #e5e7eb !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  line-height: 1.2 !important;
+  cursor: pointer !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-actions button:hover,
+#phish-radar-mini-panel .phish-radar-hint:hover {
+  background: rgba(96, 165, 250, .22) !important;
+  border-color: rgba(96, 165, 250, .45) !important;
+}
+
+#phish-radar-link-tooltip {
+  width: min(330px, calc(100vw - 24px)) !important;
+  padding: 11px 12px !important;
+  border-radius: 13px !important;
+  transition: opacity .18s ease, transform .18s ease !important;
+}
+
+#phish-radar-link-tooltip .phish-radar-link-tooltip-title {
+  font-size: 13.5px !important;
+}
+
+#phish-radar-link-tooltip .phish-radar-link-tooltip-footer {
+  color: #c7d2fe !important;
+}
+
+/* v1.2: broader risk categories and clearer critical state. */
+.phish-radar-badge.phish-radar-critical {
+  color: #fff !important;
+  background: rgba(153, 27, 27, .92) !important;
+  border-color: rgba(248, 113, 113, .85) !important;
+}
+#phish-radar-link-tooltip.phish-radar-link-tooltip-high .phish-radar-link-tooltip-title {
+  color: #fecaca !important;
+}
+
+/* v1.4: keep the bottom summary detail panel clean like the earlier version. */
+#phish-radar-mini-panel .phish-radar-hover-details {
+  width: min(430px, calc(100vw - 32px)) !important;
+  height: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  max-width: calc(100vw - 32px) !important;
+  max-height: min(430px, calc(100vh - 108px)) !important;
+  resize: none !important;
+  overflow: auto !important;
+  font-size: 12.5px !important;
+}
+
+#phish-radar-mini-panel .phish-radar-hover-details.phish-radar-window-manual {
+  resize: none !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-top {
+  cursor: default !important;
+  user-select: auto !important;
+  gap: 10px !important;
+  align-items: center !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-head {
+  font-size: 15px !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-row,
+#phish-radar-mini-panel .phish-radar-detail-note,
+#phish-radar-mini-panel .phish-radar-detail-item li {
+  font-size: 12.5px !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-url {
+  font-size: 12.5px !important;
+}
+
+#phish-radar-mini-panel .phish-radar-hover-details::after {
+  content: none !important;
+}
+
+/* v1.4: the small per-link detail tooltip can be pinned and dragged by its header. */
+#phish-radar-link-tooltip {
+  width: min(350px, calc(100vw - 24px)) !important;
+  min-width: 280px !important;
+  max-height: min(380px, calc(100vh - 24px)) !important;
+  resize: none !important;
+  overflow: auto !important;
+}
+
+#phish-radar-link-tooltip.phish-radar-link-tooltip-manual {
+  resize: both !important;
+  min-width: 300px !important;
+  min-height: 180px !important;
+  max-width: calc(100vw - 20px) !important;
+  max-height: calc(100vh - 20px) !important;
+}
+
+#phish-radar-link-tooltip.phish-radar-link-tooltip-pinned {
+  border-color: rgba(96, 165, 250, .85) !important;
+  box-shadow: 0 20px 70px rgba(59, 130, 246, .22), 0 18px 60px rgba(0,0,0,.42) !important;
+}
+
+#phish-radar-link-tooltip .phish-radar-link-tooltip-top {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  position: sticky !important;
+  top: -11px !important;
+  z-index: 2 !important;
+  margin: -11px -12px 8px !important;
+  padding: 10px 12px 8px !important;
+  background: rgba(17, 24, 39, .99) !important;
+  border-bottom: 1px solid rgba(255,255,255,.10) !important;
+  cursor: move !important;
+  user-select: none !important;
+}
+
+#phish-radar-link-tooltip .phish-radar-link-tooltip-title {
+  margin: 0 !important;
+  min-width: 0 !important;
+}
+
+#phish-radar-link-tooltip .phish-radar-link-tooltip-close {
+  appearance: none !important;
+  border: 0 !important;
+  width: 24px !important;
+  height: 24px !important;
+  min-width: 24px !important;
+  border-radius: 999px !important;
+  background: rgba(255,255,255,.14) !important;
+  color: #fff !important;
+  cursor: pointer !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+}
+
+#phish-radar-link-tooltip .phish-radar-link-tooltip-close:hover {
+  background: rgba(239, 68, 68, .85) !important;
+}
+
+#phish-radar-link-tooltip.phish-radar-link-tooltip-manual::after {
+  content: "↘" !important;
+  position: sticky !important;
+  display: block !important;
+  float: right !important;
+  bottom: 0 !important;
+  right: 0 !important;
+  width: 18px !important;
+  height: 18px !important;
+  margin: 4px 0 0 auto !important;
+  color: #93c5fd !important;
+  opacity: .75 !important;
+  pointer-events: none !important;
+}
+
+/* v1.6 minimal friendly UI refresh */
+#phish-radar-mini-panel {
+  right: 18px !important;
+  bottom: 18px !important;
+  gap: 9px !important;
+  min-height: 46px !important;
+  padding: 9px 10px 9px 12px !important;
+  border-radius: 18px !important;
+  background: rgba(15, 23, 42, .90) !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(148, 163, 184, .26) !important;
+  box-shadow: 0 14px 42px rgba(15, 23, 42, .30) !important;
+  backdrop-filter: blur(14px) saturate(1.12) !important;
+}
+
+#phish-radar-mini-panel.phish-radar-risk-panel { border-color: rgba(251, 191, 36, .42) !important; box-shadow: 0 14px 42px rgba(15, 23, 42, .28), 0 0 0 1px rgba(251, 191, 36, .08) inset !important; }
+#phish-radar-mini-panel strong { font-size: 14px !important; letter-spacing: 0 !important; }
+#phish-radar-mini-panel span[data-role="text"] { max-width: min(420px, 42vw) !important; overflow: hidden !important; text-overflow: ellipsis !important; white-space: nowrap !important; color: #cbd5e1 !important; }
+#phish-radar-mini-panel button[data-action="hide"] { width: 26px !important; height: 26px !important; background: rgba(148, 163, 184, .16) !important; color: #e2e8f0 !important; }
+#phish-radar-mini-panel .phish-radar-hint { padding: 5px 10px !important; background: rgba(255, 255, 255, .10) !important; color: #f8fafc !important; border-color: rgba(255, 255, 255, .14) !important; }
+
+#phish-radar-mini-panel .phish-radar-hover-details { right: 18px !important; bottom: 76px !important; width: min(390px, calc(100vw - 28px)) !important; max-height: min(430px, calc(100vh - 110px)) !important; padding: 12px !important; border-radius: 18px !important; background: rgba(15, 23, 42, .94) !important; border: 1px solid rgba(148, 163, 184, .26) !important; box-shadow: 0 18px 52px rgba(15, 23, 42, .34) !important; backdrop-filter: blur(16px) saturate(1.12) !important; transition: opacity .18s ease, transform .18s ease, visibility .18s ease !important; }
+#phish-radar-mini-panel .phish-radar-hover-details.phish-radar-window-manual, #phish-radar-link-tooltip.phish-radar-link-tooltip-manual { right: auto !important; bottom: auto !important; }
+#phish-radar-mini-panel .phish-radar-detail-top, #phish-radar-link-tooltip .phish-radar-link-tooltip-top { cursor: grab !important; touch-action: none !important; }
+#phish-radar-mini-panel .phish-radar-dragging .phish-radar-detail-top, #phish-radar-link-tooltip.phish-radar-dragging .phish-radar-link-tooltip-top { cursor: grabbing !important; }
+#phish-radar-mini-panel .phish-radar-detail-top { top: -12px !important; margin: -12px -12px 8px !important; padding: 11px 12px 9px !important; background: rgba(15, 23, 42, .98) !important; border-bottom: 1px solid rgba(148, 163, 184, .18) !important; }
+#phish-radar-mini-panel .phish-radar-detail-head, #phish-radar-link-tooltip .phish-radar-link-tooltip-title { display: flex !important; flex-direction: column !important; gap: 2px !important; font-size: 14px !important; line-height: 1.25 !important; letter-spacing: 0 !important; }
+.phish-radar-drag-cue { color: #94a3b8 !important; font-size: 10.5px !important; font-weight: 700 !important; }
+#phish-radar-mini-panel .phish-radar-detail-close, #phish-radar-mini-panel .phish-radar-detail-reset, #phish-radar-link-tooltip .phish-radar-link-tooltip-close { min-width: 28px !important; height: 28px !important; border-radius: 999px !important; background: rgba(148, 163, 184, .14) !important; color: #f8fafc !important; }
+#phish-radar-mini-panel .phish-radar-detail-reset { width: auto !important; padding: 0 10px !important; font-size: 11px !important; }
+#phish-radar-mini-panel .phish-radar-detail-note, #phish-radar-mini-panel .phish-radar-detail-item, #phish-radar-link-tooltip .phish-radar-link-tooltip-url { background: rgba(255, 255, 255, .055) !important; border-color: rgba(148, 163, 184, .16) !important; }
+#phish-radar-mini-panel .phish-radar-detail-item { box-shadow: none !important; }
+
+#phish-radar-link-tooltip { width: min(320px, calc(100vw - 24px)) !important; min-width: 260px !important; padding: 11px 12px !important; border-radius: 16px !important; background: rgba(15, 23, 42, .94) !important; border: 1px solid rgba(148, 163, 184, .30) !important; box-shadow: 0 16px 46px rgba(15, 23, 42, .34) !important; backdrop-filter: blur(16px) saturate(1.12) !important; will-change: transform, opacity !important; }
+#phish-radar-link-tooltip.phish-radar-link-tooltip-high { border-color: rgba(248, 113, 113, .48) !important; box-shadow: 0 16px 46px rgba(15, 23, 42, .34), 0 0 0 1px rgba(248, 113, 113, .08) inset !important; }
+#phish-radar-link-tooltip .phish-radar-link-tooltip-top { top: -11px !important; background: rgba(15, 23, 42, .98) !important; border-bottom: 1px solid rgba(148, 163, 184, .18) !important; }
+#phish-radar-link-tooltip .phish-radar-link-tooltip-score { background: rgba(251, 191, 36, .14) !important; color: #fde68a !important; border: 1px solid rgba(251, 191, 36, .26) !important; }
+#phish-radar-link-tooltip.phish-radar-link-tooltip-high .phish-radar-link-tooltip-score { background: rgba(248, 113, 113, .14) !important; color: #fecaca !important; border-color: rgba(248, 113, 113, .28) !important; }
+
+#phish-radar-overlay { max-width: 460px !important; border-radius: 20px !important; background: rgba(15, 23, 42, .95) !important; border: 1px solid rgba(148, 163, 184, .24) !important; box-shadow: 0 20px 70px rgba(15, 23, 42, .36) !important; backdrop-filter: blur(16px) saturate(1.12) !important; }
+#phish-radar-overlay h3 { font-size: 18px !important; letter-spacing: 0 !important; }
+#phish-radar-overlay button { border-radius: 999px !important; }
+@media (max-width: 680px) { #phish-radar-mini-panel { left: 12px !important; right: 12px !important; bottom: 12px !important; max-width: none !important; } #phish-radar-mini-panel span[data-role="text"] { max-width: 38vw !important; } #phish-radar-mini-panel .phish-radar-hover-details { left: 12px !important; right: 12px !important; width: auto !important; bottom: 72px !important; } }
+
+
+/* v1.7 impeccable hardening, performance, and polish pass */
+#phish-radar-mini-panel,
+#phish-radar-link-tooltip,
+#phish-radar-overlay {
+  --pr-surface: #101827;
+  --pr-surface-raised: #172033;
+  --pr-border: rgba(203, 213, 225, .28);
+  --pr-text: #f8fafc;
+  --pr-muted: #cbd5e1;
+  --pr-focus: #7dd3fc;
+  --pr-safe: #22c55e;
+  --pr-warn: #f59e0b;
+  --pr-danger: #ef4444;
+}
+#phish-radar-mini-panel,
+#phish-radar-link-tooltip {
+  background: var(--pr-surface) !important;
+  border-color: var(--pr-border) !important;
+  color: var(--pr-text) !important;
+  box-shadow: 0 10px 24px rgba(2, 6, 23, .28) !important;
+  backdrop-filter: none !important;
+}
+#phish-radar-mini-panel button,
+#phish-radar-link-tooltip button,
+#phish-radar-overlay button {
+  min-width: 44px !important;
+  min-height: 44px !important;
+  touch-action: manipulation !important;
+}
+#phish-radar-mini-panel button[data-action="hide"],
+#phish-radar-link-tooltip .phish-radar-link-tooltip-close,
+#phish-radar-mini-panel .phish-radar-detail-close {
+  width: 44px !important;
+  height: 44px !important;
+  display: inline-grid !important;
+  place-items: center !important;
+}
+#phish-radar-mini-panel .phish-radar-hint,
+#phish-radar-mini-panel .phish-radar-detail-reset {
+  min-width: 44px !important;
+  min-height: 44px !important;
+  padding-inline: 14px !important;
+}
+#phish-radar-mini-panel button:focus-visible,
+#phish-radar-link-tooltip button:focus-visible,
+#phish-radar-overlay button:focus-visible,
+#phish-radar-mini-panel .phish-radar-hint:focus-visible {
+  outline: 3px solid var(--pr-focus) !important;
+  outline-offset: 3px !important;
+}
+#phish-radar-overlay:focus { outline: none !important; }
+#phish-radar-mini-panel .phish-radar-hover-details,
+#phish-radar-link-tooltip {
+  contain: layout paint style !important;
+  overflow-wrap: anywhere !important;
+}
+#phish-radar-link-tooltip .phish-radar-link-tooltip-url,
+#phish-radar-mini-panel code,
+#phish-radar-overlay p,
+#phish-radar-overlay li {
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+}
+#phish-radar-mini-panel .phish-radar-hover-details.phish-radar-window-manual,
+#phish-radar-link-tooltip.phish-radar-link-tooltip-manual {
+  resize: both !important;
+  overflow: auto !important;
+  max-width: calc(100vw - 16px) !important;
+  max-height: calc(100vh - 16px) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  #phish-radar-mini-panel,
+  #phish-radar-mini-panel *,
+  #phish-radar-link-tooltip,
+  #phish-radar-link-tooltip *,
+  #phish-radar-overlay,
+  #phish-radar-overlay * {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Dockit motion for extension-owned overlays only */
+#phish-radar-overlay,
+#phish-radar-evidence-layer .phish-radar-evidence-panel {
+  animation: phish-radar-dockit-pop 220ms cubic-bezier(.25, 1, .5, 1) both !important;
+}
+
+#phish-radar-clipboard-overlay {
+  animation: phish-radar-dockit-pop-centered 220ms cubic-bezier(.25, 1, .5, 1) both !important;
+}
+
+@keyframes phish-radar-dockit-pop {
+  from { opacity: .35; transform: translateY(6px) scale(.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes phish-radar-dockit-pop-centered {
+  from { opacity: .35; transform: translateX(-50%) translateY(6px) scale(.99); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #phish-radar-overlay,
+  #phish-radar-evidence-layer .phish-radar-evidence-panel {
+    animation: none !important;
+    transform: none !important;
+  }
+  #phish-radar-clipboard-overlay {
+    animation: none !important;
+    transform: translateX(-50%) !important;
+  }
+}
+
+/* v3.0 Dockit-inspired UI tokens. Scoped to extension-owned elements only. */
+#phish-radar-mini-panel.phish-radar-theme-light,
+#phish-radar-mini-panel.phish-radar-theme-light .phish-radar-hover-details,
+#phish-radar-link-tooltip.phish-radar-theme-light,
+#phish-radar-overlay.phish-radar-theme-light,
+#phish-radar-clipboard-overlay.phish-radar-theme-light,
+#phish-radar-evidence-layer.phish-radar-theme-light .phish-radar-evidence-panel,
+.phish-radar-safe-preview.phish-radar-theme-light {
+  --pr-bg: #ffffff;
+  --pr-bg-2: #f8f7f7;
+  --pr-bg-3: #efedef;
+  --pr-ink: #181719;
+  --pr-muted: #625d62;
+  --pr-soft: #7e777d;
+  --pr-line: #dedadd;
+  --pr-accent: #bd5661;
+  --pr-danger: #b93e47;
+  --pr-warn: #9a630f;
+  --pr-good: #147a5f;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-dark,
+#phish-radar-mini-panel.phish-radar-theme-dark .phish-radar-hover-details,
+#phish-radar-link-tooltip.phish-radar-theme-dark,
+#phish-radar-overlay.phish-radar-theme-dark,
+#phish-radar-clipboard-overlay.phish-radar-theme-dark,
+#phish-radar-evidence-layer.phish-radar-theme-dark .phish-radar-evidence-panel,
+.phish-radar-safe-preview.phish-radar-theme-dark {
+  --pr-bg: #0d0d0d;
+  --pr-bg-2: #151515;
+  --pr-bg-3: #202022;
+  --pr-ink: #f6f6f6;
+  --pr-muted: #b7b3b8;
+  --pr-soft: #8d888f;
+  --pr-line: #303034;
+  --pr-accent: #d76d77;
+  --pr-danger: #f07178;
+  --pr-warn: #f3bd65;
+  --pr-good: #43c59e;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-light,
+#phish-radar-mini-panel.phish-radar-theme-dark,
+#phish-radar-mini-panel.phish-radar-theme-light .phish-radar-hover-details,
+#phish-radar-mini-panel.phish-radar-theme-dark .phish-radar-hover-details,
+#phish-radar-link-tooltip.phish-radar-theme-light,
+#phish-radar-link-tooltip.phish-radar-theme-dark,
+#phish-radar-overlay.phish-radar-theme-light,
+#phish-radar-overlay.phish-radar-theme-dark,
+#phish-radar-clipboard-overlay.phish-radar-theme-light,
+#phish-radar-clipboard-overlay.phish-radar-theme-dark,
+#phish-radar-evidence-layer.phish-radar-theme-light .phish-radar-evidence-panel,
+#phish-radar-evidence-layer.phish-radar-theme-dark .phish-radar-evidence-panel {
+  background: var(--pr-bg) !important;
+  color: var(--pr-ink) !important;
+  border-color: var(--pr-line) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .24) !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-light .phish-radar-detail-top,
+#phish-radar-mini-panel.phish-radar-theme-dark .phish-radar-detail-top,
+#phish-radar-link-tooltip.phish-radar-theme-light .phish-radar-link-tooltip-top,
+#phish-radar-link-tooltip.phish-radar-theme-dark .phish-radar-link-tooltip-top {
+  background: var(--pr-bg-2) !important;
+  color: var(--pr-ink) !important;
+  border-color: var(--pr-line) !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-light .phish-radar-detail-note,
+#phish-radar-mini-panel.phish-radar-theme-dark .phish-radar-detail-note,
+#phish-radar-mini-panel.phish-radar-theme-light .phish-radar-detail-item,
+#phish-radar-mini-panel.phish-radar-theme-dark .phish-radar-detail-item,
+#phish-radar-link-tooltip.phish-radar-theme-light .phish-radar-link-tooltip-url,
+#phish-radar-link-tooltip.phish-radar-theme-dark .phish-radar-link-tooltip-url,
+#phish-radar-overlay.phish-radar-theme-light .phish-radar-overlay-evidence-note,
+#phish-radar-overlay.phish-radar-theme-dark .phish-radar-overlay-evidence-note {
+  background: var(--pr-bg-3) !important;
+  color: var(--pr-ink) !important;
+  border-color: var(--pr-line) !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-light button,
+#phish-radar-mini-panel.phish-radar-theme-dark button,
+#phish-radar-link-tooltip.phish-radar-theme-light button,
+#phish-radar-link-tooltip.phish-radar-theme-dark button,
+#phish-radar-overlay.phish-radar-theme-light button,
+#phish-radar-overlay.phish-radar-theme-dark button,
+#phish-radar-clipboard-overlay.phish-radar-theme-light button,
+#phish-radar-clipboard-overlay.phish-radar-theme-dark button {
+  background: var(--pr-bg-3) !important;
+  color: var(--pr-ink) !important;
+  border-color: var(--pr-line) !important;
+  border-radius: 8px !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-light a,
+#phish-radar-mini-panel.phish-radar-theme-dark a,
+#phish-radar-link-tooltip.phish-radar-theme-light a,
+#phish-radar-link-tooltip.phish-radar-theme-dark a,
+#phish-radar-overlay.phish-radar-theme-light a,
+#phish-radar-overlay.phish-radar-theme-dark a {
+  color: var(--pr-accent) !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-light :is(button, a):focus-visible,
+#phish-radar-mini-panel.phish-radar-theme-dark :is(button, a):focus-visible,
+#phish-radar-link-tooltip.phish-radar-theme-light :is(button, a):focus-visible,
+#phish-radar-link-tooltip.phish-radar-theme-dark :is(button, a):focus-visible,
+#phish-radar-overlay.phish-radar-theme-light :is(button, a):focus-visible,
+#phish-radar-overlay.phish-radar-theme-dark :is(button, a):focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--pr-accent) 45%, transparent) !important;
+  outline-offset: 2px !important;
+}
+
+#phish-radar-evidence-layer.phish-radar-theme-light .phish-radar-evidence-list-item,
+#phish-radar-evidence-layer.phish-radar-theme-dark .phish-radar-evidence-list-item {
+  background: var(--pr-bg-3) !important;
+  color: var(--pr-ink) !important;
+  border-color: var(--pr-line) !important;
+}
+
+
+/* v1.8 floating window drag/resize stability fix */
+#phish-radar-mini-panel .phish-radar-hover-details.phish-radar-window-manual,
+#phish-radar-mini-panel .phish-radar-hover-details.phish-radar-dragging,
+#phish-radar-mini-panel .phish-radar-hover-details.phish-radar-resizing,
+#phish-radar-link-tooltip.phish-radar-link-tooltip-manual,
+#phish-radar-link-tooltip.phish-radar-dragging,
+#phish-radar-link-tooltip.phish-radar-resizing {
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  transform: none !important;
+  transition: none !important;
+  resize: none !important;
+  will-change: auto !important;
+}
+
+#phish-radar-mini-panel .phish-radar-hover-details,
+#phish-radar-link-tooltip {
+  overflow: auto !important;
+  overscroll-behavior: contain !important;
+}
+
+#phish-radar-mini-panel .phish-radar-hover-details {
+  min-width: 300px !important;
+  min-height: 190px !important;
+  padding-bottom: 38px !important;
+}
+
+#phish-radar-link-tooltip {
+  min-width: 260px !important;
+  min-height: 170px !important;
+  padding-bottom: 38px !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-top,
+#phish-radar-link-tooltip .phish-radar-link-tooltip-top {
+  user-select: none !important;
+}
+
+#phish-radar-mini-panel .phish-radar-window-resize,
+#phish-radar-link-tooltip .phish-radar-tooltip-resize {
+  position: absolute !important;
+  right: 8px !important;
+  bottom: 8px !important;
+  z-index: 2 !important;
+  width: 28px !important;
+  height: 28px !important;
+  min-width: 28px !important;
+  min-height: 28px !important;
+  display: grid !important;
+  place-items: center !important;
+  border: 1px solid rgba(125, 211, 252, .38) !important;
+  border-radius: 9px !important;
+  background: rgba(15, 23, 42, .92) !important;
+  color: #bae6fd !important;
+  cursor: nwse-resize !important;
+  touch-action: none !important;
+  font-size: 14px !important;
+  line-height: 1 !important;
+  box-shadow: none !important;
+}
+
+#phish-radar-mini-panel .phish-radar-window-resize:hover,
+#phish-radar-link-tooltip .phish-radar-tooltip-resize:hover {
+  background: rgba(14, 116, 144, .86) !important;
+  border-color: rgba(186, 230, 253, .70) !important;
+}
+
+#phish-radar-mini-panel .phish-radar-hover-details.phish-radar-resizing,
+#phish-radar-link-tooltip.phish-radar-resizing {
+  cursor: nwse-resize !important;
+}
+
+#phish-radar-link-tooltip.phish-radar-link-tooltip-manual::after {
+  display: none !important;
+}
+
+
+/* v1.9 tooltip scroll and resize separation fix */
+#phish-radar-link-tooltip {
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  padding: 0 !important;
+  max-height: min(520px, calc(100vh - 20px)) !important;
+  resize: none !important;
+}
+
+#phish-radar-link-tooltip .phish-radar-link-tooltip-top {
+  flex: 0 0 auto !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 3 !important;
+  margin: 0 !important;
+  padding: 11px 12px 9px !important;
+}
+
+#phish-radar-link-tooltip .phish-radar-link-tooltip-scroll {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain !important;
+  padding: 10px 12px 42px !important;
+  scrollbar-width: thin !important;
+  touch-action: pan-y !important;
+}
+
+#phish-radar-link-tooltip .phish-radar-link-tooltip-scroll::-webkit-scrollbar {
+  width: 10px !important;
+}
+
+#phish-radar-link-tooltip .phish-radar-link-tooltip-scroll::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, .42) !important;
+  border-radius: 999px !important;
+  border: 2px solid #101827 !important;
+}
+
+#phish-radar-link-tooltip .phish-radar-tooltip-resize,
+#phish-radar-mini-panel .phish-radar-window-resize {
+  position: absolute !important;
+  right: 8px !important;
+  bottom: 8px !important;
+  z-index: 5 !important;
+  transform: none !important;
+  touch-action: none !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+#phish-radar-link-tooltip.phish-radar-resizing,
+#phish-radar-link-tooltip.phish-radar-link-tooltip-manual,
+#phish-radar-mini-panel .phish-radar-hover-details.phish-radar-resizing,
+#phish-radar-mini-panel .phish-radar-hover-details.phish-radar-window-manual {
+  overflow: hidden !important;
+  resize: none !important;
+  transform: none !important;
+  transition: none !important;
+}
+
+#phish-radar-link-tooltip.phish-radar-resizing .phish-radar-link-tooltip-scroll,
+#phish-radar-mini-panel .phish-radar-hover-details.phish-radar-resizing {
+  pointer-events: none !important;
+}
+
+#phish-radar-link-tooltip .phish-radar-tooltip-resize:active,
+#phish-radar-mini-panel .phish-radar-window-resize:active {
+  cursor: nwse-resize !important;
+  background: rgba(14, 116, 144, .96) !important;
+}
+
+/* competitive search badges v2 */
+.phish-radar-badge.phish-radar-compact {
+  vertical-align: middle !important;
+  box-shadow: none !important;
+}
+.phish-radar-badge:not(.phish-radar-high):not(.phish-radar-critical) {
+  color: #7c2d12 !important;
+  background: rgba(245, 158, 11, .14) !important;
+  border-color: rgba(245, 158, 11, .58) !important;
+}
+.phish-radar-search-result + .phish-radar-badge::after {
+  content: " safety";
+  font-weight: 800 !important;
+  opacity: .82 !important;
+}
+
+/* v2.0 Explainable Warning: on-page evidence highlights */
+#phish-radar-evidence-layer {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2147483645 !important;
+  pointer-events: none !important;
+  font-family: Inter, Arial, sans-serif !important;
+  color: #0f172a !important;
+}
+
+#phish-radar-evidence-layer * {
+  box-sizing: border-box !important;
+  letter-spacing: 0 !important;
+}
+
+#phish-radar-evidence-layer .phish-radar-evidence-panel {
+  position: fixed !important;
+  right: 16px !important;
+  top: 16px !important;
+  width: min(360px, calc(100vw - 32px)) !important;
+  max-height: min(440px, calc(100vh - 32px)) !important;
+  overflow: auto !important;
+  pointer-events: auto !important;
+  padding: 12px !important;
+  border: 1px solid rgba(15, 23, 42, .16) !important;
+  border-radius: 8px !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  box-shadow: 0 6px 8px rgba(15, 23, 42, .14) !important;
+}
+
+#phish-radar-evidence-layer .phish-radar-evidence-panel-top {
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  margin-bottom: 10px !important;
+}
+
+#phish-radar-evidence-layer .phish-radar-evidence-panel-top strong {
+  display: block !important;
+  font-size: 15px !important;
+  line-height: 1.3 !important;
+  font-weight: 900 !important;
+  color: #0f172a !important;
+}
+
+#phish-radar-evidence-layer .phish-radar-evidence-panel-top small {
+  display: block !important;
+  margin-top: 2px !important;
+  color: #475569 !important;
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+}
+
+#phish-radar-evidence-layer [data-evidence-close] {
+  appearance: none !important;
+  border: 0 !important;
+  width: 34px !important;
+  height: 34px !important;
+  border-radius: 999px !important;
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+  cursor: pointer !important;
+  font-size: 18px !important;
+  font-weight: 900 !important;
+}
+
+#phish-radar-evidence-layer .phish-radar-evidence-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+#phish-radar-evidence-layer .phish-radar-evidence-list-item {
+  appearance: none !important;
+  width: 100% !important;
+  text-align: left !important;
+  border: 1px solid rgba(15, 23, 42, .14) !important;
+  border-radius: 8px !important;
+  background: #f8fafc !important;
+  color: #0f172a !important;
+  padding: 9px 10px !important;
+  cursor: pointer !important;
+}
+
+#phish-radar-evidence-layer .phish-radar-evidence-list-item:hover,
+#phish-radar-evidence-layer .phish-radar-evidence-list-item:focus-visible {
+  border-color: #0284c7 !important;
+  outline: 2px solid rgba(2, 132, 199, .25) !important;
+  outline-offset: 2px !important;
+}
+
+#phish-radar-evidence-layer .phish-radar-evidence-list-item b {
+  display: block !important;
+  font-size: 12.5px !important;
+  line-height: 1.35 !important;
+  color: #0f172a !important;
+}
+
+#phish-radar-evidence-layer .phish-radar-evidence-list-item span,
+#phish-radar-evidence-layer .phish-radar-evidence-empty {
+  display: block !important;
+  margin-top: 4px !important;
+  color: #475569 !important;
+  font-size: 12px !important;
+  line-height: 1.45 !important;
+  overflow-wrap: anywhere !important;
+}
+
+#phish-radar-evidence-layer .phish-radar-evidence-marker {
+  position: fixed !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  max-width: min(300px, calc(100vw - 20px)) !important;
+  gap: 7px !important;
+  pointer-events: auto !important;
+  border: 1px solid rgba(124, 45, 18, .18) !important;
+  border-radius: 999px !important;
+  background: #fffbeb !important;
+  color: #7c2d12 !important;
+  box-shadow: 0 4px 8px rgba(15, 23, 42, .14) !important;
+  padding: 7px 10px !important;
+  cursor: pointer !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  line-height: 1.25 !important;
+  text-align: left !important;
+}
+
+#phish-radar-evidence-layer .phish-radar-evidence-marker span {
+  flex: 0 0 auto !important;
+  display: inline-grid !important;
+  place-items: center !important;
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 999px !important;
+  background: #f59e0b !important;
+  color: #111827 !important;
+  font-size: 12px !important;
+}
+
+#phish-radar-evidence-layer .phish-radar-evidence-marker-critical,
+#phish-radar-evidence-layer .phish-radar-evidence-marker-secret {
+  background: #fef2f2 !important;
+  color: #7f1d1d !important;
+  border-color: rgba(239, 68, 68, .30) !important;
+}
+
+#phish-radar-evidence-layer .phish-radar-evidence-marker-critical span,
+#phish-radar-evidence-layer .phish-radar-evidence-marker-secret span {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+}
+
+.phish-radar-evidence-target {
+  outline: 3px solid #f59e0b !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 0 6px rgba(245, 158, 11, .18) !important;
+  scroll-margin: 120px !important;
+}
+
+.phish-radar-evidence-secret-target,
+.phish-radar-evidence-critical-target {
+  outline-color: #ef4444 !important;
+  box-shadow: 0 0 0 6px rgba(239, 68, 68, .20) !important;
+}
+
+.phish-radar-evidence-action-target,
+.phish-radar-evidence-form-target {
+  outline-color: #0ea5e9 !important;
+  box-shadow: 0 0 0 6px rgba(14, 165, 233, .18) !important;
+}
+
+.phish-radar-evidence-flash {
+  animation: phish-radar-evidence-pulse .9s ease-out 2 !important;
+}
+
+#phish-radar-overlay .phish-radar-overlay-evidence-note {
+  border: 1px solid rgba(14, 165, 233, .30) !important;
+  border-radius: 8px !important;
+  background: rgba(14, 165, 233, .12) !important;
+  color: #dbeafe !important;
+  padding: 8px 10px !important;
+}
+
+@keyframes phish-radar-evidence-pulse {
+  0% { outline-width: 3px; }
+  50% { outline-width: 6px; }
+  100% { outline-width: 3px; }
+}
+
+@media (max-width: 680px) {
+  #phish-radar-evidence-layer .phish-radar-evidence-panel {
+    left: 12px !important;
+    right: 12px !important;
+    top: 12px !important;
+    width: auto !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .phish-radar-evidence-flash {
+    animation: none !important;
+  }
+}
+
+
+
+
+/* v2.1 Visual Phishing Detection: brand-impersonation evidence */
+.phish-radar-evidence-visual-target {
+  outline: 3px solid rgba(56, 189, 248, .92) !important;
+  outline-offset: 4px !important;
+  box-shadow: 0 0 0 7px rgba(56, 189, 248, .18) !important;
+}
+
+#phish-radar-evidence-layer .phish-radar-evidence-marker-visual {
+  border-color: rgba(56, 189, 248, .95) !important;
+  background: #082f49 !important;
+  color: #e0f2fe !important;
+}
+
+#phish-radar-evidence-layer .phish-radar-evidence-marker-visual span {
+  background: #38bdf8 !important;
+  color: #082f49 !important;
+}
+
+/* v2.2 Impeccable product UI refresh: cleaner panels and stable floating details. */
+#phish-radar-mini-panel,
+#phish-radar-mini-panel *,
+#phish-radar-link-tooltip,
+#phish-radar-link-tooltip *,
+#phish-radar-overlay,
+#phish-radar-overlay * {
+  box-sizing: border-box !important;
+  letter-spacing: 0 !important;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif !important;
+}
+
+#phish-radar-mini-panel {
+  left: auto !important;
+  right: 18px !important;
+  bottom: 18px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  width: auto !important;
+  min-height: 46px !important;
+  max-width: min(640px, calc(100vw - 36px)) !important;
+  padding: 8px 8px 8px 10px !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 8px !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, .18) !important;
+  backdrop-filter: none !important;
+  transform: none !important;
+  transition: border-color .16s ease, box-shadow .16s ease, opacity .16s ease !important;
+}
+
+#phish-radar-mini-panel:hover {
+  transform: none !important;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, .22) !important;
+}
+
+#phish-radar-mini-panel.phish-radar-risk-panel {
+  background: #fffbeb !important;
+  border-color: #f59e0b !important;
+  box-shadow: 0 10px 24px rgba(120, 53, 15, .18) !important;
+}
+
+#phish-radar-mini-panel.phish-radar-safe-panel {
+  background: #f0fdf4 !important;
+  border-color: #22c55e !important;
+  box-shadow: 0 10px 24px rgba(20, 83, 45, .14) !important;
+}
+
+#phish-radar-mini-panel strong {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  min-width: max-content !important;
+  color: #0f172a !important;
+  font-size: 14px !important;
+  font-weight: 800 !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+}
+
+#phish-radar-mini-panel span[data-role="text"] {
+  max-width: min(470px, 42vw) !important;
+  overflow: hidden !important;
+  color: #475569 !important;
+  font-size: 12.5px !important;
+  line-height: 1.35 !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+#phish-radar-mini-panel .phish-radar-hint,
+#phish-radar-mini-panel button[data-action="hide"] {
+  appearance: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 34px !important;
+  min-height: 34px !important;
+  height: 34px !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 999px !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  box-shadow: none !important;
+  cursor: pointer !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+}
+
+#phish-radar-mini-panel .phish-radar-hint {
+  min-width: 0 !important;
+  padding: 0 12px !important;
+}
+
+#phish-radar-mini-panel.phish-radar-risk-panel .phish-radar-hint {
+  border-color: #f59e0b !important;
+  background: #111827 !important;
+  color: #ffffff !important;
+}
+
+#phish-radar-mini-panel .phish-radar-hint:hover,
+#phish-radar-mini-panel button[data-action="hide"]:hover {
+  border-color: #2563eb !important;
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+}
+
+#phish-radar-mini-panel .phish-radar-hover-details {
+  position: fixed !important;
+  left: auto !important;
+  right: 18px !important;
+  top: auto !important;
+  bottom: 76px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  width: min(430px, calc(100vw - 28px)) !important;
+  min-width: 320px !important;
+  min-height: 220px !important;
+  max-width: calc(100vw - 28px) !important;
+  max-height: min(520px, calc(100vh - 104px)) !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 8px !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  box-shadow: 0 16px 32px rgba(15, 23, 42, .22) !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  transform: translateY(8px) !important;
+  transition: opacity .16s ease, transform .16s ease, visibility .16s ease !important;
+}
+
+#phish-radar-mini-panel:hover .phish-radar-hover-details,
+#phish-radar-mini-panel:focus-within .phish-radar-hover-details {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+#phish-radar-mini-panel.phish-radar-details-open .phish-radar-hover-details,
+#phish-radar-mini-panel.phish-radar-details-pinned .phish-radar-hover-details,
+#phish-radar-mini-panel .phish-radar-hover-details.phish-radar-window-manual,
+#phish-radar-mini-panel .phish-radar-hover-details.phish-radar-dragging,
+#phish-radar-mini-panel .phish-radar-hover-details.phish-radar-resizing {
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+  transform: none !important;
+}
+
+#phish-radar-mini-panel .phish-radar-hover-details.phish-radar-window-manual {
+  right: auto !important;
+  bottom: auto !important;
+  max-width: none !important;
+  max-height: none !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-top {
+  position: relative !important;
+  top: auto !important;
+  z-index: 3 !important;
+  flex: 0 0 auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 8px !important;
+  margin: 0 !important;
+  padding: 11px 12px !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+  background: #f8fafc !important;
+  color: #0f172a !important;
+  cursor: grab !important;
+  touch-action: none !important;
+  user-select: none !important;
+}
+
+#phish-radar-mini-panel .phish-radar-hover-details.phish-radar-dragging .phish-radar-detail-top {
+  cursor: grabbing !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-head {
+  display: flex !important;
+  min-width: 0 !important;
+  flex: 1 1 auto !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+  color: #0f172a !important;
+  font-size: 14px !important;
+  font-weight: 850 !important;
+  line-height: 1.2 !important;
+}
+
+.phish-radar-drag-cue {
+  color: #64748b !important;
+  font-size: 10.5px !important;
+  font-weight: 650 !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-reset,
+#phish-radar-mini-panel .phish-radar-detail-close {
+  flex: 0 0 auto !important;
+  min-width: 34px !important;
+  min-height: 34px !important;
+  height: 34px !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 999px !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  cursor: pointer !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-reset {
+  width: auto !important;
+  padding: 0 11px !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-close:hover {
+  border-color: #fecaca !important;
+  background: #fef2f2 !important;
+  color: #991b1b !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-scroll {
+  flex: 1 1 auto !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  overscroll-behavior: contain !important;
+  padding: 12px 12px 46px !important;
+  color: #0f172a !important;
+  scrollbar-width: thin !important;
+  touch-action: pan-y !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-scroll::-webkit-scrollbar {
+  width: 10px !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-scroll::-webkit-scrollbar-thumb {
+  border: 2px solid #ffffff !important;
+  border-radius: 999px !important;
+  background: #cbd5e1 !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-row {
+  margin: 0 0 8px !important;
+  color: #334155 !important;
+  font-size: 12.5px !important;
+  line-height: 1.45 !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-note {
+  margin: 8px 0 !important;
+  padding: 8px 10px !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 8px !important;
+  background: #f8fafc !important;
+  color: #475569 !important;
+  font-size: 12px !important;
+  line-height: 1.45 !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-item {
+  margin-top: 9px !important;
+  padding: 10px !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 8px !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  box-shadow: none !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-url {
+  color: #111827 !important;
+  font-size: 12.5px !important;
+  font-weight: 750 !important;
+  line-height: 1.35 !important;
+  overflow-wrap: anywhere !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-item ul {
+  margin: 7px 0 0 !important;
+  padding-left: 17px !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-item li {
+  margin: 4px 0 !important;
+  color: #475569 !important;
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-actions {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 6px !important;
+  margin-top: 10px !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-actions button {
+  min-width: 0 !important;
+  min-height: 32px !important;
+  height: 32px !important;
+  padding: 0 10px !important;
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 999px !important;
+  background: #f8fafc !important;
+  color: #0f172a !important;
+  cursor: pointer !important;
+  font-size: 11.5px !important;
+  font-weight: 750 !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-actions button:hover {
+  border-color: #2563eb !important;
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+}
+
+#phish-radar-mini-panel .phish-radar-window-resize {
+  position: absolute !important;
+  right: 8px !important;
+  bottom: 8px !important;
+  z-index: 6 !important;
+  display: grid !important;
+  width: 30px !important;
+  min-width: 30px !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  place-items: center !important;
+  border: 1px solid #bae6fd !important;
+  border-radius: 8px !important;
+  background: #eff6ff !important;
+  color: #0369a1 !important;
+  cursor: nwse-resize !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  touch-action: none !important;
+  user-select: none !important;
+}
+
+#phish-radar-mini-panel .phish-radar-hover-details.phish-radar-resizing,
+#phish-radar-mini-panel .phish-radar-hover-details.phish-radar-resizing .phish-radar-detail-scroll {
+  cursor: nwse-resize !important;
+  pointer-events: none !important;
+}
+
+#phish-radar-mini-panel .phish-radar-hover-details.phish-radar-resizing .phish-radar-window-resize {
+  pointer-events: auto !important;
+}
+
+#phish-radar-link-tooltip {
+  border: 1px solid #cbd5e1 !important;
+  border-radius: 8px !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  box-shadow: 0 14px 30px rgba(15, 23, 42, .20) !important;
+  backdrop-filter: none !important;
+}
+
+#phish-radar-link-tooltip.phish-radar-link-tooltip-high {
+  border-color: #fca5a5 !important;
+  box-shadow: 0 14px 30px rgba(127, 29, 29, .18) !important;
+}
+
+#phish-radar-link-tooltip .phish-radar-link-tooltip-top {
+  border-bottom: 1px solid #e2e8f0 !important;
+  background: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+#phish-radar-link-tooltip .phish-radar-link-tooltip-title,
+#phish-radar-link-tooltip.phish-radar-link-tooltip-high .phish-radar-link-tooltip-title {
+  color: #0f172a !important;
+}
+
+#phish-radar-link-tooltip .phish-radar-link-tooltip-url,
+#phish-radar-link-tooltip .phish-radar-link-tooltip-mini {
+  border-color: #e2e8f0 !important;
+  background: #f8fafc !important;
+  color: #334155 !important;
+}
+
+#phish-radar-link-tooltip li,
+#phish-radar-link-tooltip small,
+#phish-radar-link-tooltip .phish-radar-link-tooltip-footer {
+  color: #475569 !important;
+}
+
+#phish-radar-overlay {
+  inset: auto !important;
+  top: 16px !important;
+  left: 16px !important;
+  width: min(340px, calc(100vw - 24px)) !important;
+  max-width: min(340px, calc(100vw - 24px)) !important;
+  max-height: calc(100vh - 32px) !important;
+  overflow: auto !important;
+  padding: 0 !important;
+  border: 1px solid #fecaca !important;
+  border-radius: 8px !important;
+  background: #ffffff !important;
+  color: #0f172a !important;
+  box-shadow: 0 14px 30px rgba(127, 29, 29, .16) !important;
+  backdrop-filter: none !important;
+}
+
+#phish-radar-overlay h3 {
+  margin: 0 !important;
+  padding: 13px 14px 8px !important;
+  border-bottom: 1px solid #fee2e2 !important;
+  color: #991b1b !important;
+  font-size: 15px !important;
+  font-weight: 850 !important;
+  line-height: 1.35 !important;
+}
+
+#phish-radar-overlay p,
+#phish-radar-overlay ul,
+#phish-radar-overlay small,
+#phish-radar-overlay .phish-radar-actions {
+  margin-left: 14px !important;
+  margin-right: 14px !important;
+}
+
+#phish-radar-overlay p {
+  color: #334155 !important;
+  font-size: 12.5px !important;
+  line-height: 1.5 !important;
+}
+
+#phish-radar-overlay ul {
+  padding-left: 18px !important;
+  color: #334155 !important;
+}
+
+#phish-radar-overlay li {
+  margin: 5px 0 !important;
+  color: #334155 !important;
+  font-size: 12.5px !important;
+  line-height: 1.45 !important;
+}
+
+#phish-radar-overlay small {
+  display: block !important;
+  color: #64748b !important;
+  font-size: 11.5px !important;
+  line-height: 1.45 !important;
+}
+
+#phish-radar-overlay .phish-radar-overlay-evidence-note {
+  border: 1px solid #bfdbfe !important;
+  border-radius: 8px !important;
+  background: #eff6ff !important;
+  color: #1e3a8a !important;
+  padding: 8px 10px !important;
+}
+
+#phish-radar-overlay .phish-radar-actions {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  padding-bottom: 14px !important;
+}
+
+#phish-radar-overlay button {
+  min-height: 36px !important;
+  border-radius: 999px !important;
+  padding: 0 12px !important;
+  font-size: 12px !important;
+}
+
+#phish-radar-overlay .primary {
+  background: #dc2626 !important;
+  color: #ffffff !important;
+}
+
+#phish-radar-overlay .secondary {
+  background: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+@media (max-width: 680px) {
+  #phish-radar-mini-panel {
+    left: 12px !important;
+    right: 12px !important;
+    bottom: 12px !important;
+    max-width: none !important;
+  }
+
+  #phish-radar-mini-panel span[data-role="text"] {
+    max-width: 34vw !important;
+  }
+
+  #phish-radar-mini-panel .phish-radar-hover-details {
+    left: 12px !important;
+    right: 12px !important;
+    bottom: 70px !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+  }
+
+  #phish-radar-overlay {
+    top: 12px !important;
+    left: 12px !important;
+    right: 12px !important;
+    width: auto !important;
+    max-width: none !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #phish-radar-mini-panel,
+  #phish-radar-mini-panel *,
+  #phish-radar-link-tooltip,
+  #phish-radar-link-tooltip *,
+  #phish-radar-overlay,
+  #phish-radar-overlay * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* v2.3 direct-drag reliability polish */
+#phish-radar-mini-panel .phish-radar-hover-details,
+#phish-radar-mini-panel .phish-radar-detail-top {
+  pointer-events: auto !important;
+}
+
+#phish-radar-mini-panel .phish-radar-detail-head {
+  cursor: grab !important;
+}
+
+#phish-radar-window-moving,
+.phish-radar-window-moving,
+.phish-radar-window-moving * {
+  cursor: grabbing !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
+#phish-radar-mini-panel .phish-radar-hover-details.phish-radar-dragging,
+#phish-radar-mini-panel .phish-radar-hover-details.phish-radar-dragging .phish-radar-detail-head {
+  cursor: grabbing !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-dark {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+  box-shadow: 0 14px 30px rgba(2, 6, 23, .38) !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-dark.phish-radar-risk-panel {
+  background: #1f1a0d !important;
+  border-color: #f59e0b !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-dark.phish-radar-safe-panel {
+  background: #082f1a !important;
+  border-color: #22c55e !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-dark strong,
+#phish-radar-mini-panel.phish-radar-theme-dark span[data-role="text"] {
+  color: #f8fafc !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-dark span[data-role="text"] {
+  color: #cbd5e1 !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-dark .phish-radar-hint,
+#phish-radar-mini-panel.phish-radar-theme-dark button[data-action="hide"] {
+  border-color: #475569 !important;
+  background: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-dark .phish-radar-hint:hover,
+#phish-radar-mini-panel.phish-radar-theme-dark button[data-action="hide"]:hover {
+  border-color: #7dd3fc !important;
+  background: #0f2f48 !important;
+  color: #e0f2fe !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-dark .phish-radar-hover-details,
+#phish-radar-link-tooltip.phish-radar-theme-dark,
+#phish-radar-overlay.phish-radar-theme-dark,
+#phish-radar-clipboard-overlay.phish-radar-theme-dark {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+  box-shadow: 0 18px 40px rgba(2, 6, 23, .44) !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-dark .phish-radar-detail-top,
+#phish-radar-link-tooltip.phish-radar-theme-dark .phish-radar-link-tooltip-top {
+  background: #111827 !important;
+  border-bottom-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-dark .phish-radar-detail-head,
+#phish-radar-link-tooltip.phish-radar-theme-dark .phish-radar-link-tooltip-title,
+#phish-radar-overlay.phish-radar-theme-dark h3 {
+  color: #f8fafc !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-dark .phish-radar-drag-cue,
+#phish-radar-link-tooltip.phish-radar-theme-dark .phish-radar-drag-cue {
+  color: #94a3b8 !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-dark .phish-radar-detail-reset,
+#phish-radar-mini-panel.phish-radar-theme-dark .phish-radar-detail-close {
+  border-color: #475569 !important;
+  background: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-dark .phish-radar-detail-reset:hover {
+  border-color: #7dd3fc !important;
+  background: #0f2f48 !important;
+  color: #e0f2fe !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-dark .phish-radar-detail-close:hover {
+  border-color: #fca5a5 !important;
+  background: #3b1414 !important;
+  color: #fecaca !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-dark .phish-radar-detail-scroll {
+  color: #f8fafc !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-dark .phish-radar-detail-scroll::-webkit-scrollbar-thumb {
+  border-color: #0f172a !important;
+  background: #475569 !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-dark .phish-radar-detail-row,
+#phish-radar-mini-panel.phish-radar-theme-dark .phish-radar-detail-item li,
+#phish-radar-link-tooltip.phish-radar-theme-dark li,
+#phish-radar-link-tooltip.phish-radar-theme-dark small,
+#phish-radar-link-tooltip.phish-radar-theme-dark .phish-radar-link-tooltip-footer,
+#phish-radar-overlay.phish-radar-theme-dark p,
+#phish-radar-overlay.phish-radar-theme-dark li,
+#phish-radar-overlay.phish-radar-theme-dark small {
+  color: #cbd5e1 !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-dark .phish-radar-detail-note,
+#phish-radar-mini-panel.phish-radar-theme-dark .phish-radar-detail-item,
+#phish-radar-link-tooltip.phish-radar-theme-dark .phish-radar-link-tooltip-url,
+#phish-radar-link-tooltip.phish-radar-theme-dark .phish-radar-link-tooltip-mini {
+  background: #111827 !important;
+  border-color: #334155 !important;
+  color: #dbeafe !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-dark .phish-radar-detail-url {
+  color: #f8fafc !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-dark .phish-radar-detail-actions button {
+  border-color: #475569 !important;
+  background: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-dark .phish-radar-detail-actions button:hover {
+  border-color: #7dd3fc !important;
+  background: #0f2f48 !important;
+  color: #e0f2fe !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-dark .phish-radar-window-resize {
+  border-color: #38bdf8 !important;
+  background: #082f49 !important;
+  color: #e0f2fe !important;
+}
+
+#phish-radar-link-tooltip.phish-radar-theme-dark .phish-radar-link-tooltip-score {
+  background: rgba(245, 158, 11, .16) !important;
+  border-color: rgba(245, 158, 11, .32) !important;
+  color: #fde68a !important;
+}
+
+#phish-radar-overlay.phish-radar-theme-dark h3 {
+  border-bottom-color: #334155 !important;
+  background: #111827 !important;
+}
+
+#phish-radar-overlay.phish-radar-theme-dark .phish-radar-overlay-evidence-note {
+  background: #082f49 !important;
+  border-color: #0369a1 !important;
+  color: #e0f2fe !important;
+}
+
+#phish-radar-overlay.phish-radar-theme-dark .secondary,
+#phish-radar-clipboard-overlay.phish-radar-theme-dark button {
+  background: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+
+/* v2.1 tooltip readability and viewport guard */
+#phish-radar-link-tooltip {
+  box-sizing: border-box !important;
+  width: min(360px, calc(100vw - 28px)) !important;
+  min-width: min(320px, calc(100vw - 28px)) !important;
+  max-width: calc(100vw - 28px) !important;
+  max-height: calc(100vh - 28px) !important;
+  overflow: hidden !important;
+}
+
+#phish-radar-link-tooltip.phish-radar-link-tooltip-open {
+  pointer-events: auto !important;
+}
+
+#phish-radar-link-tooltip .phish-radar-link-tooltip-top {
+  position: sticky !important;
+  top: 0 !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 10px !important;
+  min-height: 44px !important;
+  margin: -11px -12px 10px -12px !important;
+  padding: 10px 46px 10px 12px !important;
+  box-sizing: border-box !important;
+  border-radius: 8px 8px 0 0 !important;
+}
+
+#phish-radar-link-tooltip .phish-radar-link-tooltip-title {
+  min-width: 0 !important;
+  max-width: 100% !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+  line-height: 1.35 !important;
+}
+
+#phish-radar-link-tooltip .phish-radar-link-tooltip-close {
+  position: absolute !important;
+  top: 8px !important;
+  right: 8px !important;
+  width: 32px !important;
+  min-width: 32px !important;
+  height: 32px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+  opacity: 1 !important;
+}
+
+#phish-radar-link-tooltip .phish-radar-link-tooltip-scroll {
+  max-height: calc(100vh - 132px) !important;
+  overflow: auto !important;
+  padding-right: 4px !important;
+}
+
+#phish-radar-link-tooltip .phish-radar-link-tooltip-score,
+#phish-radar-link-tooltip .phish-radar-link-tooltip-mini,
+#phish-radar-link-tooltip .phish-radar-link-tooltip-footer,
+#phish-radar-link-tooltip li,
+#phish-radar-link-tooltip small {
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+}
+
+#phish-radar-link-tooltip .phish-radar-link-tooltip-url {
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-all !important;
+  line-height: 1.45 !important;
+  max-height: 88px !important;
+  overflow: auto !important;
+}
+
+@media (max-width: 420px) {
+  #phish-radar-link-tooltip {
+    width: calc(100vw - 20px) !important;
+    min-width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px) !important;
+  }
+}
+
+
+/* v2.2 readable search risk badges */
+.phish-radar-badge,
+.phish-radar-badge.phish-radar-compact,
+.phish-radar-badge.phish-radar-high,
+.phish-radar-badge.phish-radar-critical {
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-width: 50px !important;
+  max-width: none !important;
+  height: 20px !important;
+  min-height: 20px !important;
+  margin: 0 0 0 6px !important;
+  padding: 2px 8px !important;
+  border-radius: 999px !important;
+  font-family: Arial, Helvetica, sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+  letter-spacing: 0 !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  vertical-align: middle !important;
+  position: relative !important;
+  top: -1px !important;
+  transform: none !important;
+  text-decoration: none !important;
+  direction: ltr !important;
+  unicode-bidi: isolate !important;
+}
+
+.phish-radar-badge::before,
+.phish-radar-badge::after,
+.phish-radar-badge.phish-radar-compact::before,
+.phish-radar-badge.phish-radar-compact::after {
+  content: none !important;
+  display: none !important;
+}
+
+.phish-radar-badge.phish-radar-high,
+.phish-radar-badge.phish-radar-critical {
+  color: #ffffff !important;
+  background: #dc2626 !important;
+  border: 1px solid rgba(255, 255, 255, .35) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, .18) !important;
+}
+
+.phish-radar-badge:not(.phish-radar-high):not(.phish-radar-critical) {
+  color: #7c2d12 !important;
+  background: #fef3c7 !important;
+  border: 1px solid #f59e0b !important;
+}
+
+.phish-radar-badge + .phish-radar-badge {
+  margin-left: 6px !important;
+}
+
+
+/* v2.3 badge bidi hardening */
+.phish-radar-badge,
+.phish-radar-badge.phish-radar-compact,
+.phish-radar-badge.phish-radar-high,
+.phish-radar-badge.phish-radar-critical {
+  min-width: 30px !important;
+  height: 20px !important;
+  padding: 2px 7px !important;
+  font-family: Arial, Helvetica, sans-serif !important;
+  font-variant-numeric: tabular-nums !important;
+  direction: ltr !important;
+  unicode-bidi: isolate-override !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+}
+
+.phish-radar-badge[dir="ltr"] {
+  direction: ltr !important;
+  unicode-bidi: isolate-override !important;
+}
+
+
+/* v2.4 badge anchor text readability */
+.phish-radar-badge,
+.phish-radar-badge.phish-radar-compact,
+.phish-radar-badge.phish-radar-high,
+.phish-radar-badge.phish-radar-critical {
+  box-sizing: border-box !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 58px !important;
+  width: auto !important;
+  max-width: none !important;
+  height: 22px !important;
+  min-height: 22px !important;
+  padding: 0 9px !important;
+  font-family: Arial, Helvetica, sans-serif !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  font-variant-numeric: tabular-nums !important;
+  line-height: 22px !important;
+  letter-spacing: 0 !important;
+  white-space: nowrap !important;
+  text-align: center !important;
+  direction: ltr !important;
+  unicode-bidi: isolate !important;
+  writing-mode: horizontal-tb !important;
+  text-orientation: mixed !important;
+  transform: none !important;
+  overflow: visible !important;
+}
+
+.phish-radar-badge::before,
+.phish-radar-badge::after,
+.phish-radar-badge.phish-radar-compact::before,
+.phish-radar-badge.phish-radar-compact::after,
+.phish-radar-search-result + .phish-radar-badge::after {
+  content: none !important;
+  display: none !important;
+}
+
+
+/* v2.5 icon-only stable search badge */
+.phish-radar-badge,
+.phish-radar-badge.phish-radar-compact,
+.phish-radar-badge.phish-radar-high,
+.phish-radar-badge.phish-radar-critical {
+  width: 22px !important;
+  min-width: 22px !important;
+  max-width: 22px !important;
+  height: 22px !important;
+  min-height: 22px !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  text-indent: 0 !important;
+  direction: ltr !important;
+  unicode-bidi: isolate !important;
+  writing-mode: horizontal-tb !important;
+}
+
+.phish-radar-badge::before,
+.phish-radar-badge::after,
+.phish-radar-badge.phish-radar-compact::before,
+.phish-radar-badge.phish-radar-compact::after,
+.phish-radar-search-result + .phish-radar-badge::after {
+  content: none !important;
+  display: none !important;
+}
+
+
+/* v2.7 unified light/dark theme */
+#phish-radar-mini-panel.phish-radar-theme-light,
+#phish-radar-mini-panel.phish-radar-theme-light .phish-radar-hover-details,
+#phish-radar-link-tooltip.phish-radar-theme-light,
+#phish-radar-overlay.phish-radar-theme-light,
+#phish-radar-clipboard-overlay.phish-radar-theme-light,
+#phish-radar-evidence-layer.phish-radar-theme-light .phish-radar-evidence-panel,
+.phish-radar-safe-preview.phish-radar-theme-light {
+  --pr-bg: #ffffff;
+  --pr-bg-2: #f8f7f7;
+  --pr-bg-3: #efedef;
+  --pr-ink: #181719;
+  --pr-muted: #625d62;
+  --pr-soft: #7e777d;
+  --pr-line: #dedadd;
+  --pr-accent: #bd5661;
+  --pr-danger: #b93e47;
+  --pr-warn: #9a630f;
+  --pr-good: #147a5f;
+  background: var(--pr-bg) !important;
+  color: var(--pr-ink) !important;
+  border-color: var(--pr-line) !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-dark,
+#phish-radar-mini-panel.phish-radar-theme-dark .phish-radar-hover-details,
+#phish-radar-link-tooltip.phish-radar-theme-dark,
+#phish-radar-overlay.phish-radar-theme-dark,
+#phish-radar-clipboard-overlay.phish-radar-theme-dark,
+#phish-radar-evidence-layer.phish-radar-theme-dark .phish-radar-evidence-panel,
+.phish-radar-safe-preview.phish-radar-theme-dark {
+  --pr-bg: #0d0d0d;
+  --pr-bg-2: #151515;
+  --pr-bg-3: #202022;
+  --pr-ink: #f6f6f6;
+  --pr-muted: #b7b3b8;
+  --pr-soft: #8d888f;
+  --pr-line: #303034;
+  --pr-accent: #d76d77;
+  --pr-danger: #f07178;
+  --pr-warn: #f3bd65;
+  --pr-good: #43c59e;
+  background: var(--pr-bg) !important;
+  color: var(--pr-ink) !important;
+  border-color: var(--pr-line) !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-light .phish-radar-detail-top,
+#phish-radar-mini-panel.phish-radar-theme-light .phish-radar-hover-details header,
+#phish-radar-link-tooltip.phish-radar-theme-light .phish-radar-link-tooltip-top,
+#phish-radar-overlay.phish-radar-theme-light .phish-radar-overlay-head,
+#phish-radar-clipboard-overlay.phish-radar-theme-light .phish-radar-overlay-head {
+  background: #f8f7f7 !important;
+  color: #181719 !important;
+  border-color: #dedadd !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-dark .phish-radar-detail-top,
+#phish-radar-mini-panel.phish-radar-theme-dark .phish-radar-hover-details header,
+#phish-radar-link-tooltip.phish-radar-theme-dark .phish-radar-link-tooltip-top,
+#phish-radar-overlay.phish-radar-theme-dark .phish-radar-overlay-head,
+#phish-radar-clipboard-overlay.phish-radar-theme-dark .phish-radar-overlay-head {
+  background: #151515 !important;
+  color: #f6f6f6 !important;
+  border-color: #303034 !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-light *,
+#phish-radar-link-tooltip.phish-radar-theme-light *,
+#phish-radar-overlay.phish-radar-theme-light *,
+#phish-radar-clipboard-overlay.phish-radar-theme-light *,
+#phish-radar-evidence-layer.phish-radar-theme-light .phish-radar-evidence-panel * {
+  color: inherit;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-dark *,
+#phish-radar-link-tooltip.phish-radar-theme-dark *,
+#phish-radar-overlay.phish-radar-theme-dark *,
+#phish-radar-clipboard-overlay.phish-radar-theme-dark *,
+#phish-radar-evidence-layer.phish-radar-theme-dark .phish-radar-evidence-panel * {
+  color: inherit;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-light .phish-radar-detail-muted,
+#phish-radar-mini-panel.phish-radar-theme-light .phish-radar-link-tooltip-mini,
+#phish-radar-mini-panel.phish-radar-theme-light small,
+#phish-radar-link-tooltip.phish-radar-theme-light small,
+#phish-radar-overlay.phish-radar-theme-light small,
+#phish-radar-clipboard-overlay.phish-radar-theme-light small {
+  color: #625d62 !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-dark .phish-radar-detail-muted,
+#phish-radar-mini-panel.phish-radar-theme-dark .phish-radar-link-tooltip-mini,
+#phish-radar-mini-panel.phish-radar-theme-dark small,
+#phish-radar-link-tooltip.phish-radar-theme-dark small,
+#phish-radar-overlay.phish-radar-theme-dark small,
+#phish-radar-clipboard-overlay.phish-radar-theme-dark small {
+  color: #b7b3b8 !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-light .phish-radar-detail-note,
+#phish-radar-mini-panel.phish-radar-theme-light .phish-radar-link-tooltip-url,
+#phish-radar-link-tooltip.phish-radar-theme-light .phish-radar-link-tooltip-url,
+#phish-radar-overlay.phish-radar-theme-light .phish-radar-overlay-evidence-note,
+#phish-radar-clipboard-overlay.phish-radar-theme-light .phish-radar-overlay-evidence-note {
+  background: #efedef !important;
+  color: #181719 !important;
+  border-color: #dedadd !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-dark .phish-radar-detail-note,
+#phish-radar-mini-panel.phish-radar-theme-dark .phish-radar-link-tooltip-url,
+#phish-radar-link-tooltip.phish-radar-theme-dark .phish-radar-link-tooltip-url,
+#phish-radar-overlay.phish-radar-theme-dark .phish-radar-overlay-evidence-note,
+#phish-radar-clipboard-overlay.phish-radar-theme-dark .phish-radar-overlay-evidence-note {
+  background: #202022 !important;
+  color: #f6f6f6 !important;
+  border-color: #303034 !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-light button,
+#phish-radar-link-tooltip.phish-radar-theme-light button,
+#phish-radar-overlay.phish-radar-theme-light button,
+#phish-radar-clipboard-overlay.phish-radar-theme-light button {
+  background: #ffffff !important;
+  color: #181719 !important;
+  border-color: #dedadd !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-dark button,
+#phish-radar-link-tooltip.phish-radar-theme-dark button,
+#phish-radar-overlay.phish-radar-theme-dark button,
+#phish-radar-clipboard-overlay.phish-radar-theme-dark button {
+  background: #202022 !important;
+  color: #f6f6f6 !important;
+  border-color: #303034 !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-light a,
+#phish-radar-link-tooltip.phish-radar-theme-light a,
+#phish-radar-overlay.phish-radar-theme-light a { color: #bd5661 !important; }
+
+#phish-radar-mini-panel.phish-radar-theme-dark a,
+#phish-radar-link-tooltip.phish-radar-theme-dark a,
+#phish-radar-overlay.phish-radar-theme-dark a { color: #d76d77 !important; }
+
+#phish-radar-mini-panel.phish-radar-theme-light .phish-radar-close,
+#phish-radar-link-tooltip.phish-radar-theme-light .phish-radar-close,
+#phish-radar-mini-panel.phish-radar-theme-light .phish-radar-detail-close {
+  background: #efedef !important;
+  color: #181719 !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-dark .phish-radar-close,
+#phish-radar-link-tooltip.phish-radar-theme-dark .phish-radar-close,
+#phish-radar-mini-panel.phish-radar-theme-dark .phish-radar-detail-close {
+  background: #202022 !important;
+  color: #f6f6f6 !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-light {
+  box-shadow: 0 8px 24px rgba(49, 35, 40, .10) !important;
+}
+
+#phish-radar-mini-panel.phish-radar-theme-dark {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .24) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #phish-radar-mini-panel,
+  #phish-radar-link-tooltip,
+  #phish-radar-overlay,
+  #phish-radar-clipboard-overlay {
+    transition: none !important;
+  }
+}

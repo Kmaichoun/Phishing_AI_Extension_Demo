@@ -1,0 +1,188 @@
+#phish-radar-safe-preview-bar,
+#phish-radar-safe-preview-bar * {
+  box-sizing: border-box !important;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}
+
+#phish-radar-safe-preview-bar {
+  position: fixed !important;
+  z-index: 2147483646 !important;
+  left: 16px !important;
+  right: 16px !important;
+  bottom: 16px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 14px !important;
+  max-width: 860px !important;
+  margin: 0 auto !important;
+  padding: 12px 14px !important;
+  border: 1px solid #bfdbfe !important;
+  border-radius: 10px !important;
+  background: #eff6ff !important;
+  color: #172554 !important;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, .18) !important;
+}
+
+#phish-radar-safe-preview-bar .phish-radar-safe-preview-copy {
+  display: grid !important;
+  gap: 2px !important;
+  min-width: 0 !important;
+}
+
+#phish-radar-safe-preview-bar strong {
+  color: #1e3a8a !important;
+  font-size: 14px !important;
+  line-height: 1.25 !important;
+}
+
+#phish-radar-safe-preview-bar span {
+  color: #334155 !important;
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+}
+
+#phish-radar-safe-preview-bar .phish-radar-safe-preview-actions {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  justify-content: flex-end !important;
+}
+
+#phish-radar-safe-preview-bar button {
+  appearance: none !important;
+  min-height: 38px !important;
+  border-radius: 8px !important;
+  border: 1px solid #93c5fd !important;
+  padding: 8px 10px !important;
+  background: #ffffff !important;
+  color: #1e3a8a !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  cursor: pointer !important;
+}
+
+#phish-radar-safe-preview-bar button[data-safe-preview-action="full"] {
+  background: #1d4ed8 !important;
+  color: #ffffff !important;
+  border-color: #1d4ed8 !important;
+}
+
+#phish-radar-safe-preview-notice {
+  position: absolute !important;
+  left: 14px !important;
+  bottom: calc(100% + 8px) !important;
+  margin: 0 !important;
+  padding: 8px 10px !important;
+  border-radius: 8px !important;
+  background: #172554 !important;
+  color: #ffffff !important;
+  font-size: 12px !important;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, .22) !important;
+}
+
+.phish-radar-safe-preview-locked,
+.phish-radar-safe-preview-form input[type="password"],
+.phish-radar-safe-preview-form textarea {
+  cursor: not-allowed !important;
+  outline: 2px solid rgba(37, 99, 235, .55) !important;
+  outline-offset: 2px !important;
+  background-color: #eff6ff !important;
+}
+
+.phish-radar-safe-preview-form { position: relative !important; }
+.phish-radar-safe-preview-form::after {
+  content: "Safe Preview: form submission blocked" !important;
+  display: inline-flex !important;
+  margin-top: 8px !important;
+  padding: 5px 8px !important;
+  border-radius: 999px !important;
+  background: #dbeafe !important;
+  color: #1e3a8a !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+}
+
+@media (max-width: 640px) {
+  #phish-radar-safe-preview-bar { align-items: stretch !important; flex-direction: column !important; }
+  #phish-radar-safe-preview-bar .phish-radar-safe-preview-actions { justify-content: stretch !important; }
+  #phish-radar-safe-preview-bar button { flex: 1 1 auto !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #phish-radar-safe-preview-bar,
+  #phish-radar-safe-preview-bar * { transition: none !important; animation: none !important; }
+}
+
+#phish-radar-safe-preview-bar {
+  animation: phish-radar-safe-preview-in 240ms cubic-bezier(.25, 1, .5, 1) both !important;
+}
+
+@keyframes phish-radar-safe-preview-in {
+  from { opacity: .35; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #phish-radar-safe-preview-bar {
+    animation: none !important;
+    transform: none !important;
+  }
+}
+
+/* Dockit-inspired Safe Preview banner */
+#phish-radar-safe-preview-bar.phish-radar-theme-dark {
+  --sp-bg: #151515;
+  --sp-raised: #202022;
+  --sp-line: #303034;
+  --sp-text: #f6f6f6;
+  --sp-muted: #b7b3b8;
+  --sp-accent: #d76d77;
+}
+
+#phish-radar-safe-preview-bar.phish-radar-theme-light {
+  --sp-bg: #ffffff;
+  --sp-raised: #f1eff0;
+  --sp-line: #dedadd;
+  --sp-text: #181719;
+  --sp-muted: #625d62;
+  --sp-accent: #bd5661;
+}
+
+#phish-radar-safe-preview-bar.phish-radar-theme-dark,
+#phish-radar-safe-preview-bar.phish-radar-theme-light {
+  border-color: var(--sp-line) !important;
+  background: var(--sp-bg) !important;
+  color: var(--sp-text) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .24) !important;
+}
+
+#phish-radar-safe-preview-bar.phish-radar-theme-dark strong,
+#phish-radar-safe-preview-bar.phish-radar-theme-light strong {
+  color: var(--sp-text) !important;
+}
+
+#phish-radar-safe-preview-bar.phish-radar-theme-dark span,
+#phish-radar-safe-preview-bar.phish-radar-theme-light span {
+  color: var(--sp-muted) !important;
+}
+
+#phish-radar-safe-preview-bar.phish-radar-theme-dark button,
+#phish-radar-safe-preview-bar.phish-radar-theme-light button {
+  border-color: var(--sp-line) !important;
+  background: var(--sp-raised) !important;
+  color: var(--sp-text) !important;
+}
+
+#phish-radar-safe-preview-bar.phish-radar-theme-dark button[data-safe-preview-action="full"],
+#phish-radar-safe-preview-bar.phish-radar-theme-light button[data-safe-preview-action="full"] {
+  border-color: var(--sp-accent) !important;
+  background: var(--sp-accent) !important;
+  color: #171011 !important;
+}
+
+#phish-radar-safe-preview-bar.phish-radar-theme-dark button:focus-visible,
+#phish-radar-safe-preview-bar.phish-radar-theme-light button:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--sp-accent) 45%, transparent) !important;
+  outline-offset: 2px !important;
+}

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="th" class="phish-radar-theme-dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Phish Radar QR Scanner</title>
+  <link rel="stylesheet" href="qr-scanner.css" />
+  <link rel="stylesheet" href="dockit-extension.css" />
+  <script src="extension-theme.js" defer></script>
+</head>
+<body data-surface="qr">
+  <main class="shell">
+    <header>
+      <div class="mark" aria-hidden="true">QR</div>
+      <div>
+        <h1>QR Protection</h1>
+        <p>อ่าน QR แล้วตรวจ URL ก่อนเปิดจริง</p>
+      </div>
+    </header>
+
+    <section class="scanner">
+      <div class="preview">
+        <video id="qrVideo" playsinline muted hidden></video>
+        <canvas id="qrCanvas" hidden></canvas>
+        <div id="placeholder" class="placeholder">
+          <strong>พร้อมอ่าน QR</strong>
+          <span>ใช้กล้องหรืออัปโหลดรูปภาพที่มี QR code</span>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button id="startCamera" type="button">เปิดกล้อง</button>
+        <button id="stopCamera" class="secondary" type="button" disabled>หยุดกล้อง</button>
+        <label class="file-picker">
+          อัปโหลดรูป QR
+          <input id="qrFile" type="file" accept="image/*" />
+        </label>
+        <p id="status" role="status" aria-live="polite">ยังไม่ได้อ่าน QR</p>
+      </div>
+    </section>
+
+    <section id="resultCard" class="result-card" hidden>
+      <div class="result-head">
+        <span id="riskBadge">รอผล</span>
+        <strong id="score">--</strong>
+      </div>
+      <label>URL ที่อ่านได้</label>
+      <code id="decodedUrl">-</code>
+      <ul id="reasons"></ul>
+      <div class="actions">
+        <button id="openWarning" type="button">เปิดหน้าเตือนก่อน</button>
+        <button id="copyUrl" class="secondary" type="button">คัดลอก URL</button>
+      </div>
+    </section>
+  </main>
+  <script src="analyzer.js"></script>
+  <script src="qr-scanner.js"></script>
+</body>
+</html>

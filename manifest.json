@@ -1,0 +1,74 @@
+{
+  "manifest_version": 3,
+  "name": "Phish Radar AI",
+  "version": "2.4.0",
+  "description": "Phish Radar AI with rule-based and ML analysis, LLM explanations, feedback, search safety badges, a web dashboard, and explainable on-page evidence.",
+  "permissions": [
+    "tabs",
+    "storage",
+    "webNavigation",
+    "scripting",
+    "clipboardRead"
+  ],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*",
+    "file:///*",
+    "http://127.0.0.1:8765/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Phish Radar AI"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*",
+        "file:///*"
+      ],
+      "js": [
+        "app-trust.js",
+        "analyzer.js",
+        "content.js"
+      ],
+      "css": [
+        "content.css"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "app-trust.js",
+        "warning.html",
+        "warning.css",
+        "warning.js",
+        "dockit-extension.css",
+        "extension-theme.js",
+        "analyzer.js",
+        "content.js",
+        "content.css",
+        "ml-feedback-client.js",
+        "safe-preview.css",
+        "safe-preview.js",
+        "qr-scanner.html",
+        "qr-scanner.css",
+        "qr-scanner.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
+}

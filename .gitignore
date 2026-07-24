@@ -1,0 +1,43 @@
+# Local environments and secrets
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+
+# Python-generated files
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node and test output
+node_modules/
+coverage/
+dist/
+build/
+
+# Runtime data
+backend/data/feedback.csv
+backend/data/cache/
+backend/data/training_urls.csv
+
+# Logs and temporary files
+*.log
+*.tmp
+tmp/
+temp/
+*.inspect.ndjson
+
+# Local backup snapshots (use Git history instead)
+backup-*/
+*.backup-*
+
+# Editor and operating-system files
+.vscode/
+.idea/
+.impeccable/live/sessions/
+.DS_Store
+Thumbs.db
+Desktop.ini
