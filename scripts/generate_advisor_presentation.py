@@ -351,7 +351,7 @@ def slide_cover(c: canvas.Canvas, page: int) -> None:
         c,
         58,
         298,
-        "ด้วย Rule-based + Calibrated Random Forest",
+        "ด้วย Layered Evidence + L1 Logistic Risk Model",
         font=FONT_BOLD,
         size=24,
         color=ROSE,
@@ -360,7 +360,7 @@ def slide_cover(c: canvas.Canvas, page: int) -> None:
         c,
         58,
         253,
-        "Chrome Extension / Web App / FastAPI / SQL Server / Qwen",
+        "Chrome Extension / Web App / FastAPI / MySQL / Qwen",
         font=FONT_REGULAR,
         size=13,
         color=MUTED,
@@ -437,7 +437,7 @@ def slide_problem(c: canvas.Canvas, page: int) -> None:
     badge(c, 506, 320, "วัตถุประสงค์", fill=BLUE_DARK, color=TEXT)
     objectives = [
         ("01", "ตรวจลิงก์และบริบทหน้าเว็บก่อนเข้าถึง"),
-        ("02", "ผสม RuleScore กับ MLScore ด้วยค่าที่เลือกจากการทดลอง"),
+        ("02", "เรียน RiskScore จากข้อมูลและกำหนดนโยบายด้วยเพดาน FPR"),
         ("03", "เก็บบัญชี อุปกรณ์ Session และประวัติอย่างปลอดภัย"),
         ("04", "ให้ LLM อธิบายผล แต่ไม่อนุญาตให้เปลี่ยนคำตัดสิน"),
     ]
@@ -465,7 +465,7 @@ def slide_architecture(c: canvas.Canvas, page: int) -> None:
         (70, 274, 165, 116, "Chrome Extension", "สแกน URL / DOM / Form\nดัก navigation ก่อนเปิดเว็บ", ROSE_DARK),
         (278, 274, 165, 116, "Web App", "Login / Dashboard\nHistory / Settings / Report", BLUE_DARK),
         (486, 274, 165, 116, "FastAPI Backend", "Predict / Auth / History\nLLM explanation / Feedback", HexColor("#433024")),
-        (694, 274, 196, 116, "SQL Server + Model", "Users / Devices / Sessions\nSearchHistory / model.pkl", HexColor("#27352F")),
+        (694, 274, 196, 116, "MySQL + Model", "Users / Devices / Sessions\nSearchHistory / model.pkl", HexColor("#27352F")),
     ]
     for x, y, w, h, heading, body, accent in layers:
         rounded_card(c, x, y, w, h, fill=SURFACE, stroke=BORDER)
@@ -490,7 +490,7 @@ def slide_architecture(c: canvas.Canvas, page: int) -> None:
     draw_text(c, 92, 185, "เส้นทางข้อมูลที่ออกแบบให้ลดความเสียหาย", font=FONT_BOLD, size=12, color=ROSE)
     safeguards = [
         ("Rule-based local", "ใช้ได้ทันทีโดยไม่ต้องส่ง URL ออกนอกเครื่อง"),
-        ("ML local API", "Random Forest ถูกโหลดจากไฟล์โมเดลใน Backend"),
+        ("Risk Model API", "L1 Logistic model และ policy ถูกโหลดจาก Backend"),
         ("LLM optional", "สร้างคำอธิบายเท่านั้น หากไม่พร้อมใช้ข้อความสำรอง"),
         ("SQL security", "เก็บ PasswordHash และ TokenHash ไม่เก็บ secret ดิบ"),
     ]
@@ -523,8 +523,8 @@ def slide_flow(c: canvas.Canvas, page: int) -> None:
     flow = [
         ("1", "รับ URL / หน้าเว็บ", "navigation, link, form,\nclipboard หรือ QR"),
         ("2", "คำนวณ RuleScore", "URL structure, brand,\nredirect, DOM context"),
-        ("3", "ขอ MLScore", "calibrated probability\nจาก Random Forest"),
-        ("4", "สร้าง FinalScore", "alpha และ threshold\nจาก model bundle"),
+        ("3", "ขอ RiskScore", "sigmoid probability\nจาก L1 Logistic"),
+        ("4", "กำหนด Decision", "RiskScore + warn/block\nจาก model bundle"),
         ("5", "ตอบสนอง", "อนุญาต / เตือน / บันทึก\nและอธิบายเหตุผล"),
     ]
     for index, (number, heading, body) in enumerate(flow):
@@ -633,15 +633,15 @@ def slide_experiment(c: canvas.Canvas, page: int) -> None:
         c,
         page,
         "05 / Experiment",
-        "Cross-validation, Calibration และ Policy Search",
-        "ทุกแถวได้รับ out-of-fold probability ก่อนนำไปเลือก alpha และ threshold",
+        "Grouped Evaluation และ FPR-controlled Policy",
+        "แยก grouped holdout ก่อนเลือกโมเดลและ threshold เพื่อลดข้อมูลรั่วไหล",
     )
 
     stages = [
-        ("A", "StratifiedGroupKFold", "5 outer folds\nGroup = hostname"),
-        ("B", "Random Forest", "250 trees\nbalanced_subsample"),
-        ("C", "Sigmoid calibration", "3 inner group folds\n5 folds สำหรับ final model"),
-        ("D", "Policy search", "21 alpha x 91 threshold\nรวม 1,911 candidates"),
+        ("A", "Grouped holdout", "กันข้อมูลทดสอบก่อน\nGroup = hostname"),
+        ("B", "StratifiedGroupKFold", "5 folds บน development\nสร้าง OOF probability"),
+        ("C", "L1 Logistic", "เลือก C จาก Log loss\nBrier และ ROC-AUC"),
+        ("D", "Two thresholds", "warn FPR <= 1%\nblock FPR <= 0.1%"),
     ]
     for index, (code, title, body) in enumerate(stages):
         x = 55 + index * 222
@@ -668,7 +668,7 @@ def slide_experiment(c: canvas.Canvas, page: int) -> None:
         c,
         77,
         130,
-        "กำหนด False Positive Rate ไม่เกิน 5% แล้วเลือก Recall สูงสุด",
+        "บังคับ Wilson upper bound 95% ของ FPR ไม่เกินเพดาน แล้วเลือก Recall สูงสุด",
         font=FONT_BOLD,
         size=15,
         color=TEXT,
@@ -677,7 +677,7 @@ def slide_experiment(c: canvas.Canvas, page: int) -> None:
         c,
         77,
         104,
-        "หาก Recall เท่ากัน จึงพิจารณา F1, Precision, ROC-AUC และ FPR ตามลำดับ",
+        "Threshold ใช้ development OOF เท่านั้น ส่วน grouped holdout ใช้รายงานผลอิสระ",
         font=FONT_REGULAR,
         size=10.5,
         color=MUTED,
@@ -689,19 +689,20 @@ def slide_policy(c: canvas.Canvas, page: int) -> None:
     page_header(
         c,
         page,
-        "06 / Hybrid Risk",
-        "สูตรคะแนนไม่ได้กำหนดจากความรู้สึก",
-        "ค่า alpha และ threshold ถูกเลือกจาก out-of-fold predictions ภายใต้เพดาน FPR",
+        "06 / Learned Risk",
+        "RiskScore เรียนจากข้อมูล ไม่ใช้ alpha ที่กำหนดเอง",
+        "Rule evidence ใช้อธิบายและ fallback ส่วน decision มาจาก probability policy",
     )
 
-    selected = RISK_REPORT["policy_search"]["selected"]
+    warning = RISK_REPORT["policy"]["warning"]
+    blocking = RISK_REPORT["policy"]["blocking"]
     rounded_card(c, 54, 245, 552, 137, fill=SURFACE, stroke=BORDER)
-    draw_text(c, 78, 344, "FinalScore", font=FONT_BOLD, size=13, color=ROSE)
+    draw_text(c, 78, 344, "RiskScore", font=FONT_BOLD, size=13, color=ROSE)
     draw_text(
         c,
         78,
         299,
-        "0.40(RuleScore) + 0.60(MLScore)",
+        "100 x sigmoid(w dot x + b)",
         font=FONT_BOLD,
         size=24,
         color=TEXT,
@@ -710,20 +711,20 @@ def slide_policy(c: canvas.Canvas, page: int) -> None:
         c,
         78,
         270,
-        "แจ้งเตือนเมื่อ FinalScore >= 0.22",
+        "L1 Logistic Regression จาก URL features",
         font=FONT_REGULAR,
         size=12,
         color=MUTED,
     )
 
     rounded_card(c, 630, 245, 276, 137, fill=SURFACE_2, stroke=BORDER)
-    draw_text(c, 654, 344, "ค่าที่เลือก", font=FONT_BOLD, size=12, color=BLUE)
-    draw_text(c, 654, 306, f"alpha = {selected['alpha']:.2f}", font=FONT_BOLD, size=19, color=TEXT)
+    draw_text(c, 654, 344, "Decision policy", font=FONT_BOLD, size=12, color=BLUE)
+    draw_text(c, 654, 306, f"warn >= {warning['threshold']:.2f}", font=FONT_BOLD, size=19, color=TEXT)
     draw_text(
         c,
         654,
         273,
-        f"threshold = {selected['threshold']:.2f}",
+        f"block >= {blocking['threshold']:.2f}",
         font=FONT_BOLD,
         size=19,
         color=TEXT,
@@ -731,10 +732,10 @@ def slide_policy(c: canvas.Canvas, page: int) -> None:
 
     rounded_card(c, 54, 86, 852, 112, fill=HexColor("#111214"), stroke=BORDER)
     components = [
-        (76, "RuleScore", "อธิบายสัญญาณได้\nและทำงาน local"),
-        (285, "MLScore", "จับรูปแบบร่วมของ features\nหลัง probability calibration"),
-        (494, "FinalScore", "ผสมข้อดีทั้งสองฝั่ง\nด้วย policy ที่วัดผลแล้ว"),
-        (703, "Decision", "ใช้ threshold จาก model bundle\nไม่ hard-code ในหน้าจอ"),
+        (76, "Rule evidence", "อธิบายสัญญาณได้\nและทำงาน local"),
+        (285, "URL features", "lexical และ host clues\nschema มี version"),
+        (494, "RiskScore", "probability จากโมเดล\nไม่ผสม RuleScore"),
+        (703, "Decision", "allow / warn / block\nจาก model policy"),
     ]
     for index, (x, title, body) in enumerate(components):
         draw_text(c, x, 160, title, font=FONT_BOLD, size=11, color=ROSE if index % 2 == 0 else BLUE)
@@ -759,11 +760,11 @@ def slide_results(c: canvas.Canvas, page: int) -> None:
         c,
         page,
         "07 / Results",
-        "ผลการประเมินบน Out-of-fold Predictions",
-        "ผลลัพธ์นี้เป็น Cross-validation บน snapshot ปัจจุบัน ยังไม่ใช่การรับรอง production",
+        "Development OOF เทียบ Independent Grouped Holdout",
+        "รายงานผลจริงรวมข้อจำกัด ไม่ใช้ holdout เพื่อปรับค่าโมเดลหรือ threshold",
     )
 
-    selected = RISK_REPORT["policy_search"]["selected"]
+    selected = RISK_REPORT["independent_holdout"]["warning"]
     metrics = [
         ("Precision", selected["precision"], ROSE),
         ("Recall", selected["recall"], BLUE),
@@ -797,14 +798,13 @@ def slide_results(c: canvas.Canvas, page: int) -> None:
     draw_text(c, 366, 185, "Predicted", font=FONT_REGULAR, size=8, color=MUTED)
     draw_text(c, 366, 118, "Actual", font=FONT_REGULAR, size=8, color=MUTED)
 
-    calibration = RISK_REPORT["calibration_metrics"]
-    raw = calibration["raw_random_forest"]
-    calibrated = calibration["sigmoid_calibrated_random_forest"]
+    probability = RISK_REPORT["independent_holdout"]["probability"]
+    development = RISK_REPORT["probability_quality"]["development_out_of_fold"]
     rounded_card(c, 488, 82, 418, 192, fill=SURFACE_2, stroke=BORDER)
-    draw_text(c, 510, 241, "Probability Calibration", font=FONT_BOLD, size=12, color=TEXT)
+    draw_text(c, 510, 241, "Probability Quality", font=FONT_BOLD, size=12, color=TEXT)
     rows = [
-        ("Brier score", raw["brier_score"], calibrated["brier_score"]),
-        ("Log loss", raw["log_loss"], calibrated["log_loss"]),
+        ("Brier score", development["brier_score"], probability["brier_score"]),
+        ("Log loss", development["log_loss"], probability["log_loss"]),
     ]
     for index, (label, before, after) in enumerate(rows):
         y = 187 - index * 64
@@ -820,8 +820,8 @@ def slide_results(c: canvas.Canvas, page: int) -> None:
         c.roundRect(610, y - 2, 210 * after / max_value, 10, 5, stroke=0, fill=1)
         draw_text(c, 832, y + 18, f"{before:.6f}", font=FONT_REGULAR, size=8, color=ROSE)
         draw_text(c, 832, y - 3, f"{after:.6f}", font=FONT_REGULAR, size=8, color=BLUE)
-    badge(c, 510, 95, "ก่อน calibration", fill=ROSE_DARK, size=7.5)
-    badge(c, 615, 95, "หลัง calibration", fill=BLUE_DARK, size=7.5)
+    badge(c, 510, 95, "Development OOF", fill=ROSE_DARK, size=7.5)
+    badge(c, 625, 95, "Grouped holdout", fill=BLUE_DARK, size=7.5)
     c.showPage()
 
 
@@ -835,10 +835,10 @@ def slide_auth(c: canvas.Canvas, page: int) -> None:
     )
 
     tables = [
-        ("auth.Users", ["UserID", "Username", "Email", "PasswordHash", "Role", "IsActive"], ROSE_DARK),
-        ("auth.UserDevices", ["DeviceName", "DeviceKeyHash", "Trusted", "Revoked", "LastSeenAt"], BLUE_DARK),
-        ("auth.Sessions", ["UserID", "UserDeviceID", "TokenHash", "ExpiresAt", "RevokedAt"], HexColor("#433024")),
-        ("auth.SearchHistory", ["URL ที่ sanitize", "URLHash", "Rule/ML/FinalScore", "Device", "CreatedAt"], HexColor("#27352F")),
+        ("Users", ["UserID", "Username", "Email", "PasswordHash", "Role", "IsActive"], ROSE_DARK),
+        ("UserDevices", ["DeviceName", "DeviceKeyHash", "Trusted", "Revoked", "LastSeenAt"], BLUE_DARK),
+        ("Sessions", ["UserID", "UserDeviceID", "TokenHash", "ExpiresAt", "RevokedAt"], HexColor("#433024")),
+        ("SearchHistory", ["URL ที่ sanitize", "RiskScore/Decision", "Model/Policy version", "Device", "CreatedAt"], HexColor("#27352F")),
     ]
     for index, (title, fields, accent) in enumerate(tables):
         x = 55 + (index % 2) * 426
@@ -889,7 +889,7 @@ def slide_privacy(c: canvas.Canvas, page: int) -> None:
             "ผูกข้อมูลกับ UserID และ UserDeviceID จาก Session",
             "ตัด credentials, query string และ fragment ก่อนจัดเก็บ URL",
             "เก็บ SHA-256 ของ URL ต้นฉบับเพื่อ correlation",
-            "เก็บ RuleScore, MLScore, FinalScore, alpha, threshold และ label",
+            "เก็บ Rule evidence, RiskScore, decision, thresholds และ model/policy version",
             "ผู้ใช้ล้างประวัติหรือส่งออก JSON/CSV ได้",
         ],
         width=350,
@@ -937,7 +937,7 @@ def slide_llm(c: canvas.Canvas, page: int) -> None:
         page,
         "10 / LLM",
         "Qwen เป็นผู้ช่วยอธิบาย ไม่ใช่ผู้ตัดสิน",
-        "FinalScore และการบล็อกต้องให้ผลเดิม แม้ LLM ปิดหรือใช้งานไม่ได้",
+        "RiskScore และ decision ต้องให้ผลเดิม แม้ LLM ปิดหรือใช้งานไม่ได้",
     )
 
     rounded_card(c, 54, 242, 402, 143, fill=SURFACE, stroke=BORDER)
@@ -1089,7 +1089,7 @@ def slide_roadmap(c: canvas.Canvas, page: int) -> None:
     rounded_card(c, 483, 92, 423, 292, fill=SURFACE_2, stroke=BORDER)
     badge(c, 506, 340, "ลำดับพัฒนาต่อ", fill=BLUE_DARK)
     roadmap = [
-        ("1", "External/time-split evaluation", "ยืนยันค่า alpha และ threshold กับข้อมูลใหม่"),
+        ("1", "External/time-split evaluation", "ยืนยัน Risk Model และ thresholds กับข้อมูลใหม่"),
         ("2", "Drift monitoring + retraining", "ติดตาม FPR/Recall และ version Dataset/Model"),
         ("3", "LLM benchmark", "วัดคุณภาพ Hallucination และ latency อย่างยุติธรรม"),
         ("4", "Admin API + audit log", "จัดการ Role, Account และเหตุการณ์สำคัญ"),
@@ -1116,12 +1116,12 @@ def slide_qa(c: canvas.Canvas, page: int) -> None:
 
     questions = [
         (
-            "ทำไม alpha = 0.4?",
-            "ทดลอง 21 ค่าและ 91 thresholds บน out-of-fold predictions แล้วเลือก Recall สูงสุดภายใต้ FPR <= 5%",
+            "ทำไมยกเลิก alpha 0.4?",
+            "ไม่มีหลักฐานว่าน้ำหนักคงที่เหมาะทุกข้อมูล จึงให้ L1 Logistic เรียน w,b และเลือก threshold ภายใต้ FPR",
         ),
         (
-            "ทำไมต้อง Calibration?",
-            "predict_proba ดิบไม่จำเป็นต้องเป็นความน่าจะเป็นที่เชื่อถือได้ จึงปรับด้วย sigmoid และตรวจ Brier/Log loss",
+            "ทำไมใช้ Logistic Regression?",
+            "sigmoid ให้ probability โดยตรง, L1 ช่วยเลือก feature และยังตรวจ Brier/Log loss บน grouped holdout",
         ),
         (
             "ระบบเก็บรหัสผ่านหรือไม่?",
@@ -1129,7 +1129,7 @@ def slide_qa(c: canvas.Canvas, page: int) -> None:
         ),
         (
             "Qwen เป็นตัวตัดสิน Phishing หรือไม่?",
-            "ไม่ใช่ LLM มีหน้าที่อธิบาย RuleScore/MLScore เท่านั้น ปิด LLM แล้ว FinalScore ต้องไม่เปลี่ยน",
+            "ไม่ใช่ LLM มีหน้าที่อธิบาย RiskScore, decision และ evidence เท่านั้น ปิด LLM แล้วผลต้องไม่เปลี่ยน",
         ),
         (
             "ผลนี้พร้อมใช้ Production หรือยัง?",
@@ -1137,7 +1137,7 @@ def slide_qa(c: canvas.Canvas, page: int) -> None:
         ),
         (
             "ถ้า Backend ล่มจะเกิดอะไรขึ้น?",
-            "Extension ยังใช้ Rule-based local และคำเตือนแบบ offline ได้ แต่ ML, Login/History และ LLM จะไม่พร้อม",
+            "Extension ยังใช้ Rule evidence local และคำเตือนแบบ offline ได้ แต่ Risk Model, Login/History และ LLM จะไม่พร้อม",
         ),
     ]
     for index, (question, answer) in enumerate(questions):
@@ -1173,28 +1173,28 @@ def slide_references(c: canvas.Canvas, page: int) -> None:
 
     refs = [
         (
+            "Ma, J. et al. (2009)",
+            "Beyond Blacklists: Learning to Detect Malicious Web Sites from Suspicious URLs. ACM KDD. https://doi.org/10.1145/1557019.1557153",
+        ),
+        (
+            "Xiang, G. et al. (2011)",
+            "CANTINA+: A Feature-rich Machine Learning Framework for Detecting Phishing Web Sites. ACM TISSEC. https://doi.org/10.1145/2019599.2019606",
+        ),
+        (
             "Le Pochat, V. et al. (2019)",
             "Tranco: A Research-Oriented Top Sites Ranking Hardened Against Manipulation. NDSS. https://doi.org/10.14722/ndss.2019.23386",
         ),
         (
-            "Niculescu-Mizil, A. and Caruana, R. (2005)",
-            "Predicting Good Probabilities with Supervised Learning. ICML. https://doi.org/10.1145/1102351.1102430",
+            "Maneriker, P. et al. (2021)",
+            "URLTran: Improving Phishing URL Detection Using Transformers. MILCOM / Microsoft Research.",
         ),
         (
-            "Saito, T. and Rehmsmeier, M. (2015)",
-            "The Precision-Recall Plot Is More Informative than the ROC Plot. PLOS ONE. https://doi.org/10.1371/journal.pone.0118432",
-        ),
-        (
-            "Dataset feeds",
-            "PhishTank verified online feed; OpenPhish Community Feed; Tranco top-sites list. Snapshot hashes are recorded in training_urls.manifest.json",
-        ),
-        (
-            "Software documentation",
-            "scikit-learn: StratifiedGroupKFold, CalibratedClassifierCV and probability calibration documentation.",
+            "University of Cambridge",
+            "Discovering Phishing Dropboxes Using Email Metadata. Used to support multi-source contextual evidence, not the RiskScore formula.",
         ),
         (
             "Project evidence",
-            "risk_model_evaluation.json, training_urls.manifest.json, SQL migrations 001-003, backend tests and project validation scripts.",
+            "risk_model_evaluation.json, training_urls.manifest.json, SQL migrations 001-004, backend tests and project validation scripts.",
         ),
     ]
     for index, (title, body) in enumerate(refs):
@@ -1225,7 +1225,7 @@ def build_pdf() -> Path:
     c = canvas.Canvas(str(OUTPUT_PATH), pagesize=(PAGE_W, PAGE_H), pageCompression=1)
     c.setTitle("Phish Radar AI - เอกสารนำเสนออาจารย์")
     c.setAuthor("Phish Radar AI Project")
-    c.setSubject("Rule-based, calibrated Random Forest, authentication, privacy and LLM architecture")
+    c.setSubject("L1 Logistic URL Risk Model, layered evidence, authentication, privacy and LLM architecture")
 
     slides = [
         slide_cover,

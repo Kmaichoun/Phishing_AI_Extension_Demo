@@ -29,11 +29,12 @@ function scoreTone(score) {
   return 'safe';
 }
 
-function finalRiskLevel(score, decisionThreshold) {
-  const highCut = Number.isFinite(decisionThreshold) ? Math.max(5, Math.min(95, decisionThreshold)) : 61;
-  if (score >= Math.min(100, highCut + 20)) return 'critical';
-  if (score >= highCut) return 'high';
-  if (score >= Math.max(5, Math.round(highCut * 0.6))) return 'medium';
+function finalRiskLevel(score, warningThreshold, blockingThreshold, decision) {
+  const warnCut = Number.isFinite(warningThreshold) ? Math.max(1, Math.min(99, warningThreshold)) : 61;
+  const blockCut = Number.isFinite(blockingThreshold) ? Math.max(warnCut, Math.min(100, blockingThreshold)) : Math.min(100, warnCut + 20);
+  if (decision === 'block' || score >= blockCut) return 'critical';
+  if (decision === 'warn' || score >= warnCut) return 'high';
+  if (score >= Math.max(5, Math.round(warnCut * 0.6))) return 'medium';
   return 'low';
 }
 
@@ -102,18 +103,18 @@ function llmBreakdownState(response) {
 
 function renderScoreBreakdown(llmResponse = null) {
   const ruleScore = clampRiskScore(getNumericWarningParam('rule_score') ?? result.ruleScore ?? result.score);
-  const mlScore = clampRiskScore(getNumericWarningParam('ml_score') ?? result.mlScore);
-  const finalScore = clampRiskScore(getNumericWarningParam('final_score') ?? result.finalScore ?? result.score);
-  const alpha = getNumericWarningParam('alpha');
-  const decisionThreshold = getNumericWarningParam('decision_threshold');
-  const ruleWeight = Number.isFinite(alpha) ? Math.round(alpha * 100) : 60;
-  const mlWeight = 100 - ruleWeight;
+  const riskScore = clampRiskScore(getNumericWarningParam('risk_score') ?? getNumericWarningParam('final_score') ?? result.finalScore ?? result.score);
+  const riskProbability = getNumericWarningParam('risk_probability');
+  const warningThreshold = getNumericWarningParam('warning_threshold') ?? getNumericWarningParam('decision_threshold');
+  const blockingThreshold = getNumericWarningParam('blocking_threshold');
+  const decision = getWarningParam('decision') || '';
+  const modelVersion = getWarningParam('model_version') || '';
 
-  setSourceRow('Rule', ruleScore, 'ตรวจจากกฎ เช่น ความยาว URL, subdomain, IP host, คำเสี่ยง, redirect และ encoded URL');
+  setSourceRow('Rule', ruleScore, 'หลักฐานจากกฎและบริบทหน้าเว็บ ใช้อธิบายผลและเป็นโหมดสำรอง ไม่ถูกนำไปถ่วงน้ำหนักกับโมเดล');
   if (privacyMode) {
-    setSourceRow('Ml', null, 'ปิดการเรียก ML backend เพื่อไม่ส่ง URL ออกนอก browser', { valueText: 'ปิด', percent: 12, tone: 'muted' });
+    setSourceRow('Ml', null, 'ปิด URL Risk Model เพื่อไม่ส่ง URL ออกนอก browser', { valueText: 'ปิด', percent: 12, tone: 'muted' });
   } else {
-    setSourceRow('Ml', mlScore, Number.isFinite(mlScore) ? `โมเดลทำนายจาก feature ของ URL แล้วนำมาถ่วงน้ำหนัก ${mlWeight}%` : 'ยังไม่ได้รับคะแนน ML จาก backend; คะแนนรวมจึงอิง Rule-base เป็นหลัก', { tone: Number.isFinite(mlScore) ? scoreTone(mlScore) : 'muted' });
+    setSourceRow('Ml', riskScore, Number.isFinite(riskProbability) ? `ความน่าจะเป็นจาก L1 Logistic URL Risk Model${modelVersion ? ` (${modelVersion})` : ''}; RiskScore = 100 × probability` : 'โมเดลไม่พร้อม รอบนี้จึงแสดงหลักฐาน local โดยไม่เรียกว่า ML probability', { tone: Number.isFinite(riskProbability) ? scoreTone(riskScore) : 'muted' });
   }
 
   const llmState = llmBreakdownState(llmResponse);
@@ -124,20 +125,25 @@ function renderScoreBreakdown(llmResponse = null) {
   if (badge) {
     badge.textContent = privacyMode
       ? 'Privacy Mode • Local analysis'
-      : Number.isFinite(mlScore) ? `Final = Rule ${ruleWeight}% + ML ${mlWeight}%` : 'Rule active • ML offline';
+      : Number.isFinite(riskProbability) ? 'Learned Risk Model • Layered evidence' : 'Local evidence • Risk Model offline';
   }
   if (blend) {
     blend.textContent = privacyMode
-      ? 'คะแนนรวม ' + finalScore + '/100 มาจาก Rule-base และหลักฐานบนหน้าเว็บเท่านั้น รอบนี้ไม่ส่ง URL ไป ML backend หรือ LLM'
-      : Number.isFinite(mlScore)
-        ? 'คะแนนรวม ' + finalScore + '/100 = Rule-base ' + ruleScore + '/100 × ' + ruleWeight + '% + ML ' + mlScore + '/100 × ' + mlWeight + '%; เกณฑ์ phishing ที่โมเดลเลือกคือ ' + (Number.isFinite(decisionThreshold) ? decisionThreshold : 61) + '/100 และ LLM ไม่ได้นำมาบวกคะแนนโดยตรง'
-        : 'คะแนนรวม ' + finalScore + '/100 ใช้ Rule-base เป็นหลักในรอบนี้ และ LLM ใช้อธิบายเหตุผลเมื่อ backend พร้อม';
+      ? 'คะแนน local ' + riskScore + '/100 มาจาก Rule evidence และหลักฐานบนหน้าเว็บเท่านั้น รอบนี้ไม่ส่ง URL ไป Risk Model หรือ LLM'
+      : Number.isFinite(riskProbability)
+        ? 'RiskScore ' + riskScore + '/100 คำนวณจาก probability ของโมเดลโดยตรง; ผลคือ ' + (decision || 'ไม่ระบุ') + ' เมื่อ warn ≥ ' + (Number.isFinite(warningThreshold) ? warningThreshold : '-') + ' และ block ≥ ' + (Number.isFinite(blockingThreshold) ? blockingThreshold : '-') + '. Rule evidence และ LLM ไม่ได้ถูกบวกเข้าคะแนน'
+        : 'Risk Model ไม่พร้อม จึงใช้ Rule evidence เป็นหลักฐาน local ชั่วคราว และแสดงสถานะนี้อย่างชัดเจน';
   }
 }
 $('target').textContent = target;
 $('score').textContent = result.score;
 $('meterFill').style.width = `${result.score}%`;
-const level = finalRiskLevel(result.score, getNumericWarningParam('decision_threshold'));
+const level = finalRiskLevel(
+  result.score,
+  getNumericWarningParam('warning_threshold') ?? getNumericWarningParam('decision_threshold'),
+  getNumericWarningParam('blocking_threshold'),
+  getWarningParam('decision')
+);
 const levelText = level === 'critical' ? 'อันตรายมาก' : level === 'high' ? 'เสี่ยงสูง' : level === 'medium' ? 'น่าสงสัย' : 'ปลอดภัย';
 $('status').textContent = `${levelText} (${result.score}/100)`;
 renderScoreBreakdown();
@@ -228,9 +234,9 @@ function privacyModeLlmResponse() {
     privacy_mode: true,
     llm: {
       risk_type: 'Privacy Mode เปิดอยู่',
-      simple_explanation: 'ระบบใช้ Rule-based และหลักฐานบนหน้าเว็บที่ตรวจภายใน browser เท่านั้น จึงไม่ส่ง URL ไป backend หรือ LLM ในรอบนี้',
+      simple_explanation: 'ระบบใช้ Rule evidence และหลักฐานบนหน้าเว็บที่ตรวจภายใน browser เท่านั้น จึงไม่ส่ง URL ไป backend หรือ LLM ในรอบนี้',
       user_advice: 'ถ้าจะกรอกรหัสผ่าน, OTP, seed phrase หรือข้อมูลบัตร ให้ตรวจโดเมนให้แน่ใจก่อน และควรใช้ Safe Preview เมื่อไม่มั่นใจ',
-      confidence_note: 'โหมดนี้เน้นความเป็นส่วนตัว จึงปิด ML backend และคำอธิบายจาก AI ชั่วคราว'
+      confidence_note: 'โหมดนี้เน้นความเป็นส่วนตัว จึงปิด URL Risk Model backend และคำอธิบายจาก AI ชั่วคราว'
     }
   };
 }
@@ -243,7 +249,7 @@ function llmDisabledResponse() {
     status: 'llm_disabled',
     llm: {
       risk_type: 'ปิดคำอธิบายจาก LLM',
-      simple_explanation: 'ระบบยังใช้ Rule-based และ Machine Learning ตรวจจับความเสี่ยง แต่ไม่ได้ส่งคำขอไป AI provider ในรอบนี้',
+      simple_explanation: 'ระบบยังใช้ URL Risk Model และหลักฐานหลายชั้นตรวจจับความเสี่ยง แต่ไม่ได้ส่งคำขอไป AI provider ในรอบนี้',
       user_advice: 'ตรวจสอบโดเมนและเหตุผลที่ระบบแสดงก่อนกรอกข้อมูลสำคัญ',
       confidence_note: 'LLM ถูกปิดจาก Popup จึงไม่มีการส่งคำขอไป Qwen/Ollama'
     }
@@ -283,10 +289,13 @@ function requestLlmExplanation() {
   const payload = {
     url: target,
     rule_score: getNumericWarningParam('rule_score') ?? result.ruleScore ?? result.score,
-    ml_score: getNumericWarningParam('ml_score') ?? result.mlScore ?? null,
-    final_score: getNumericWarningParam('final_score') ?? result.finalScore ?? result.score,
-    alpha: getNumericWarningParam('alpha'),
-    decision_threshold: getNumericWarningParam('decision_threshold'),
+    risk_probability: getNumericWarningParam('risk_probability'),
+    risk_score: getNumericWarningParam('risk_score') ?? result.finalScore ?? result.score,
+    decision: getWarningParam('decision') || null,
+    warning_threshold: getNumericWarningParam('warning_threshold') ?? getNumericWarningParam('decision_threshold'),
+    blocking_threshold: getNumericWarningParam('blocking_threshold'),
+    model_version: getWarningParam('model_version') || null,
+    policy_version: getWarningParam('policy_version') || null,
     reasons: (result.reasons || []).slice(0, 6).map(flattenReason).filter(Boolean),
     threat_types: result.threatTypes || [],
     privacy_mode: privacyMode,

@@ -1,6 +1,7 @@
 [CmdletBinding(SupportsShouldProcess)]
 param(
-  [switch]$IncludeVenv
+  [switch]$IncludeVenv,
+  [switch]$IncludeNodeModules
 )
 
 Set-StrictMode -Version Latest
@@ -54,6 +55,7 @@ function Remove-ProjectItem {
 $beforeBytes = Get-DirectorySize $ProjectRoot
 $cleanupTargets = [System.Collections.Generic.List[string]]::new()
 $cleanupTargets.Add((Join-Path $ProjectRoot 'tmp'))
+$cleanupTargets.Add((Join-Path $ProjectRoot 'web-app/dist'))
 
 foreach ($cacheDirectoryName in @('__pycache__', '.pytest_cache', '.mypy_cache', '.ruff_cache')) {
   Get-ChildItem -LiteralPath $ProjectRoot -Recurse -Directory `
@@ -77,6 +79,9 @@ if (Test-Path -LiteralPath $outputDirectory -PathType Container) {
 if ($IncludeVenv) {
   $cleanupTargets.Add((Join-Path $ProjectRoot '.venv'))
 }
+if ($IncludeNodeModules) {
+  $cleanupTargets.Add((Join-Path $ProjectRoot 'web-app/node_modules'))
+}
 
 $cleanupTargets |
   Sort-Object -Unique |
@@ -93,4 +98,7 @@ Write-Host ('Saved:  {0:N2} MB' -f ($savedBytes / 1MB)) -ForegroundColor Green
 
 if ($IncludeVenv) {
   Write-Warning 'The virtual environment was removed. Recreate it and install backend/requirements.txt before starting the Backend.'
+}
+if ($IncludeNodeModules) {
+  Write-Warning 'React dependencies were removed. Run npm install inside web-app before starting the Web App.'
 }

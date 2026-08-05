@@ -4,96 +4,135 @@ const fs = require('fs');
 const path = require('path');
 
 const root = path.resolve(__dirname, '..');
-const read = relativePath => fs.readFileSync(path.join(root, relativePath), 'utf8');
+const read = relativePath => fs.readFileSync(path.join(root, relativePath), 'utf8').replace(/^\uFEFF/, '');
+const exists = relativePath => fs.existsSync(path.join(root, relativePath));
+const packageJson = JSON.parse(read('web-app/package.json'));
 const index = read('web-app/index.html');
-const login = read('web-app/login.html');
-const settings = read('web-app/settings.html');
-const theme = read('web-app/theme.js');
+const viteConfig = read('web-app/vite.config.mjs');
+const main = read('web-app/src/main.jsx');
+const app = read('web-app/src/App.jsx');
+const authContext = read('web-app/src/contexts/AuthContext.jsx');
+const appContext = read('web-app/src/contexts/AppContext.jsx');
+const routerContext = read('web-app/src/contexts/RouterContext.jsx');
+const api = read('web-app/src/services/api.js');
+const login = read('web-app/src/pages/LoginPage.jsx');
+const scanner = read('web-app/src/pages/ScannerPage.jsx');
+const qr = read('web-app/src/pages/QrPage.jsx');
+const dashboard = read('web-app/src/pages/DashboardPage.jsx');
+const settings = read('web-app/src/pages/SettingsPage.jsx');
+const theme = read('web-app/src/contexts/ThemeContext.jsx');
+const themeToggle = read('web-app/src/components/ThemeToggle.jsx');
+const motion = read('web-app/src/components/MotionFrame.jsx');
 const fonts = read('web-app/fonts.css');
 const styles = read('web-app/professional-ui.css');
-const awwwardsMotion = read('web-app/awwwards-motion.js');
-const serviceWorker = read('web-app/sw.js');
-const server = read('web-app/server.js');
-const brandMark = read('web-app/assets/brand-mark.svg');
+const dockitStyles = read('web-app/dockit-theme.css');
+const reactStyles = read('web-app/src/react.css');
+const manifest = JSON.parse(read('web-app/manifest.webmanifest'));
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-const functionalIds = [
-  'privacyMode', 'backendStatus', 'accountSummary', 'accountAvatar', 'accountName',
-  'accountRole', 'logoutButton', 'scan', 'scanForm', 'urlInput', 'scanButton',
-  'formMessage', 'emptyResult', 'resultContent', 'riskLabel', 'resultTitle',
-  'scoreRing', 'finalScore', 'ruleScore', 'mlScore', 'combinedScore', 'reasonList',
-  'insightList', 'llmState', 'llmRiskType', 'llmExplanation', 'llmAdvice',
-  'feedbackStatus', 'copyReport', 'openTarget', 'qr', 'qrVideo', 'qrCanvas',
-  'qrPlaceholder', 'startCamera', 'stopCamera', 'qrFile', 'qrStatus', 'dashboard',
-  'metricTotal', 'metricHigh', 'metricAverage', 'metricFeedback', 'exportCsv',
-  'exportJson', 'copyDashboard', 'reportStatus', 'refreshHealth', 'healthBackend',
-  'healthModel', 'healthLlm', 'healthFeedback', 'clearHistory', 'historyRows',
-  'commandPalette', 'commandSearch', 'commandList'
+const dependencies = packageJson.dependencies || {};
+assert(dependencies.react, 'React dependency is missing.');
+assert(dependencies['react-dom'], 'ReactDOM dependency is missing.');
+assert(packageJson.devDependencies?.vite, 'Vite dependency is missing.');
+assert(packageJson.scripts?.dev?.includes('vite'), 'Vite development command is missing.');
+assert(packageJson.scripts?.build === 'vite build', 'Production build command is missing.');
+assert(!dependencies['react-native'] && !dependencies.expo, 'Web App must not use React Native or Expo.');
+assert(!dependencies['react-router-dom'], 'Vulnerable React Router package must not be installed.');
+
+assert(index.includes('id="root"'), 'React mount element is missing.');
+assert(index.includes('type="module"') && index.includes('./src/main.jsx'), 'React module entry is missing.');
+assert(main.includes('createRoot('), 'React createRoot bootstrap is missing.');
+assert(main.includes('<RouterProvider>'), 'React hash RouterProvider is missing.');
+assert(main.includes('<AuthProvider>') && main.includes('<AppProvider>'), 'React Context providers are missing.');
+assert(main.includes('getRegistrations()') && main.includes('phish-radar-web-'), 'Legacy service-worker cache cleanup is missing.');
+
+for (const route of ['/login', '/scan', '/qr', '/dashboard', '/settings']) {
+  assert(app.includes(`path === '${route}'`), `React route ${route} is missing.`);
+}
+assert(app.includes('<ProtectedRoute>'), 'Protected routes must require an authenticated session.');
+assert(app.includes('<AppHeader />'), 'Shared React header is missing.');
+assert(routerContext.includes("addEventListener('hashchange'"), 'Hash route synchronization is missing.');
+assert(routerContext.includes('function Link('), 'Accessible React Link component is missing.');
+
+for (const pathName of [
+  '/auth/health',
+  '/auth/me',
+  '/auth/login',
+  '/auth/register',
+  '/auth/profile',
+  '/auth/change-password',
+  '/auth/logout',
+  '/predict',
+  '/explain',
+  '/feedback',
+  '/history'
+]) {
+  assert(api.includes(pathName), `API client is missing ${pathName}.`);
+}
+assert(api.includes("credentials: options.credentials ?? 'include'"), 'Auth cookies are not enabled in the API client.');
+assert(authContext.includes('createContext(') && authContext.includes('refreshUser'), 'Auth state was not migrated to React Context.');
+assert(appContext.includes('createContext(') && appContext.includes('analyzeUrl'), 'Scanner state was not migrated to React Context.');
+assert(appContext.includes('Privacy Mode') && appContext.includes('safeHistoryItem'), 'Privacy-safe history behavior is missing.');
+
+assert(login.includes('เข้าสู่ระบบ') && login.includes('สมัครสมาชิก'), 'Login/Register React UI is incomplete.');
+assert(scanner.includes('ท่องเว็บไซต์อย่างปลอดภัยด้วย'), 'Requested scanner hero is missing.');
+assert(scanner.includes('Phis radar AI'), 'Requested hero brand line is missing.');
+assert(scanner.includes('className="input-row scan-input-row"'), 'Scanner URL field must use the responsive input-row layout.');
+assert(!scanner.includes('https://example.com/login'), 'Scanner URL field must not show the retired example URL.');
+assert(scanner.includes('Rule evidence') && scanner.includes('URL Risk Model'), 'Score breakdown is missing.');
+assert(scanner.includes('คำอธิบายจาก LLM'), 'LLM explanation panel is missing.');
+assert(qr.includes("from 'jsqr'") && qr.includes('BarcodeDetector'), 'QR fallback and native reader support are missing.');
+assert(dashboard.includes('Export CSV') && dashboard.includes('Export JSON'), 'Dashboard exports are missing.');
+assert(settings.includes('updateProfile') && settings.includes('changePassword'), 'Account settings actions are missing.');
+
+assert(theme.includes('phishRadarTheme'), 'Theme preference storage is missing.');
+assert(themeToggle.includes('theme-icon-sun') && themeToggle.includes('theme-icon-moon'), 'Theme toggle must use sun and moon SVG icons.');
+assert(motion.includes("from 'gsap'") && motion.includes('prefers-reduced-motion: reduce'), 'GSAP motion or reduced-motion fallback is missing.');
+assert(styles.includes('grid-template-columns: repeat(12, minmax(0, 1fr))'), 'The 12-column layout contract is missing.');
+assert(styles.includes('--display-font: "Outfit"'), 'Outfit display font token is missing.');
+assert(styles.includes('--editorial-font: "Noto Serif Thai"'), 'Noto Serif Thai editorial token is missing.');
+assert(fonts.includes('outfit-latin-400-700.woff2'), 'Local Outfit font is missing.');
+assert(fonts.includes('ibm-plex-sans-thai-600.woff2'), 'Local Thai sans font is missing.');
+assert(reactStyles.includes('@media (prefers-reduced-motion: reduce)'), 'React reduced-motion CSS is missing.');
+
+assert(manifest.start_url === '/#/login', 'PWA start URL must point to the React login route.');
+assert(viteConfig.includes("allowedHosts: ['app.phishradar.localhost']"), 'Local Phish Radar domain is not allowed by Vite.');
+assert(viteConfig.includes("return 'react-vendor'"), 'Production bundle splitting is missing.');
+assert(app.includes('lazy(() =>') && app.includes('<Suspense'), 'Route-level lazy loading is missing.');
+assert(!dockitStyles.includes('.command-palette') && !dockitStyles.includes('.command-trigger'), 'Removed command palette CSS is still present.');
+
+const retiredFiles = [
+  'web-app/app.js',
+  'web-app/auth.js',
+  'web-app/login.html',
+  'web-app/settings.html',
+  'web-app/settings.js',
+  'web-app/server.js',
+  'web-app/sw.js',
+  'web-app/theme.js',
+  'web-app/runtime-config.js',
+  'web-app/vendor/gsap.min.js',
+  'web-app/vendor/ScrollTrigger.min.js'
 ];
-
-for (const id of functionalIds) {
-  assert(index.includes(`id="${id}"`), `Web App is missing functional element #${id}`);
+for (const retiredFile of retiredFiles) {
+  assert(!exists(retiredFile), `Retired vanilla file still exists: ${retiredFile}`);
 }
 
-const idMatches = Array.from(index.matchAll(/\sid="([^"]+)"/g), match => match[1]);
-const duplicates = idMatches.filter((id, position) => idMatches.indexOf(id) !== position);
-assert(duplicates.length === 0, `Duplicate IDs found: ${Array.from(new Set(duplicates)).join(', ')}`);
+const uiSource = [
+  index,
+  main,
+  app,
+  login,
+  scanner,
+  qr,
+  dashboard,
+  settings,
+  themeToggle
+].join('\n');
+assert(!uiSource.includes('Ctrl K') && !uiSource.includes('Ctrl+K'), 'Removed Ctrl+K UI is still present.');
+assert(!/\p{Extended_Pictographic}/u.test(uiSource), 'React Web App source contains an emoji character.');
 
-for (const page of [index, login, settings]) {
-  assert(page.includes('professional-ui.css?v=20'), 'A Web App page is missing the professional UI layer');
-  assert(page.includes('fonts.css?v=20'), 'A Web App page is missing the local font bundle');
-  assert(page.includes('vendor/gsap.min.js?v=3.13.0'), 'A Web App page is missing pinned local GSAP');
-  assert(page.includes('vendor/ScrollTrigger.min.js?v=3.13.0'), 'A Web App page is missing local ScrollTrigger');
-  assert(page.includes('awwwards-motion.js?v=20'), 'A Web App page is missing the reference motion layer');
-  assert(page.includes('theme-icon-sun') && page.includes('theme-icon-moon'), 'Theme toggle must use sun and moon SVG icons');
-  assert(page.includes('assets/icon128.png?v=18'), 'A Web App page is missing the cache-safe fishing radar brand mark');
-}
-
-assert(index.includes('class="app-hero-title"'), 'Cinematic scanner hero is missing');
-assert(index.includes('class="hero-title-line hero-title-accent"'), 'Editorial serif hero accent is missing');
-assert(index.includes('ท่องเว็บไซต์อย่างปลอดภัยด้วย'), 'Requested safe browsing hero text is missing');
-assert(index.includes('Phis radar AI'), 'Requested Phis radar AI hero line is missing');
-assert(index.includes('data-motion-preloader'), 'Reference preloader markup is missing');
-assert(!index.includes('hero-radar-ring'), 'Legacy outer radar rings are still present');
-assert(styles.includes('.app-hero::before') && styles.includes('radial-gradient('), 'Hero background fade is missing');
-assert(index.includes('id="scannerWorkbench"'), 'Scanner workbench anchor is missing');
-assert(index.includes('class="scan-form hero-scan-form"'), 'URL form must live in the scanner hero');
-assert(index.indexOf('id="scanForm"') < index.indexOf('id="scannerWorkbench"'), 'URL form must appear before scanner details');
-assert(index.indexOf('id="previewHost"') < index.indexOf('id="resultContent"'), 'URL preview must appear before analysis details');
-assert(!index.includes('data-brief-slide'), 'Removed Security Brief markup is still present');
-assert(!index.includes('data-stack-card'), 'Removed evidence story markup is still present');
-assert(!index.includes('professional-motion.js'), 'Removed professional motion script is still referenced');
-
-assert(styles.includes('grid-template-columns: repeat(12, minmax(0, 1fr))'), 'The 12-column bento grid contract is missing');
-assert(styles.includes('overflow-x: hidden'), 'Horizontal overflow protection is missing');
-assert(styles.includes('@media (prefers-reduced-motion: reduce)'), 'Reduced-motion fallback is missing');
-assert(styles.includes('.app-hero-title') && styles.includes('max-width: 90rem'), 'Hero width contract is missing');
-assert(styles.includes('--display-font: "Outfit"'), 'Outfit is not the display font');
-assert(styles.includes('--editorial-font: "Noto Serif Thai"'), 'Editorial serif font token is missing');
-assert(fonts.includes('outfit-latin-400-700.woff2'), 'Local Outfit display font is missing');
-assert(fonts.includes('ibm-plex-sans-thai-600.woff2'), 'Local Thai sans font is missing');
-assert(fonts.includes('noto-serif-thai-500-600.woff2'), 'Local Thai serif accent font is missing');
-assert(awwwardsMotion.includes("gsap.registerPlugin(ScrollTrigger)"), 'GSAP ScrollTrigger registration is missing');
-assert(awwwardsMotion.includes("prefers-reduced-motion: reduce"), 'Reference motion reduced-motion guard is missing');
-assert(awwwardsMotion.includes("reference: 'editorial-preloader-scroll-reveal'"), 'Reference motion contract is missing');
-assert(awwwardsMotion.includes("clipPath: 'inset(0% 0 100% 0)'"), 'Preloader curtain reveal is missing');
-assert(awwwardsMotion.includes("scrub: 1"), 'Hero scroll scrub is missing');
-assert(!theme.includes('icon.textContent'), 'Theme script must not replace SVG icons with text');
-
-const uiSource = [index, login, settings, theme].join('\n');
-assert(!/\p{Extended_Pictographic}/u.test(uiSource), 'Web App UI source contains an emoji character');
-assert(serviceWorker.includes("phish-radar-web-v20"), 'Service worker cache version was not upgraded');
-assert(serviceWorker.includes('./professional-ui.css?v=20'), 'Professional CSS is missing from offline cache');
-assert(serviceWorker.includes('./awwwards-motion.js?v=20'), 'Reference motion layer is missing from offline cache');
-assert(serviceWorker.includes('./vendor/gsap.min.js?v=3.13.0'), 'Local GSAP is missing from offline cache');
-assert(serviceWorker.includes('./fonts.css?v=20'), 'Local fonts are missing from offline cache');
-assert(!serviceWorker.includes('professional-motion.js'), 'Removed professional motion script is still cached');
-assert(serviceWorker.includes('./assets/icon128.png?v=18'), 'Brand mark PNG is missing from offline cache');
-assert(server.includes("'.svg': 'image/svg+xml'"), 'Local Web App server must send the SVG MIME type');
-assert(server.includes("'.woff2': 'font/woff2'"), 'Local Web App server must send the WOFF2 MIME type');
-assert(brandMark.includes('Fishing rod and hook with a radar signal at the tip'), 'Brand mark description is missing');
-
-console.log('Web App professional UI contract tests passed.');
+console.log('React Web App architecture and UI contract tests passed.');

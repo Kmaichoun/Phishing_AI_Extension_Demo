@@ -44,10 +44,10 @@ The Dockit source remains a historical visual reference and is licensed under MI
 - `dockit-extension.css` is the shared theme layer for Warning and QR pages.
 - `content.css` and `safe-preview.css` contain scoped Dockit overrides for UI injected into third-party pages; they must never style the host page globally.
 
-## Motion and command palette
+## Motion and navigation
 
-- `Ctrl+K` opens a native dialog command palette in the Web App and Extension Popup.
-- Dialogs use a 220ms scale/fade entrance, a 150ms exit, a blurred backdrop, focus trapping, Escape-to-close, and keyboard selection.
+- The Web App uses direct, visible navigation for Scanner, QR, Dashboard, account settings, theme, privacy, and session controls.
+- Header controls remain on one line on wide screens and move into a dedicated action row at narrower breakpoints.
 - Theme changes use a short View Transition when supported; scanning uses a bounded sheen only while analysis is running.
 - Page and result transitions explain a state change. Warning content never waits for decorative entrance choreography.
 - The Web App uses a sliding active-tab indicator, animated score ring, count-up metrics, staggered result/dashboard content, and a camera scan line tied to live QR state.

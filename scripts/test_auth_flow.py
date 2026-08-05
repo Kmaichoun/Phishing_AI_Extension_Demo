@@ -64,9 +64,9 @@ def main() -> None:
                 text(
                     """
                     SELECT u.PasswordHash,
-                           (SELECT COUNT(*) FROM auth.UserDevices d WHERE d.UserId = u.UserId) AS DeviceCount,
-                           (SELECT COUNT(*) FROM auth.Sessions s WHERE s.UserId = u.UserId) AS SessionCount
-                    FROM auth.Users u
+                           (SELECT COUNT(*) FROM UserDevices d WHERE d.UserId = u.UserId) AS DeviceCount,
+                           (SELECT COUNT(*) FROM Sessions s WHERE s.UserId = u.UserId) AS SessionCount
+                    FROM Users u
                     WHERE u.NormalizedUsername = LOWER(:username)
                     """
                 ),
@@ -101,14 +101,14 @@ def main() -> None:
     finally:
         with open_session() as database:
             user_id = database.execute(
-                text("SELECT UserId FROM auth.Users WHERE NormalizedUsername = LOWER(:username)"),
+                text("SELECT UserId FROM Users WHERE NormalizedUsername = LOWER(:username)"),
                 {"username": username},
             ).scalar_one_or_none()
             if user_id is not None:
-                database.execute(text("DELETE FROM auth.SearchHistory WHERE UserId = :user_id"), {"user_id": user_id})
-                database.execute(text("DELETE FROM auth.Sessions WHERE UserId = :user_id"), {"user_id": user_id})
-                database.execute(text("DELETE FROM auth.UserDevices WHERE UserId = :user_id"), {"user_id": user_id})
-                database.execute(text("DELETE FROM auth.Users WHERE UserId = :user_id"), {"user_id": user_id})
+                database.execute(text("DELETE FROM SearchHistory WHERE UserId = :user_id"), {"user_id": user_id})
+                database.execute(text("DELETE FROM Sessions WHERE UserId = :user_id"), {"user_id": user_id})
+                database.execute(text("DELETE FROM UserDevices WHERE UserId = :user_id"), {"user_id": user_id})
+                database.execute(text("DELETE FROM Users WHERE UserId = :user_id"), {"user_id": user_id})
                 database.commit()
 
 

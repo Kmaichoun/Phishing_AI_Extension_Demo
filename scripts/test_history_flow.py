@@ -50,7 +50,7 @@ def cleanup_users(usernames: list[str]) -> None:
         for username in usernames:
             user_id = database.execute(
                 text(
-                    "SELECT UserId FROM auth.Users "
+                    "SELECT UserId FROM Users "
                     "WHERE NormalizedUsername = LOWER(:username)"
                 ),
                 {"username": username},
@@ -58,19 +58,19 @@ def cleanup_users(usernames: list[str]) -> None:
             if user_id is None:
                 continue
             database.execute(
-                text("DELETE FROM auth.SearchHistory WHERE UserId = :user_id"),
+                text("DELETE FROM SearchHistory WHERE UserId = :user_id"),
                 {"user_id": user_id},
             )
             database.execute(
-                text("DELETE FROM auth.Sessions WHERE UserId = :user_id"),
+                text("DELETE FROM Sessions WHERE UserId = :user_id"),
                 {"user_id": user_id},
             )
             database.execute(
-                text("DELETE FROM auth.UserDevices WHERE UserId = :user_id"),
+                text("DELETE FROM UserDevices WHERE UserId = :user_id"),
                 {"user_id": user_id},
             )
             database.execute(
-                text("DELETE FROM auth.Users WHERE UserId = :user_id"),
+                text("DELETE FROM Users WHERE UserId = :user_id"),
                 {"user_id": user_id},
             )
         database.commit()
@@ -82,9 +82,9 @@ def cleanup_stale_test_users() -> None:
             str(value)
             for value in database.execute(
                 text(
-                    "SELECT Username FROM auth.Users "
-                    "WHERE Username LIKE N'history[_]a[_]%' "
-                    "OR Username LIKE N'history[_]b[_]%'"
+                    "SELECT Username FROM Users "
+                    "WHERE Username LIKE 'history!_a!_%' ESCAPE '!' "
+                    "OR Username LIKE 'history!_b!_%' ESCAPE '!'"
                 )
             ).scalars()
         ]
@@ -110,12 +110,19 @@ def main() -> None:
                 json={
                     "url": "https://user:password@example.com/login?token=secret#private",
                     "rule_score": 35,
+                    "risk_probability": 0.72,
+                    "risk_score": 72,
+                    "decision": "warn",
+                    "warning_threshold": 37,
+                    "blocking_threshold": 100,
+                    "model_version": "url-risk-l1-logistic-1.0",
+                    "policy_version": "fpr-two-threshold-1.0",
+                    "feature_schema_version": "url-v2",
+                    "layer_results": {"url_risk_model": {"status": "ready", "score": 72}},
                     "ml_score": 72,
-                    "final_score": 57,
-                    "alpha": 0.4,
-                    "decision_threshold": 22,
+                    "final_score": 72,
                     "detection_label": "phishing",
-                    "model_status": "calibrated_model",
+                    "model_status": "ready",
                     "source": "web-app",
                 },
             ),
@@ -125,6 +132,11 @@ def main() -> None:
         assert created_a["url"] == "https://example.com/login"
         assert "secret" not in created_a["url"]
         assert "password" not in created_a["url"]
+        assert created_a["risk_probability"] == 0.72
+        assert created_a["risk_score"] == 72
+        assert created_a["decision"] == "warn"
+        assert created_a["model_version"] == "url-risk-l1-logistic-1.0"
+        assert created_a["layer_results"]["url_risk_model"]["status"] == "ready"
 
         list_a = expect(client_a.get("/history", headers=HEADERS), 200, "list A")
         list_b = expect(client_b.get("/history", headers=HEADERS), 200, "list B")
@@ -138,12 +150,19 @@ def main() -> None:
                 json={
                     "url": "https://example.org/",
                     "rule_score": 0,
+                    "risk_probability": 0.04,
+                    "risk_score": 4,
+                    "decision": "allow",
+                    "warning_threshold": 37,
+                    "blocking_threshold": 100,
+                    "model_version": "url-risk-l1-logistic-1.0",
+                    "policy_version": "fpr-two-threshold-1.0",
+                    "feature_schema_version": "url-v2",
+                    "layer_results": {"url_risk_model": {"status": "ready", "score": 4}},
                     "ml_score": 4,
-                    "final_score": 2,
-                    "alpha": 0.4,
-                    "decision_threshold": 22,
+                    "final_score": 4,
                     "detection_label": "safe",
-                    "model_status": "calibrated_model",
+                    "model_status": "ready",
                     "source": "web-app",
                 },
             ),

@@ -12,10 +12,9 @@ from urllib.parse import urlsplit
 
 import joblib
 import numpy as np
-from sklearn.base import clone
-from sklearn.calibration import CalibratedClassifierCV
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
+    average_precision_score,
     brier_score_loss,
     confusion_matrix,
     f1_score,
@@ -25,9 +24,11 @@ from sklearn.metrics import (
     roc_auc_score,
 )
 from sklearn.model_selection import StratifiedGroupKFold
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 
 from build_dataset import calculate_rule_scores
-from feature_extractor import FEATURE_NAMES, feature_vector
+from feature_extractor import FEATURE_NAMES, FEATURE_SCHEMA_VERSION, feature_vector
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
@@ -35,9 +36,10 @@ GENERATED_DATASET_PATH = DATA_DIR / "training_urls.csv"
 SEED_DATASET_PATH = DATA_DIR / "seed_urls.csv"
 MODEL_PATH = BASE_DIR / "model.pkl"
 REPORT_PATH = DATA_DIR / "risk_model_evaluation.json"
-# LZMA keeps the calibrated Random Forest bundle materially smaller in Git while
-# remaining transparent to joblib.load() in the API and test suite.
 MODEL_COMPRESSION: tuple[str, int] = ("lzma", 3)
+MODEL_VERSION = "url-risk-l1-logistic-1.0"
+POLICY_VERSION = "fpr-two-threshold-1.0"
+DEFAULT_C_VALUES = (0.01, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0)
 
 
 def parse_args() -> argparse.Namespace:
@@ -45,14 +47,24 @@ def parse_args() -> argparse.Namespace:
         GENERATED_DATASET_PATH if GENERATED_DATASET_PATH.exists() else SEED_DATASET_PATH
     )
     parser = argparse.ArgumentParser(
-        description="Train and calibrate the Phish Radar Random Forest risk model."
+        description=(
+            "Train an explainable L1-logistic URL risk model and select warning/blocking "
+            "thresholds under explicit false-positive-rate constraints."
+        )
     )
     parser.add_argument("--dataset", type=Path, default=default_dataset)
-    parser.add_argument("--outer-folds", type=int, default=5)
-    parser.add_argument("--calibration-folds", type=int, default=3)
-    parser.add_argument("--trees", type=int, default=250)
+    parser.add_argument("--cv-folds", type=int, default=5)
+    parser.add_argument("--holdout-folds", type=int, default=5)
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--max-fpr", type=float, default=0.05)
+    parser.add_argument("--warn-max-fpr", type=float, default=0.01)
+    parser.add_argument("--block-max-fpr", type=float, default=0.001)
+    parser.add_argument(
+        "--c-values",
+        type=float,
+        nargs="+",
+        default=list(DEFAULT_C_VALUES),
+        help="Inverse L1 regularization strengths evaluated with grouped cross-validation.",
+    )
     return parser.parse_args()
 
 
@@ -103,7 +115,7 @@ def load_rows(path: Path) -> dict[str, object]:
 
     missing = [index for index, score in enumerate(rule_scores) if score is None]
     if missing:
-        print(f"Calculating {len(missing):,} missing RuleScore values...")
+        print(f"Calculating {len(missing):,} missing RuleScore values for audit only...")
         calculated = calculate_rule_scores([urls[index] for index in missing])
         for index, score in zip(missing, calculated, strict=True):
             rule_scores[index] = float(score)
@@ -112,7 +124,7 @@ def load_rows(path: Path) -> dict[str, object]:
         "urls": urls,
         "x": np.asarray([feature_vector(url) for url in urls], dtype=np.float64),
         "y": np.asarray(labels, dtype=np.int64),
-        "rule": np.asarray(rule_scores, dtype=np.float64) / 100.0,
+        "rule": np.asarray(rule_scores, dtype=np.float64),
         "groups": np.asarray(groups, dtype=object),
         "sources": sources,
     }
@@ -126,7 +138,7 @@ def validate_dataset(data: dict[str, object]) -> None:
     if len(y) < 10:
         raise ValueError(f"Dataset is too small: {len(y)} rows")
     if set(np.unique(y)) != {0, 1}:
-        raise ValueError("Dataset must contain both legitimate (0) and phishing (1) labels.")
+        raise ValueError("Dataset must contain legitimate (0) and phishing (1) labels.")
     for label in (0, 1):
         unique_groups = len(set(groups[y == label]))
         if unique_groups < 2:
@@ -146,25 +158,42 @@ def split_indices(
 ) -> tuple[list[tuple[np.ndarray, np.ndarray]], int]:
     folds = supported_fold_count(y, groups, requested_folds)
     if folds < 2:
-        raise ValueError("Not enough hostname groups for stratified group cross-validation.")
+        raise ValueError("Not enough hostname groups for grouped cross-validation.")
     splitter = StratifiedGroupKFold(n_splits=folds, shuffle=True, random_state=seed)
     dummy = np.zeros((len(y), 1), dtype=np.float64)
     return list(splitter.split(dummy, y, groups)), folds
 
 
-def make_random_forest(seed: int, trees: int) -> RandomForestClassifier:
-    return RandomForestClassifier(
-        n_estimators=trees,
-        random_state=seed,
-        class_weight="balanced_subsample",
-        min_samples_leaf=2,
-        max_features="sqrt",
-        n_jobs=-1,
+def make_model(c_value: float, seed: int) -> Pipeline:
+    return Pipeline(
+        [
+            ("scale", StandardScaler()),
+            (
+                "logistic",
+                LogisticRegression(
+                    penalty="l1",
+                    solver="liblinear",
+                    C=float(c_value),
+                    class_weight="balanced",
+                    max_iter=5_000,
+                    random_state=seed,
+                ),
+            ),
+        ]
     )
 
 
 def safe_float(value: float) -> float | None:
     return None if not math.isfinite(value) else round(float(value), 6)
+
+
+def probability_metrics(y_true: np.ndarray, scores: np.ndarray) -> dict[str, float | None]:
+    return {
+        "brier_score": safe_float(brier_score_loss(y_true, scores)),
+        "log_loss": safe_float(log_loss(y_true, scores, labels=[0, 1])),
+        "roc_auc": safe_float(roc_auc_score(y_true, scores)),
+        "pr_auc": safe_float(average_precision_score(y_true, scores)),
+    }
 
 
 def classification_metrics(
@@ -175,13 +204,30 @@ def classification_metrics(
     predicted = (scores >= threshold).astype(np.int64)
     tn, fp, fn, tp = confusion_matrix(y_true, predicted, labels=[0, 1]).ravel()
     fpr = fp / (fp + tn) if fp + tn else 0.0
+    negative_count = fp + tn
+    # One-sided 95% Wilson upper confidence bound. Selecting against the
+    # bound is deliberately more conservative than selecting against the
+    # observed FPR alone, especially for the blocking policy.
+    z = 1.6448536269514722
+    if negative_count:
+        denominator = 1.0 + (z * z / negative_count)
+        center = fpr + (z * z / (2.0 * negative_count))
+        spread = z * math.sqrt(
+            (fpr * (1.0 - fpr) / negative_count)
+            + (z * z / (4.0 * negative_count * negative_count))
+        )
+        fpr_upper_95 = min(1.0, (center + spread) / denominator)
+    else:
+        fpr_upper_95 = 0.0
     return {
         "threshold": round(float(threshold), 4),
         "precision": safe_float(precision_score(y_true, predicted, zero_division=0)),
         "recall": safe_float(recall_score(y_true, predicted, zero_division=0)),
         "f1": safe_float(f1_score(y_true, predicted, zero_division=0)),
         "roc_auc": safe_float(roc_auc_score(y_true, scores)),
+        "pr_auc": safe_float(average_precision_score(y_true, scores)),
         "false_positive_rate": safe_float(fpr),
+        "false_positive_rate_upper_95": safe_float(fpr_upper_95),
         "true_negative": int(tn),
         "false_positive": int(fp),
         "false_negative": int(fn),
@@ -189,58 +235,176 @@ def classification_metrics(
     }
 
 
-def candidate_rank(candidate: dict[str, object], max_fpr: float) -> tuple[object, ...]:
-    fpr = float(candidate["false_positive_rate"])
-    feasible = fpr <= max_fpr
-    if feasible:
-        return (
-            1,
-            float(candidate["recall"]),
-            float(candidate["f1"]),
-            float(candidate["precision"]),
-            float(candidate["roc_auc"]),
-            -fpr,
-            -abs(float(candidate["threshold"]) - 0.5),
-        )
-    return (
-        0,
-        -fpr,
-        float(candidate["f1"]),
-        float(candidate["recall"]),
-        float(candidate["precision"]),
-        float(candidate["roc_auc"]),
-        -abs(float(candidate["threshold"]) - 0.5),
-    )
-
-
-def search_policy(
+def oof_probabilities(
+    x: np.ndarray,
     y: np.ndarray,
-    rule_scores: np.ndarray,
-    ml_scores: np.ndarray,
-    max_fpr: float,
-) -> tuple[dict[str, object], list[dict[str, object]], list[dict[str, object]]]:
+    groups: np.ndarray,
+    c_value: float,
+    folds: int,
+    seed: int,
+) -> tuple[np.ndarray, int]:
+    splits, fold_count = split_indices(y, groups, folds, seed)
+    scores = np.zeros(len(y), dtype=np.float64)
+    assigned = np.zeros(len(y), dtype=bool)
+    for fold, (train_index, test_index) in enumerate(splits, start=1):
+        model = make_model(c_value, seed + fold)
+        model.fit(x[train_index], y[train_index])
+        scores[test_index] = model.predict_proba(x[test_index])[:, 1]
+        assigned[test_index] = True
+    if not np.all(assigned):
+        raise RuntimeError("Every development row must receive one out-of-fold probability.")
+    return scores, fold_count
+
+
+def choose_regularization(
+    x: np.ndarray,
+    y: np.ndarray,
+    groups: np.ndarray,
+    c_values: list[float],
+    folds: int,
+    seed: int,
+) -> tuple[float, np.ndarray, list[dict[str, object]], int]:
     candidates: list[dict[str, object]] = []
-    for alpha in np.linspace(0.0, 1.0, 21):
-        combined = alpha * rule_scores + (1.0 - alpha) * ml_scores
-        auc = safe_float(roc_auc_score(y, combined))
-        for threshold in np.linspace(0.05, 0.95, 91):
-            metrics = classification_metrics(y, combined, float(threshold))
-            metrics["alpha"] = round(float(alpha), 2)
-            metrics["roc_auc"] = auc
-            candidates.append(metrics)
-
-    ordered = sorted(candidates, key=lambda item: candidate_rank(item, max_fpr), reverse=True)
-    best = dict(ordered[0])
-    best["meets_fpr_constraint"] = float(best["false_positive_rate"]) <= max_fpr
-
-    per_alpha: list[dict[str, object]] = []
-    for alpha in np.linspace(0.0, 1.0, 21):
-        alpha_value = round(float(alpha), 2)
-        alpha_candidates = [item for item in candidates if item["alpha"] == alpha_value]
-        per_alpha.append(
-            dict(max(alpha_candidates, key=lambda item: candidate_rank(item, max_fpr)))
+    score_by_c: dict[float, np.ndarray] = {}
+    effective_folds = 0
+    for c_value in sorted({float(value) for value in c_values if value > 0}):
+        scores, effective_folds = oof_probabilities(
+            x, y, groups, c_value, folds, seed
         )
-    return best, per_alpha, [dict(item) for item in ordered[:20]]
+        score_by_c[c_value] = scores
+        metrics = probability_metrics(y, scores)
+        candidates.append({"c": c_value, **metrics})
+        print(
+            f"C={c_value:g}: log_loss={metrics['log_loss']}, "
+            f"brier={metrics['brier_score']}, ROC-AUC={metrics['roc_auc']}"
+        )
+    if not candidates:
+        raise ValueError("At least one positive C value is required.")
+    ordered = sorted(
+        candidates,
+        key=lambda item: (
+            float(item["log_loss"]),
+            float(item["brier_score"]),
+            -float(item["roc_auc"]),
+            float(item["c"]),
+        ),
+    )
+    selected_c = float(ordered[0]["c"])
+    return selected_c, score_by_c[selected_c], ordered, effective_folds
+
+
+def select_threshold(
+    y: np.ndarray,
+    scores: np.ndarray,
+    max_fpr: float,
+    minimum_threshold: float = 0.01,
+) -> tuple[dict[str, object], list[dict[str, object]]]:
+    candidates: list[dict[str, object]] = []
+    threshold_grid = np.unique(
+        np.append(np.linspace(max(0.01, minimum_threshold), 0.99, 99), 1.0)
+    )
+    for threshold in threshold_grid:
+        metrics = classification_metrics(y, scores, float(threshold))
+        candidates.append(metrics)
+
+    feasible = [
+        item for item in candidates
+        if float(item["false_positive_rate_upper_95"]) <= max_fpr
+    ]
+    if feasible:
+        ordered = sorted(
+            feasible,
+            key=lambda item: (
+                float(item["recall"]),
+                float(item["f1"]),
+                float(item["precision"]),
+                -float(item["false_positive_rate"]),
+                -float(item["threshold"]),
+            ),
+            reverse=True,
+        )
+    else:
+        ordered = sorted(
+            candidates,
+            key=lambda item: (
+                -float(item["false_positive_rate"]),
+                float(item["recall"]),
+                float(item["f1"]),
+                float(item["precision"]),
+            ),
+            reverse=True,
+        )
+    selected = dict(ordered[0])
+    selected["max_false_positive_rate"] = max_fpr
+    selected["meets_fpr_constraint"] = (
+        float(selected["false_positive_rate_upper_95"]) <= max_fpr
+    )
+    return selected, [dict(item) for item in ordered[:20]]
+
+
+def select_policy(
+    y: np.ndarray,
+    scores: np.ndarray,
+    warn_max_fpr: float,
+    block_max_fpr: float,
+) -> dict[str, object]:
+    warning, warning_candidates = select_threshold(y, scores, warn_max_fpr)
+    blocking, blocking_candidates = select_threshold(
+        y,
+        scores,
+        block_max_fpr,
+        minimum_threshold=float(warning["threshold"]),
+    )
+    if float(blocking["threshold"]) < float(warning["threshold"]):
+        raise RuntimeError("Blocking threshold cannot be below warning threshold.")
+    return {
+        "version": POLICY_VERSION,
+        "warning": warning,
+        "blocking": blocking,
+        "top_warning_candidates": warning_candidates,
+        "top_blocking_candidates": blocking_candidates,
+        "selection_rule": (
+            "For each operational FPR ceiling, require the one-sided 95% Wilson "
+            "upper confidence bound for FPR to remain below the ceiling; then "
+            "maximize recall, F1 and precision. The blocking threshold is "
+            "constrained to be no lower than the warning threshold."
+        ),
+    }
+
+
+def evaluate_policy(
+    y: np.ndarray,
+    scores: np.ndarray,
+    policy: dict[str, object],
+) -> dict[str, object]:
+    warning = policy["warning"]
+    blocking = policy["blocking"]
+    if not isinstance(warning, dict) or not isinstance(blocking, dict):
+        raise TypeError("Policy thresholds are malformed.")
+    return {
+        "probability": probability_metrics(y, scores),
+        "warning": classification_metrics(y, scores, float(warning["threshold"])),
+        "blocking": classification_metrics(y, scores, float(blocking["threshold"])),
+    }
+
+
+def coefficient_report(model: Pipeline) -> list[dict[str, object]]:
+    logistic = model.named_steps["logistic"]
+    coefficients = logistic.coef_[0]
+    ranked = sorted(
+        zip(FEATURE_NAMES, coefficients, strict=True),
+        key=lambda item: abs(float(item[1])),
+        reverse=True,
+    )
+    return [
+        {
+            "feature": name,
+            "scaled_coefficient": safe_float(float(coefficient)),
+            "direction": "risk" if coefficient > 0 else "legitimate",
+        }
+        for name, coefficient in ranked
+        if abs(float(coefficient)) > 1e-10
+    ]
 
 
 def sha256(path: Path) -> str:
@@ -252,108 +416,89 @@ def sha256(path: Path) -> str:
 
 
 def train(args: argparse.Namespace) -> None:
+    if not 0 <= args.block_max_fpr <= args.warn_max_fpr < 1:
+        raise ValueError(
+            "FPR constraints must satisfy 0 <= block_max_fpr <= warn_max_fpr < 1."
+        )
+
     dataset_path = args.dataset.resolve()
     data = load_rows(dataset_path)
     validate_dataset(data)
     x = data["x"]
     y = data["y"]
-    rule_scores = data["rule"]
     groups = data["groups"]
-    if not all(isinstance(value, np.ndarray) for value in (x, y, rule_scores, groups)):
+    if not all(isinstance(value, np.ndarray) for value in (x, y, groups)):
         raise TypeError("Dataset arrays were not constructed correctly.")
 
-    outer_splits, outer_fold_count = split_indices(
-        y, groups, args.outer_folds, args.seed
+    holdout_splits, holdout_fold_count = split_indices(
+        y, groups, args.holdout_folds, args.seed + 9_000
     )
-    calibrated_oof = np.zeros(len(y), dtype=np.float64)
-    raw_oof = np.zeros(len(y), dtype=np.float64)
-    fold_assignments = np.full(len(y), -1, dtype=np.int64)
-    calibration_fold_counts: list[int] = []
+    development_index, holdout_index = holdout_splits[0]
+    x_development = x[development_index]
+    y_development = y[development_index]
+    groups_development = groups[development_index]
 
     print(
         f"Dataset: {len(y):,} rows | labels={dict(Counter(map(int, y)))} | "
         f"unique hostname groups={len(set(groups)):,}"
     )
     print(
-        f"Outer CV: StratifiedGroupKFold({outer_fold_count}) | "
-        "calibration: sigmoid"
+        f"Independent grouped holdout: development={len(development_index):,}, "
+        f"holdout={len(holdout_index):,}"
     )
 
-    for fold, (train_index, test_index) in enumerate(outer_splits, start=1):
-        inner_splits, calibration_fold_count = split_indices(
-            y[train_index],
-            groups[train_index],
-            args.calibration_folds,
-            args.seed + fold,
-        )
-        calibration_fold_counts.append(calibration_fold_count)
-        base = make_random_forest(args.seed + fold, args.trees)
-        calibrated = CalibratedClassifierCV(
-            estimator=base,
-            method="sigmoid",
-            cv=inner_splits,
-            ensemble=True,
-            n_jobs=-1,
-        )
-        calibrated.fit(x[train_index], y[train_index])
-        calibrated_oof[test_index] = calibrated.predict_proba(x[test_index])[:, 1]
-
-        raw = clone(base)
-        raw.fit(x[train_index], y[train_index])
-        raw_oof[test_index] = raw.predict_proba(x[test_index])[:, 1]
-        fold_assignments[test_index] = fold
-        print(
-            f"Fold {fold}/{outer_fold_count}: train={len(train_index):,}, "
-            f"test={len(test_index):,}, calibration_folds={calibration_fold_count}"
-        )
-
-    if np.any(fold_assignments < 0):
-        raise RuntimeError("Some rows did not receive an out-of-fold prediction.")
-
-    best, per_alpha, top_candidates = search_policy(
-        y, rule_scores, calibrated_oof, args.max_fpr
+    selected_c, development_oof, c_candidates, cv_fold_count = choose_regularization(
+        x_development,
+        y_development,
+        groups_development,
+        list(args.c_values),
+        args.cv_folds,
+        args.seed,
     )
-    alpha = float(best["alpha"])
-    threshold = float(best["threshold"])
-    final_oof = alpha * rule_scores + (1.0 - alpha) * calibrated_oof
-
-    fold_metrics: list[dict[str, object]] = []
-    for fold in range(1, outer_fold_count + 1):
-        mask = fold_assignments == fold
-        metrics = classification_metrics(y[mask], final_oof[mask], threshold)
-        metrics["fold"] = fold
-        metrics["row_count"] = int(np.sum(mask))
-        fold_metrics.append(metrics)
-
-    final_inner_splits, final_calibration_folds = split_indices(
-        y, groups, max(args.calibration_folds, outer_fold_count), args.seed + 10_000
+    policy = select_policy(
+        y_development,
+        development_oof,
+        args.warn_max_fpr,
+        args.block_max_fpr,
     )
-    final_model = CalibratedClassifierCV(
-        estimator=make_random_forest(args.seed, args.trees),
-        method="sigmoid",
-        cv=final_inner_splits,
-        ensemble=True,
-        n_jobs=-1,
+
+    holdout_model = make_model(selected_c, args.seed)
+    holdout_model.fit(x_development, y_development)
+    holdout_scores = holdout_model.predict_proba(x[holdout_index])[:, 1]
+    holdout_evaluation = evaluate_policy(y[holdout_index], holdout_scores, policy)
+
+    # Preserve the hyperparameter chosen without access to the independent
+    # holdout. Re-selecting C on the full dataset here would leak holdout
+    # information into the final deployment policy.
+    final_c = selected_c
+    full_oof, final_cv_folds = oof_probabilities(
+        x,
+        y,
+        groups,
+        final_c,
+        args.cv_folds,
+        args.seed + 20_000,
     )
-    print(f"Training final calibrated model on all {len(y):,} rows...")
+    final_model = make_model(final_c, args.seed)
     final_model.fit(x, y)
 
-    calibration_metrics = {
-        "raw_random_forest": {
-            "brier_score": safe_float(brier_score_loss(y, raw_oof)),
-            "log_loss": safe_float(log_loss(y, raw_oof, labels=[0, 1])),
-            "roc_auc": safe_float(roc_auc_score(y, raw_oof)),
-        },
-        "sigmoid_calibrated_random_forest": {
-            "brier_score": safe_float(brier_score_loss(y, calibrated_oof)),
-            "log_loss": safe_float(log_loss(y, calibrated_oof, labels=[0, 1])),
-            "roc_auc": safe_float(roc_auc_score(y, calibrated_oof)),
-        },
-        "interpretation": "Lower Brier score and log loss indicate better probability calibration.",
-    }
     now = datetime.now(timezone.utc).isoformat()
+    warning = policy["warning"]
+    blocking = policy["blocking"]
+    if not isinstance(warning, dict) or not isinstance(blocking, dict):
+        raise TypeError("Selected policy is malformed.")
+
     report = {
         "created_at": now,
+        "model": {
+            "version": MODEL_VERSION,
+            "family": "L1-regularized logistic regression",
+            "risk_formula": "RiskScore = 100 * sigmoid(w dot x + b)",
+            "selected_c_on_development": selected_c,
+            "selected_c_for_final_model": final_c,
+            "feature_schema_version": FEATURE_SCHEMA_VERSION,
+            "feature_names": FEATURE_NAMES,
+        },
         "dataset": {
             "path": str(dataset_path.relative_to(BASE_DIR.parent)),
             "sha256": sha256(dataset_path),
@@ -362,54 +507,102 @@ def train(args: argparse.Namespace) -> None:
             "sources": dict(sorted(Counter(data["sources"]).items())),
             "unique_hostname_groups": len(set(groups)),
         },
-        "cross_validation": {
-            "strategy": "StratifiedGroupKFold",
+        "evaluation_design": {
             "group": "hostname",
-            "outer_folds": outer_fold_count,
-            "calibration_method": "sigmoid",
-            "calibration_folds_per_outer_fold": calibration_fold_counts,
-            "final_model_calibration_folds": final_calibration_folds,
+            "holdout_strategy": "one untouched StratifiedGroupKFold partition",
+            "holdout_folds": holdout_fold_count,
+            "development_rows": len(development_index),
+            "holdout_rows": len(holdout_index),
+            "model_selection_cv": "StratifiedGroupKFold",
+            "model_selection_folds": cv_fold_count,
+            "final_model_selection_folds": final_cv_folds,
             "random_seed": args.seed,
         },
-        "random_forest": {
-            "n_estimators": args.trees,
-            "class_weight": "balanced_subsample",
-            "min_samples_leaf": 2,
-            "max_features": "sqrt",
+        "regularization_search": {
+            "development_candidates": c_candidates,
+            "selection_dataset": "development partition only",
         },
-        "calibration_metrics": calibration_metrics,
-        "policy_search": {
-            "formula": "FinalScore = alpha * RuleScore + (1 - alpha) * MLScore",
-            "alpha_values": [round(float(value), 2) for value in np.linspace(0, 1, 21)],
-            "threshold_values": [round(float(value), 2) for value in np.linspace(0.05, 0.95, 91)],
-            "max_false_positive_rate": args.max_fpr,
-            "selection_rule": (
-                "Among candidates with FPR <= max_false_positive_rate, maximize recall, "
-                "then F1, precision, ROC-AUC, and finally prefer lower FPR. If none qualify, "
-                "minimize FPR before the remaining metrics."
+        "probability_quality": {
+            "development_out_of_fold": probability_metrics(
+                y_development, development_oof
             ),
-            "selected": best,
-            "best_candidate_per_alpha": per_alpha,
-            "top_candidates": top_candidates,
+            "independent_holdout": probability_metrics(
+                y[holdout_index], holdout_scores
+            ),
+            "interpretation": (
+                "Logistic regression directly estimates sigmoid probabilities; "
+                "lower Brier score and log loss indicate better probability quality."
+            ),
         },
-        "selected_policy_fold_metrics": fold_metrics,
+        "policy": policy,
+        "independent_holdout": holdout_evaluation,
+        "final_model_oof_probability": probability_metrics(y, full_oof),
+        "coefficients": coefficient_report(final_model),
+        "rule_engine": {
+            "role": (
+                "Local/offline evidence and explanation layer. RuleScore is not "
+                "arithmetically mixed into RiskScore."
+            ),
+            "audit_only_summary": {
+                str(label): {
+                    "mean": safe_float(float(np.mean(data["rule"][y == label]))),
+                    "median": safe_float(float(np.median(data["rule"][y == label]))),
+                }
+                for label in (0, 1)
+            },
+        },
         "limitations": [
-            "The selected policy is estimated from cross-validated out-of-fold predictions; an independent time-split holdout is still recommended before production deployment.",
-            "Tranco membership is used as a legitimate-label proxy and does not guarantee that every listed website is safe at every point in time.",
-            "Feed distributions and active phishing campaigns change over time, so retraining and drift monitoring are required.",
+            "The independent holdout is group-disjoint but not time-disjoint because the current dataset does not contain reliable first-seen timestamps.",
+            "The current legitimate holdout is too small to make a statistically stable production claim at a 0.01% false-positive rate.",
+            "Tranco membership is a legitimate-label proxy and does not guarantee that every listed website is safe at every point in time.",
+            "DOM, form, email-provider metadata, and live reputation are separate evidence layers and are not represented in this URL-only model.",
+            "Feed distributions and phishing campaigns change over time; external source-split testing, time-split testing, retraining, and drift monitoring remain required.",
         ],
     }
 
     model_bundle = {
         "model": final_model,
+        "model_version": MODEL_VERSION,
+        "policy_version": POLICY_VERSION,
         "feature_names": FEATURE_NAMES,
-        "alpha": alpha,
-        "decision_threshold": threshold * 100.0,
-        "calibration": "sigmoid",
-        "cv_strategy": "StratifiedGroupKFold(hostname)",
+        "feature_schema_version": FEATURE_SCHEMA_VERSION,
+        "risk_formula": "RiskScore = 100 * sigmoid(w dot x + b)",
+        "policy": {
+            "warning_threshold": float(warning["threshold"]) * 100.0,
+            "blocking_threshold": float(blocking["threshold"]) * 100.0,
+            "warning_max_fpr": args.warn_max_fpr,
+            "blocking_max_fpr": args.block_max_fpr,
+        },
+        "probability_method": "intrinsic_logistic_sigmoid",
+        "cv_strategy": "StratifiedGroupKFold(hostname) with untouched grouped holdout",
         "metrics": {
-            key: best[key]
-            for key in ("precision", "recall", "f1", "roc_auc", "false_positive_rate")
+            "development_oof": {
+                "warning": {
+                    key: warning[key]
+                    for key in (
+                        "precision",
+                        "recall",
+                        "f1",
+                        "roc_auc",
+                        "pr_auc",
+                        "false_positive_rate",
+                        "false_positive_rate_upper_95",
+                    )
+                },
+                "blocking": {
+                    key: blocking[key]
+                    for key in (
+                        "precision",
+                        "recall",
+                        "f1",
+                        "roc_auc",
+                        "pr_auc",
+                        "false_positive_rate",
+                        "false_positive_rate_upper_95",
+                    )
+                },
+            },
+            "independent_holdout": holdout_evaluation,
         },
         "trained_at": now,
         "dataset_sha256": report["dataset"]["sha256"],
@@ -427,10 +620,12 @@ def train(args: argparse.Namespace) -> None:
     joblib.dump(model_bundle, model_temporary, compress=MODEL_COMPRESSION)
     model_temporary.replace(MODEL_PATH)
 
-    print("Selected policy:")
-    print(json.dumps(best, ensure_ascii=False, indent=2))
-    print("Calibration metrics:")
-    print(json.dumps(calibration_metrics, ensure_ascii=False, indent=2))
+    print("Selected warning policy:")
+    print(json.dumps(warning, ensure_ascii=False, indent=2))
+    print("Selected blocking policy:")
+    print(json.dumps(blocking, ensure_ascii=False, indent=2))
+    print("Independent holdout:")
+    print(json.dumps(holdout_evaluation, ensure_ascii=False, indent=2))
     print(f"Saved model to {MODEL_PATH}")
     print(f"Saved evaluation report to {REPORT_PATH}")
 

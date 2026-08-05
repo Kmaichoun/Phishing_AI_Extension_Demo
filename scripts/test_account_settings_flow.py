@@ -138,7 +138,7 @@ def main() -> None:
 
         with open_session() as database:
             stored_hash = database.execute(
-                text("SELECT PasswordHash FROM auth.Users WHERE NormalizedUsername = LOWER(:username)"),
+                text("SELECT PasswordHash FROM Users WHERE NormalizedUsername = LOWER(:username)"),
                 {"username": updated_username},
             ).scalar_one()
             assert str(stored_hash).startswith("$argon2")
@@ -179,17 +179,17 @@ def main() -> None:
             user_id = database.execute(
                 text(
                     """
-                    SELECT UserId FROM auth.Users
+                    SELECT UserId FROM Users
                     WHERE NormalizedUsername IN (LOWER(:original_username), LOWER(:updated_username))
                     """
                 ),
                 {"original_username": original_username, "updated_username": updated_username},
             ).scalar_one_or_none()
             if user_id is not None:
-                database.execute(text("DELETE FROM auth.SearchHistory WHERE UserId = :user_id"), {"user_id": user_id})
-                database.execute(text("DELETE FROM auth.Sessions WHERE UserId = :user_id"), {"user_id": user_id})
-                database.execute(text("DELETE FROM auth.UserDevices WHERE UserId = :user_id"), {"user_id": user_id})
-                database.execute(text("DELETE FROM auth.Users WHERE UserId = :user_id"), {"user_id": user_id})
+                database.execute(text("DELETE FROM SearchHistory WHERE UserId = :user_id"), {"user_id": user_id})
+                database.execute(text("DELETE FROM Sessions WHERE UserId = :user_id"), {"user_id": user_id})
+                database.execute(text("DELETE FROM UserDevices WHERE UserId = :user_id"), {"user_id": user_id})
+                database.execute(text("DELETE FROM Users WHERE UserId = :user_id"), {"user_id": user_id})
                 database.commit()
 
 

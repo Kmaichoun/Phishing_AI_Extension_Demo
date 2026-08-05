@@ -206,13 +206,13 @@ background.js redirect ไป warning.html
 
 ## สิ่งที่ควรพูดตอนนำเสนอ
 
-> ระบบนี้ยังไม่ใช้ Machine Learning แต่ใช้ Rule-Based AI-Lite เพื่อแสดงให้เห็นว่า phishing สามารถคัดกรองเบื้องต้นได้จากหลายสัญญาณร่วมกัน เช่น URL ผิดปกติ, โดเมนเลียนแบบแบรนด์, คำว่า OTP/password, การไม่ใช้ HTTPS และฟอร์มส่งข้อมูลข้ามโดเมน จุดเด่นคือทุกคะแนนอธิบายได้ จึงเหมาะกับการนำไปต่อยอดเป็น ML model หรือเชื่อม API จริงในอนาคต
+> ข้อความส่วนนี้เป็นสถานะของเดโมรุ่นแรก ปัจจุบันระบบใช้ L1 Logistic URL Risk Model ที่ฝึกจากข้อมูลจริงร่วมกับ local rule evidence โดยแยกบทบาทคะแนน การตัดสิน และคำอธิบายออกจากกัน
 
 ## สิ่งที่ควรต่อยอดเป็นโปรเจคจริง
 
-1. เพิ่ม ML model จริง เช่น Random Forest, XGBoost หรือ Neural Network จาก dataset phishing URL
-2. เชื่อม Google Safe Browsing API หรือ VirusTotal API ผ่าน backend
-3. เพิ่ม backend ด้วย FastAPI/Node.js สำหรับบันทึกประวัติและวิเคราะห์ขั้นสูง
+1. เพิ่ม time-split/source-held-out evaluation และ drift monitoring
+2. เชื่อม Google Safe Browsing API หรือ VirusTotal API ผ่าน backend เป็น evidence layer
+3. เพิ่ม benign dataset สำหรับประเมิน FPR ต่ำอย่างมีนัยสำคัญ
 4. ตรวจ screenshot/DOM similarity ของหน้า login กับแบรนด์จริง
 5. เพิ่มระบบ whitelist/blacklist รายองค์กร
 6. เพิ่ม dashboard สถิติ URL ที่ถูกบล็อก
@@ -221,7 +221,7 @@ background.js redirect ไป warning.html
 
 ## ข้อจำกัดของเดโม
 
-- เป็น heuristic scoring ไม่ใช่ AI ที่เรียนรู้จากข้อมูลจริง
+- URL Risk Model เรียนจากข้อมูลจริง แต่ local page/context layer ยังเป็น heuristic
 - อาจมี false positive / false negative
 - ไม่ตรวจอายุโดเมนจริง เพราะยังไม่ได้เชื่อม WHOIS/RDAP API
 - ไม่ตรวจฐานข้อมูลภัยคุกคามจริง เพราะยังไม่เชื่อม Safe Browsing/VirusTotal

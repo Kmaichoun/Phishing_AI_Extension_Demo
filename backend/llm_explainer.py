@@ -21,6 +21,15 @@ LLM_CACHE: dict[str, dict[str, object]] = {}
 class ExplainRequest(BaseModel):
     url: str
     rule_score: int | None = Field(default=None, ge=0, le=100)
+    risk_probability: float | None = Field(default=None, ge=0, le=1)
+    risk_score: int | None = Field(default=None, ge=0, le=100)
+    decision: Literal["allow", "warn", "block"] | None = None
+    warning_threshold: float | None = Field(default=None, ge=0, le=100)
+    blocking_threshold: float | None = Field(default=None, ge=0, le=100)
+    model_version: str | None = Field(default=None, max_length=100)
+    policy_version: str | None = Field(default=None, max_length=100)
+    layer_results: dict[str, object] = Field(default_factory=dict)
+    # Legacy fields are accepted while older clients are being upgraded.
     ml_score: int | None = Field(default=None, ge=0, le=100)
     final_score: int | None = Field(default=None, ge=0, le=100)
     alpha: float | None = Field(default=None, ge=0, le=1)
@@ -102,20 +111,28 @@ def clean_text_list(values: list[str], limit: int = 6) -> list[str]:
 
 
 def fallback_explanation(payload: ExplainRequest, status: str = "fallback") -> dict[str, str]:
-    final_score = payload.final_score
-    ml_score = payload.ml_score
-    decision_threshold = payload.decision_threshold if payload.decision_threshold is not None else 61.0
-    if final_score is None and ml_score is not None:
-        final_score = ml_score
+    risk_score = payload.risk_score
+    if risk_score is None:
+        risk_score = payload.final_score if payload.final_score is not None else payload.ml_score
+    warning_threshold = (
+        payload.warning_threshold
+        if payload.warning_threshold is not None
+        else payload.decision_threshold
+        if payload.decision_threshold is not None
+        else 61.0
+    )
+    decision = payload.decision
+    if decision is None and risk_score is not None:
+        decision = "warn" if risk_score >= warning_threshold else "allow"
 
     if payload.language == "en":
         advice = "Do not enter passwords, OTPs, card data, seed phrases, or download unknown files until you verify the website from an official source."
-        confidence_note = f"LLM explanation is not active ({status}); this explanation uses the rule-based and ML scores only."
+        confidence_note = f"LLM explanation is not active ({status}); this fallback uses the supplied risk evidence only."
     else:
         advice = "อย่ากรอกรหัสผ่าน OTP ข้อมูลบัตร seed phrase หรือดาวน์โหลดไฟล์ จนกว่าจะตรวจสอบจากแหล่งทางการก่อน"
-        confidence_note = f"ยังไม่ได้ใช้ LLM จริง ({status}) คำอธิบายนี้สร้างจากคะแนน Rule-based และ ML เป็นหลัก"
+        confidence_note = f"ยังไม่ได้ใช้ LLM จริง ({status}) คำอธิบายสำรองนี้ใช้เฉพาะหลักฐานความเสี่ยงที่ระบบส่งมา"
 
-    if final_score is not None and final_score >= decision_threshold:
+    if decision in {"warn", "block"}:
         if payload.language == "en":
             return {
                 "risk_type": "Potential phishing or suspicious website",
@@ -185,23 +202,37 @@ def build_llm_input(payload: ExplainRequest) -> dict[str, object]:
         "risky_tld": features["risky_tld"],
         "suspicious_word_count": features["suspicious_word_count"],
     }
-    alpha = payload.alpha if payload.alpha is not None else 0.6
-    threshold = payload.decision_threshold if payload.decision_threshold is not None else 61.0
+    risk_score = payload.risk_score
+    if risk_score is None:
+        risk_score = payload.final_score if payload.final_score is not None else payload.ml_score
+    warning_threshold = (
+        payload.warning_threshold
+        if payload.warning_threshold is not None
+        else payload.decision_threshold
+        if payload.decision_threshold is not None
+        else 61.0
+    )
+    blocking_threshold = (
+        payload.blocking_threshold
+        if payload.blocking_threshold is not None
+        else max(81.0, warning_threshold)
+    )
     return {
         "sanitized_url": safe["url"],
         "hostname": safe["hostname"],
         "path_sample": safe["path"],
         "scores": {
-            "rule_score": payload.rule_score,
-            "ml_score": payload.ml_score,
-            "final_score": payload.final_score,
-            "alpha": alpha,
-            "decision_threshold": threshold,
-            "formula": (
-                f"final_score = rule_score * {alpha:.2f} + "
-                f"ml_score * {1.0 - alpha:.2f}"
-            ),
+            "risk_probability": payload.risk_probability,
+            "risk_score": risk_score,
+            "decision": payload.decision,
+            "warning_threshold": warning_threshold,
+            "blocking_threshold": blocking_threshold,
+            "rule_evidence_score": payload.rule_score,
+            "formula": "RiskScore = 100 * sigmoid(w dot x + b)",
+            "model_version": payload.model_version,
+            "policy_version": payload.policy_version,
         },
+        "evidence_layers": payload.layer_results,
         "threat_types": clean_text_list(payload.threat_types, 5),
         "reasons": clean_text_list(payload.reasons, 6),
         "features": compact_features,

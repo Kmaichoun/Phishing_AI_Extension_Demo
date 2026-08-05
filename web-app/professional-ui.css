@@ -131,7 +131,9 @@ body::after {
 
 .topbar {
   top: 14px;
-  grid-template-columns: minmax(172px, .8fr) auto minmax(450px, 1.3fr);
+  grid-template-columns: minmax(190px, .7fr) auto minmax(570px, 1.3fr);
+  column-gap: 18px;
+  row-gap: 10px;
   min-height: 64px;
   padding: 9px 11px;
   border-color: color-mix(in srgb, var(--line) 86%, transparent);
@@ -174,9 +176,12 @@ body::after {
 
 .top-actions {
   gap: 7px;
+  min-width: 0;
+  flex-wrap: nowrap;
+  justify-self: end;
+  white-space: nowrap;
 }
 
-.command-trigger,
 .theme-toggle,
 .privacy-toggle,
 .status {
@@ -349,8 +354,7 @@ body::after {
   margin-top: 34px;
 }
 
-.hero-primary,
-.hero-secondary {
+.hero-primary {
   min-height: 52px;
   padding-inline: 20px;
 }
@@ -365,10 +369,6 @@ body::after {
 
 .hero-primary:hover .ui-icon {
   transform: translateX(4px);
-}
-
-.hero-secondary {
-  gap: 18px;
 }
 
 .hero-scan-form {
@@ -680,25 +680,6 @@ kbd {
   border-radius: 10px;
 }
 
-.command-palette {
-  border-radius: 16px;
-  box-shadow: 0 34px 100px rgb(0 0 0 / .4);
-}
-
-.command-icon,
-.command-search-icon {
-  width: 20px;
-  height: 20px;
-}
-
-.command-list button {
-  transition: background-color 150ms ease, transform 150ms ease;
-}
-
-.command-list button:hover {
-  transform: translateX(2px);
-}
-
 .auth-header,
 .auth-layout,
 .settings-main {
@@ -751,6 +732,7 @@ kbd {
   .top-actions {
     grid-column: 1 / -1;
     justify-content: flex-end;
+    justify-self: stretch;
   }
 
   .app-hero {
@@ -765,6 +747,7 @@ kbd {
   }
 
   .top-actions {
+    justify-self: stretch;
     justify-content: space-between;
   }
 
@@ -923,8 +906,7 @@ kbd {
   .primary,
   .secondary,
   .open-link,
-  .file-picker,
-  .command-list button {
+  .file-picker {
     transition: none !important;
   }
 }

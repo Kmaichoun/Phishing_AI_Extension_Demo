@@ -13,6 +13,11 @@ async function phishRadarPredictWithMl(url, ruleScore) {
     return {
       ok: false,
       error: error.message,
+      risk_probability: null,
+      risk_score: ruleScore,
+      decision: null,
+      warning_threshold: null,
+      blocking_threshold: null,
       ml_score: null,
       final_score: ruleScore,
       model_status: 'offline'
@@ -59,30 +64,40 @@ async function phishRadarSendFeedback(payload) {
   }
 }
 
-function phishRadarClassifyPolicy(score, decisionThreshold) {
-  const highCut = Number.isFinite(decisionThreshold) ? Math.max(5, Math.min(95, decisionThreshold)) : 61;
-  if (score >= Math.min(100, highCut + 20)) return { level: 'critical', text: 'อันตรายมาก' };
-  if (score >= highCut) return { level: 'high', text: 'เสี่ยงสูง' };
-  if (score >= Math.max(5, Math.round(highCut * 0.6))) return { level: 'medium', text: 'น่าสงสัย' };
-  return { level: 'low', text: 'ปลอดภัย' };
+function phishRadarClassifyPolicy(score, warningThreshold, blockingThreshold, decision) {
+  const warnCut = Number.isFinite(warningThreshold) ? Math.max(1, Math.min(99, warningThreshold)) : 61;
+  const blockCut = Number.isFinite(blockingThreshold) ? Math.max(warnCut, Math.min(100, blockingThreshold)) : Math.min(100, warnCut + 20);
+  if (decision === 'block' || score >= blockCut) return { level: 'critical', decision: 'block', text: 'อันตรายมาก' };
+  if (decision === 'warn' || score >= warnCut) return { level: 'high', decision: 'warn', text: 'เสี่ยงสูง' };
+  if (score >= Math.max(5, Math.round(warnCut * 0.6))) return { level: 'medium', decision: 'allow', text: 'น่าสงสัย' };
+  return { level: 'low', decision: 'allow', text: 'ปลอดภัย' };
 }
 
 function phishRadarCombineMlResult(ruleResult, ml) {
-  const finalScore = ml && Number.isFinite(ml.final_score) ? ml.final_score : ruleResult.score;
-  const decisionThreshold = ml && Number.isFinite(ml.decision_threshold) ? ml.decision_threshold : null;
-  const classification = phishRadarClassifyPolicy(finalScore, decisionThreshold);
+  const riskScore = ml && Number.isFinite(ml.risk_score) ? ml.risk_score : ruleResult.score;
+  const warningThreshold = ml && Number.isFinite(ml.warning_threshold) ? ml.warning_threshold : null;
+  const blockingThreshold = ml && Number.isFinite(ml.blocking_threshold) ? ml.blocking_threshold : null;
+  const classification = phishRadarClassifyPolicy(riskScore, warningThreshold, blockingThreshold, ml?.decision);
   return {
     ...ruleResult,
     ruleScore: ruleResult.score,
-    mlScore: ml ? ml.ml_score : null,
-    finalScore,
-    alpha: ml && Number.isFinite(ml.alpha) ? ml.alpha : null,
-    decisionThreshold,
-    score: finalScore,
+    riskProbability: Number.isFinite(ml?.risk_probability) ? ml.risk_probability : null,
+    riskScore,
+    decision: ml?.decision || classification.decision,
+    warningThreshold,
+    blockingThreshold,
+    modelVersion: ml?.model_version || null,
+    policyVersion: ml?.policy_version || null,
+    featureSchemaVersion: ml?.feature_schema_version || null,
+    layerResults: ml?.layer_results || {},
+    mlScore: ml?.model_status === 'ready' ? riskScore : null,
+    finalScore: riskScore,
+    decisionThreshold: warningThreshold,
+    score: riskScore,
     level: classification.level,
     levelText: classification.text,
     safe: classification.level === 'low',
-    summary: `${classification.text} (${finalScore}/100)`,
+    summary: `${classification.text} (${riskScore}/100)`,
     ml
   };
 }

@@ -15,13 +15,16 @@ if (-not (Test-Path -LiteralPath $BackendDir)) {
 if (-not (Test-Path -LiteralPath (Join-Path $BackendDir "app.py"))) {
   throw "Backend app.py not found in: $BackendDir"
 }
-if (-not (Test-Path -LiteralPath (Join-Path $WebDir "server.js"))) {
-  throw "Web server.js not found in: $WebDir"
+if (-not (Test-Path -LiteralPath (Join-Path $WebDir "package.json"))) {
+  throw "React package.json not found in: $WebDir"
+}
+if (-not (Test-Path -LiteralPath (Join-Path $WebDir "node_modules"))) {
+  throw "React dependencies not found. Run 'npm install' inside web-app first."
 }
 
 $PythonCommand = if (Test-Path -LiteralPath $VenvPython) { $VenvPython } else { "python" }
 $backendCommand = "`$env:PYTHONDONTWRITEBYTECODE='1'; `$env:AUTH_WEB_ORIGINS='http://app.phishradar.localhost:$WebPort,http://127.0.0.1:$WebPort,http://localhost:$WebPort'; & `"$PythonCommand`" -m uvicorn app:app --host 127.0.0.1 --port $BackendPort --reload"
-$webCommand = "`$env:PORT='$WebPort'; node .\server.js"
+$webCommand = "npm run dev -- --port $WebPort"
 
 Write-Host "Opening backend from:" -ForegroundColor Cyan
 Write-Host $BackendDir
@@ -34,7 +37,7 @@ Write-Host $WebDir
 Start-Process -FilePath "powershell" -WorkingDirectory $WebDir -ArgumentList @('-NoExit', '-ExecutionPolicy', 'Bypass', '-Command', $webCommand)
 
 Start-Sleep -Seconds 1
-Start-Process "http://app.phishradar.localhost:$WebPort/login.html"
+Start-Process "http://app.phishradar.localhost:$WebPort/#/login"
 
 Write-Host "Started backend at http://127.0.0.1:$BackendPort" -ForegroundColor Green
 Write-Host "Started web app at http://app.phishradar.localhost:$WebPort" -ForegroundColor Green

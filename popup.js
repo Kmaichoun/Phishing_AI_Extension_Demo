@@ -188,14 +188,14 @@ function renderCloudModes(privacyEnabled, llmEnabled) {
       ? 'Privacy Mode ปิดการส่งข้อมูลไป LLM ชั่วคราว'
       : llmEnabled
         ? 'ใช้ Qwen ผ่าน Ollama เมื่อหน้า Warning ขอคำอธิบาย'
-        : 'ปิดอยู่ ระบบใช้ Rule-base + ML โดยไม่เรียก Qwen';
+        : 'ปิดอยู่ ระบบใช้ URL Risk Model และหลักฐาน local โดยไม่เรียก Qwen';
   }
   if (footer) {
     footer.textContent = privacyEnabled
-      ? 'Privacy Mode: Rule-base + visual checks only'
+      ? 'Privacy Mode: local rule + visual evidence only'
       : llmEnabled
-        ? 'Rule-base + ML + Qwen explanation + Feedback'
-        : 'Rule-base + ML + Feedback • Qwen ปิด';
+        ? 'Layered evidence + URL Risk Model + Qwen explanation'
+        : 'Layered evidence + URL Risk Model • Qwen ปิด';
   }
 }
 
@@ -440,7 +440,7 @@ $('llmEnabled').addEventListener('change', async e => {
   }
   setToast(enabled
     ? 'เปิด Qwen แล้ว: หน้า Warning จะขอคำอธิบายผ่าน Ollama'
-    : 'ปิด Qwen แล้ว: ระบบจะใช้ Rule-base + ML เท่านั้น');
+    : 'ปิด Qwen แล้ว: ระบบยังใช้ URL Risk Model และหลักฐาน local');
 });
 
 $('privacyMode').addEventListener('change', async e => {

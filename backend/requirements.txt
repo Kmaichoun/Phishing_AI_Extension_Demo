@@ -5,7 +5,7 @@ joblib==1.4.2
 numpy>=1.23,<3
 openai>=1.93.0
 SQLAlchemy==2.0.41
-pyodbc==5.2.0
+PyMySQL==1.1.1
 pwdlib[argon2]==0.2.1
 email-validator==2.2.0
 python-dotenv==1.1.0

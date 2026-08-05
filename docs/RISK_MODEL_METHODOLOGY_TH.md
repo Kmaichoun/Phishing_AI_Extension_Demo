@@ -1,88 +1,131 @@
-# วิธีสร้างและประเมิน Risk Model
+# วิธีวิจัยและการคำนวณความเสี่ยง Phish Radar AI
 
-เอกสารนี้อธิบาย pipeline ที่ใช้สร้าง `backend/model.pkl` และเหตุผลของการตัดสินใจแต่ละขั้น เพื่อให้ทำซ้ำ ตรวจสอบ และพัฒนาต่อได้
+เอกสารนี้อธิบายระบบ Risk Model v2 ที่ใช้งานจริงในโปรเจกต์ สูตรเดิมแบบกำหนดน้ำหนัก
+`RuleScore × alpha + MLScore × (1-alpha)` ถูกยกเลิก เพราะไม่มีหลักฐานเพียงพอว่า
+น้ำหนักคงที่หนึ่งค่าจะเหมาะกับข้อมูลและภัยคุกคามที่เปลี่ยนตามเวลา
 
-## 1. ชุดข้อมูล
+## 1. งานวิจัยที่ใช้เป็นหลักในการออกแบบ
 
-ค่าเริ่มต้นของ `backend/build_dataset.py` สร้างข้อมูลสมดุล 10,000 URL:
+1. **Beyond Blacklists: Learning to Detect Malicious Web Sites from Suspicious URLs**
+   (Ma et al., ACM KDD 2009) รองรับแนวคิดการเรียนฟังก์ชันความเสี่ยงจาก lexical และ
+   host-based features ของ URL แทนการตั้งน้ำหนักด้วยความเห็นของผู้พัฒนา
+   DOI: <https://doi.org/10.1145/1557019.1557153>
+2. **CANTINA+: A Feature-rich Machine Learning Framework for Detecting Phishing
+   Web Sites** (Xiang et al., ACM TISSEC 2011) รองรับการใช้หลักฐานหลายชนิดและ
+   สถาปัตยกรรมตรวจจับหลายชั้น ไม่พึ่งสัญญาณเดียว
+   DOI: <https://doi.org/10.1145/2019599.2019606>
+3. **URLTran: Improving Phishing URL Detection Using Transformers**
+   (Microsoft Research, MILCOM 2021) ใช้เป็นหลักการประเมิน threshold ภายใต้
+   False Positive Rate ที่เหมาะกับงานจริง ไม่ได้คัดลอกสถาปัตยกรรม Transformer
+   มาใช้ในโปรเจกต์นี้
+   <https://www.microsoft.com/en-us/research/?p=805918>
+4. **Discovering Phishing Dropboxes Using Email Metadata**
+   (University of Cambridge) สนับสนุนแนวคิดว่าบริบทและ metadata จากหลายแหล่ง
+   ช่วยตรวจจับโครงสร้าง phishing ที่มองไม่เห็นจาก URL เพียงอย่างเดียว
+   <https://www.cl.cam.ac.uk/~rnc1/dropbox.pdf>
 
-- phishing 5,000 รายการ จาก [PhishTank verified online feed](https://phishtank.org/developer_info.php), [OpenPhish Community Feed](https://www.openphish.com/phishing_feeds.html) และ seed ขนาดเล็กของโปรเจกต์
-- legitimate 5,000 รายการ จาก [Tranco top-sites list](https://tranco-list.eu/) และ seed ขนาดเล็กของโปรเจกต์
+งาน Cambridge ไม่ได้เสนอสูตร RiskScore ของโปรเจกต์และไม่ได้ใช้เป็นหลักฐานว่าโมเดล
+URL ของเรามีประสิทธิภาพเท่ากับงานนั้น แต่ใช้สนับสนุนการออกแบบ evidence layer
+เพิ่มเติมเท่านั้น
 
-Tranco ถูกออกแบบให้เป็น top-sites ranking ที่ทำซ้ำได้และต้านทานการปั่นอันดับมากกว่าการใช้รายการยอดนิยมจากผู้ให้บริการรายเดียว ดูงานของ Le Pochat และคณะ: [Tranco: A Research-Oriented Top Sites Ranking Hardened Against Manipulation](https://doi.org/10.14722/ndss.2019.23386)
+## 2. สูตร RiskScore
 
-ขั้นตอนเตรียมข้อมูล:
+โมเดลหลักเป็น L1-regularized Logistic Regression:
 
-1. รับเฉพาะ URL แบบ `http` หรือ `https` ที่มี hostname และตัด fragment ออก
-2. ลบ URL ซ้ำแบบ case-insensitive
-3. ถ้า hostname เดียวกันพบใน phishing และ Tranco จะตัดฝั่ง legitimate ออก เพื่อลด label conflict
-4. เก็บ `source`, `label`, `hostname group` และ RuleScore ของ analyzer จริง
-5. สุ่มด้วย seed 42 และบันทึก SHA-256 ของ snapshot ทุกต้นทางใน manifest
+```text
+p(phishing | x) = sigmoid(w · x + b)
+RiskScore = round(100 × p(phishing | x))
+```
 
-RuleScore สำหรับการฝึกมาจาก `web-app/analyzer.js` แบบ URL-only โดยตรง และบันทึก hash ของ analyzer ทั้ง Web App/Extension ไว้ใน manifest การตรวจชุดข้อมูลรอบนี้พบว่าทั้งสอง runtime ให้ URL-only score ตรงกัน 10,000/10,000 รายการ แม้ไฟล์จะมี logic สำหรับบริบทหน้าเว็บที่ต่างกันบางส่วน
+เวกเตอร์ `x` สร้างจาก URL features ใน `backend/feature_extractor.py` เช่น ความยาว
+URL/hostname/path, จำนวน subdomain, entropy, IP host, HTTPS, Punycode, encoded URL,
+nested URL, risky TLD, redirect/credential parameters, file type และสัดส่วนตัวเลข
+ใน hostname ค่า `w` และ `b` เรียนจากข้อมูลจริง ไม่มี alpha ที่ผู้พัฒนากำหนดเอง
 
-ข้อจำกัดสำคัญ: การอยู่ใน Tranco เป็นเพียง proxy ของ legitimate ไม่ใช่การรับรองว่าเว็บไซต์ปลอดภัยตลอดเวลา และ feed phishing มีการเปลี่ยนแปลงตามเวลา จึงควรเก็บวันที่ snapshot และ retrain เป็นระยะ
+L1 regularization ทำให้ค่าสัมประสิทธิ์ที่ไม่ช่วยจำแนกถูกผลักเข้าใกล้ศูนย์ จึงตรวจสอบ
+feature ที่มีผลต่อโมเดลได้จากส่วน `coefficients` ในรายงานการประเมิน
 
-ตัวสร้างจะไม่เข้าเยี่ยมชม URL ใน feed แต่จะ parse เป็นข้อความเท่านั้น
+## 3. หลักฐานหลายชั้น
 
-## 2. Cross-validation และการป้องกันข้อมูลรั่วไหล
+ระบบวางลำดับตามแนวคิด feature-rich/layered detection:
 
-ใช้ `StratifiedGroupKFold` 5 folds โดย stratify ตาม label และ group ตาม hostname URL จาก hostname เดียวกันจึงไม่ถูกแยกระหว่าง train/test fold วิธีนี้เข้มกว่าการสุ่มราย URL เพราะ path หลายรายการจากโดเมนเดียวกันมักมี feature คล้ายกันมาก ดูคำอธิบาย API ที่ [scikit-learn: StratifiedGroupKFold](https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.StratifiedGroupKFold.html)
+1. Normalize URL และตรวจ trusted app/allowlist
+2. URL Risk Model คำนวณ probability และ RiskScore
+3. Rule evidence ใน browser ตรวจ URL, link, form, credential และ page context
+4. External reputation/DNS/WHOIS เป็นจุดต่อขยาย ปัจจุบันรายงาน `not_configured`
+5. Policy แปลง RiskScore เป็น `allow`, `warn` หรือ `block`
+6. Qwen/Ollama อธิบายผลตามหลักฐาน แต่ไม่มีสิทธิ์เปลี่ยนคะแนนหรือ decision
 
-ทุกแถวจะได้รับ out-of-fold prediction เพียงครั้งเดียว แล้วจึงนำคะแนนเหล่านี้ไปประเมิน policy การผสมคะแนน
+RuleScore ยังคงแสดงและบันทึกเพื่อ audit และใช้เป็น local fallback ใน Privacy Mode
+หรือเมื่อ backend ไม่พร้อม แต่ไม่ถูกบวกหรือถ่วงน้ำหนักเข้า RiskScore
 
-## 3. Probability calibration
+## 4. ข้อมูลและการป้องกัน data leakage
 
-Random Forest ให้ `predict_proba` ได้ แต่ค่าดิบไม่จำเป็นต้องตรงกับความถี่ของเหตุการณ์จริง ระบบจึงครอบโมเดลด้วย `CalibratedClassifierCV(method="sigmoid")` และใช้ inner Stratified Group folds ภายใน training fold เท่านั้น
+- ชุดฝึกปัจจุบัน 10,000 URL: legitimate 5,000 และ phishing 5,000
+- แหล่งข้อมูลและ SHA-256 บันทึกใน `backend/data/training_urls.manifest.json`
+- แบ่งกลุ่มด้วย hostname เพื่อไม่ให้ URL จาก host เดียวกันกระจายข้าม train/test
+- กันหนึ่ง grouped holdout ไว้ก่อนเลือก hyperparameter และ threshold
+- ส่วน development ใช้ StratifiedGroupKFold เพื่อสร้าง out-of-fold probability
+- เลือกค่า `C` จาก log loss, Brier score และ ROC-AUC บน development เท่านั้น
+- ฝึก deployment model บนข้อมูลทั้งหมดด้วยค่า `C` ที่เลือกโดยไม่ดู holdout
 
-รายงานเปรียบเทียบค่าก่อนและหลัง calibration ด้วย Brier score และ log loss ซึ่งยิ่งต่ำยิ่งดี แนวคิดและ reliability diagram อ้างอิงได้จาก [scikit-learn probability calibration](https://scikit-learn.org/stable/modules/calibration.html) และงานคลาสสิกของ Niculescu-Mizil และ Caruana: [Predicting Good Probabilities with Supervised Learning](https://doi.org/10.1145/1102351.1102430)
+ข้อจำกัดสำคัญคือข้อมูลปัจจุบันไม่มี first-seen timestamp ที่เชื่อถือได้ จึงยังทำ
+time-split evaluation ไม่ได้ และ Tranco เป็นเพียง legitimate proxy ไม่ใช่คำรับรองว่า
+ทุกโดเมนปลอดภัยตลอดเวลา
 
-## 4. การค้นหา alpha และ threshold
+## 5. การเลือก warn/block threshold
 
-สูตรที่ใช้คือ:
+ระบบมี threshold สองระดับ:
 
-    FinalScore = alpha * RuleScore + (1 - alpha) * MLScore
+- `warning_threshold`: ตั้งเป้า FPR ไม่เกิน 1%
+- `blocking_threshold`: ตั้งเป้า FPR ไม่เกิน 0.1%
 
-โดยคะแนนทั้งสองถูกแปลงเป็นช่วง 0–1 ก่อนคำนวณ:
+บน development out-of-fold predictions ระบบคำนวณ Precision, Recall, F1, ROC-AUC,
+PR-AUC และ FPR ทุก threshold จากนั้นบังคับให้ **ขอบบน one-sided Wilson 95% ของ FPR**
+ไม่เกินเพดาน ก่อนเลือกค่าที่ให้ Recall สูงที่สุด ตามด้วย F1 และ Precision วิธีนี้
+เข้มกว่าการดู observed FPR เพียงจุดเดียว
 
-- alpha: 0.00, 0.05, ..., 1.00 รวม 21 ค่า
-- threshold: 0.05, 0.06, ..., 0.95 รวม 91 ค่า
-- รวม 1,911 policy candidates
+ผลจากการฝึกล่าสุด:
 
-สำหรับแต่ละ candidate จะคำนวณ Precision, Recall, F1, ROC-AUC และ False Positive Rate จาก out-of-fold scores ชุดเดียวกัน
+| ชุดประเมิน | Policy | Threshold | Precision | Recall | F1 | FPR |
+|---|---:|---:|---:|---:|---:|---:|
+| Development OOF | warn | 0.37 | 0.9920 | 0.9650 | 0.9783 | 0.0072 |
+| Development OOF | block | 1.00 | 1.0000 | 0.1828 | 0.3091 | 0.0000 |
+| Independent grouped holdout | warn | 0.37 | 0.9913 | 0.9712 | 0.9811 | 0.0112 |
+| Independent grouped holdout | block | 1.00 | 1.0000 | 0.0506 | 0.0963 | 0.0000 |
 
-กติกาเลือกค่าเริ่มต้นตั้งเพดาน FPR ไม่เกิน 5% แล้วเรียงความสำคัญดังนี้:
+Independent holdout มี ROC-AUC 0.9933, PR-AUC 0.9958, Brier score 0.0172 และ
+log loss 0.0736 ค่า warn FPR บน holdout เท่ากับ 1.12% ซึ่งสูงกว่าเป้าหมาย 1%
+เล็กน้อย จึงต้องรายงานตามจริงและยังไม่ควรอ้างว่าเป็น production guarantee
 
-1. Recall สูงสุด เพื่อพลาด phishing ให้น้อย
-2. F1 สูงสุด
-3. Precision สูงสุด
-4. ROC-AUC สูงสุด
-5. FPR ต่ำกว่าเมื่อค่าอื่นเท่ากัน
+blocking threshold ที่ 1.00 สะท้อนว่าชุด benign ปัจจุบันยังเล็กเกินกว่าจะยืนยัน
+FPR 0.1% พร้อม Recall สูงได้อย่างมั่นคง ในระยะนี้ระบบจึงเตือน URL ส่วนใหญ่ที่เกิน
+warn threshold และ block เฉพาะความน่าจะเป็นที่อิ่มตัวถึง 1.0 เท่านั้น
 
-ถ้าไม่มี candidate ใดผ่านเพดาน FPR ระบบจะเลือก FPR ต่ำสุดก่อน เมตริก PR เหมาะกับข้อมูลตรวจจับที่อาจไม่สมดุลมากกว่า accuracy อย่างเดียว ดู [The Precision-Recall Plot Is More Informative than the ROC Plot](https://doi.org/10.1371/journal.pone.0118432)
+## 6. API และการตรวจสอบย้อนหลัง
 
-## 5. ไฟล์ผลลัพธ์
+`POST /predict` คืนค่า:
 
-- `backend/data/training_urls.manifest.json` — แหล่งข้อมูล hash และสถิติ RuleScore
-- `backend/data/risk_model_evaluation.json` — configuration, calibration metrics, ผลทุก alpha ที่ดีที่สุด, top candidates และผลแยก fold
-- `backend/model.pkl` — calibrated model พร้อม alpha, decision threshold, metrics, dataset hash และวันฝึก
+- `risk_probability`, `risk_score`, `decision`
+- `warning_threshold`, `blocking_threshold`
+- `model_version`, `policy_version`, `feature_schema_version`
+- `layer_results` และ `model_status`
 
-backend อ่าน policy จาก model bundle โดยตรงและคืน `alpha`, `decision_threshold`, `risk_margin` ใน `/predict` ทั้ง Web App และ Extension จึงแสดงสูตรที่ใช้จริงได้
+ฟิลด์ `ml_score`, `final_score` และ `decision_threshold` ยังถูกส่งเป็น alias ชั่วคราว
+สำหรับ client รุ่นเดิม ส่วน `alpha` เป็น `null` และไม่ถูกใช้คำนวณ
 
-เมื่อ Extension ติดต่อ ML backend ได้ จะใช้ `decision_threshold` ของ calibrated model สำหรับการเตือน ส่วน threshold ที่ผู้ใช้ตั้งใน Extension จะใช้กับการตรวจแบบ local/offline ที่ยังไม่ได้รับ model policy
+Migration `004_create_search_history.sql` สร้างฟิลด์ดังกล่าวใน
+`SearchHistory` บน MySQL/MariaDB ทำให้ผลย้อนหลังระบุได้ว่าเกิดจากโมเดลและ
+policy เวอร์ชันใด
 
-## 6. คำสั่งใช้งาน
+## 7. สิ่งที่ต้องทำก่อนอ้างผลระดับใช้งานจริง
 
-สร้าง snapshot ใหม่จากอินเทอร์เน็ต:
+1. เพิ่ม benign sample จำนวนมากพอสำหรับวัด FPR ต่ำกว่า 0.1% อย่างมีนัยสำคัญ
+2. เก็บ first-seen timestamp และทำ time-split evaluation
+3. ทำ source-held-out test เช่นกัน PhishTank/OpenPhish ออกจาก training ทีละแหล่ง
+4. เพิ่ม reputation/DNS/WHOIS และ page-context dataset โดยมี provenance
+5. ติดตาม calibration drift, FPR และ campaign drift หลัง deploy
+6. ทบทวน threshold เป็นราย model version โดยห้ามปรับจาก production test set
 
-    .\.venv\Scripts\python.exe .\backend\build_dataset.py --refresh
-
-สร้าง dataset ซ้ำจาก cache เดิมโดยไม่ใช้อินเทอร์เน็ต:
-
-    .\.venv\Scripts\python.exe .\backend\build_dataset.py --offline
-
-ฝึกโมเดล:
-
-    .\.venv\Scripts\python.exe .\backend\train_model.py
-
-ก่อนใช้ production ควรเพิ่ม time-split holdout ที่ไม่ถูกใช้เลือก policy, ทดสอบบน traffic จริงที่ได้รับอนุญาต, ตรวจ concept drift และกำหนด FPR ตามต้นทุนความผิดพลาดของระบบจริง ไม่ควรตีความผล cross-validation ชุดเดียวว่าเป็นการรับรองความปลอดภัย
+ผลฉบับ machine-readable อยู่ที่ `backend/data/risk_model_evaluation.json`
+และ model bundle อยู่ที่ `backend/model.pkl`

@@ -6,7 +6,7 @@
 - `cache/` — snapshot ต้นทางจาก PhishTank, OpenPhish และ Tranco (ไม่บันทึกเข้า Git)
 - `training_urls.csv` — dataset ที่ผ่าน normalize, deduplicate และมี RuleScore แล้ว (ไม่บันทึกเข้า Git)
 - `training_urls.manifest.json` — วันที่สร้าง สถิติ และ SHA-256 ของ snapshot ต้นทาง
-- `risk_model_evaluation.json` — ผล cross-validation, calibration และการค้นหา alpha/threshold
+- `risk_model_evaluation.json` — ผล grouped cross-validation/holdout, probability quality, coefficients และการเลือก warn/block threshold ภายใต้ FPR
 - `feedback.csv` — feedback ระหว่างใช้งานจริง (ไม่บันทึกเข้า Git)
 
 สร้างข้อมูลใหม่ด้วย:

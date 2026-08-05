@@ -18,8 +18,8 @@
     ├── icons/                    # ไอคอน extension
     ├── backend/                  # FastAPI, Login/Session, ML model และ LLM integration
     │   └── data/                 # seed dataset และ feedback ที่เกิดระหว่างใช้งาน
-    ├── database/                 # SQL Server schema และ migration scripts
-    ├── web-app/                  # dashboard แบบ standalone
+    ├── database/                 # MySQL/MariaDB schema และ migration scripts
+    ├── web-app/                  # React Web App + Vite
     ├── docs/                     # คู่มือ บันทึกการนำเสนอ และประวัติการพัฒนา
     └── scripts/                  # เครื่องมือตรวจความสมบูรณ์ของโปรเจกต์
 
@@ -37,7 +37,7 @@ Extension ทำงานแบบ rule-based ได้โดยไม่ต้�
 
 Domain สำหรับพัฒนาในเครื่องคือ:
 
-    http://app.phishradar.localhost:5505/login.html
+    http://app.phishradar.localhost:5505/#/login
 
 Chrome และเบราว์เซอร์สมัยใหม่ควรเปิดชื่อนี้ได้โดยตรงหลังเริ่มระบบ หากเครื่องมือบน Windows หา Domain ไม่พบ ให้ตั้งค่า hosts ครั้งเดียวด้วย PowerShell แบบ **Run as administrator**:
 
@@ -59,11 +59,14 @@ Chrome และเบราว์เซอร์สมัยใหม่คว�
 
 ให้เปิด Git Bash ค้างไว้ระหว่างใช้งาน กด `Ctrl+C` เพื่อหยุดระบบ
 
-ก่อนเปิดระบบสมาชิก ให้รัน migration ตามลำดับใน SSMS ที่เชื่อมกับ `.\SQLEXPRESS`:
+ก่อนเปิดระบบสมาชิก ให้ใส่ข้อมูล MySQL/MariaDB ใน `.env` แล้วรัน:
 
-    database/sqlserver/migrations/001_create_auth_schema.sql
-    database/sqlserver/migrations/002_create_auth_sessions.sql
-    database/sqlserver/migrations/003_create_search_history.sql
+    cp .env.example .env
+    ./migrate-db.sh
+
+หากใช้ phpMyAdmin ให้เลือกฐานข้อมูล `ip_std6730202581` แล้วรันไฟล์ใน
+`database/mysql/migrations/` ตามลำดับ รายละเอียดอยู่ใน
+[คู่มือฐานข้อมูล MySQL/MariaDB](database/mysql/README_TH.md)
 
 รายละเอียดการตั้งค่า LLM อยู่ที่ [docs/LLM_SETUP_TH.md](docs/LLM_SETUP_TH.md)
 
@@ -77,9 +80,16 @@ LLM เริ่มต้นคือ `qwen3:4b` ผ่าน Ollama ส่ว�
     ./.venv/Scripts/python.exe ./backend/train_model.py
     ./.venv/Scripts/python.exe ./scripts/test_risk_pipeline.py
 
-ตัวฝึกใช้ Stratified Group Cross-validation แบ่งตาม hostname, calibrate `predict_proba` ของ Random Forest แบบ sigmoid และทดลอง `alpha` ตั้งแต่ 0.00–1.00 เพื่อเลือก threshold ภายใต้เพดาน False Positive Rate 5% ผลเต็มอยู่ที่ `backend/data/risk_model_evaluation.json` และคำอธิบายวิธีทดลองอยู่ที่ [docs/RISK_MODEL_METHODOLOGY_TH.md](docs/RISK_MODEL_METHODOLOGY_TH.md)
+ตัวฝึกใช้ L1-regularized Logistic Regression และคำนวณ `RiskScore = 100 × sigmoid(w·x+b)` โดยแบ่งข้อมูลแบบ Stratified Group ตาม hostname กัน grouped holdout ออกจากการเลือกโมเดล และเลือก warning/blocking threshold ภายใต้เพดาน FPR พร้อม one-sided Wilson upper bound 95% ระบบเลิกใช้สูตร alpha แบบกำหนดน้ำหนักเองแล้ว ผลเต็มอยู่ที่ `backend/data/risk_model_evaluation.json` และคำอธิบายวิธีทดลองอยู่ที่ [docs/RISK_MODEL_METHODOLOGY_TH.md](docs/RISK_MODEL_METHODOLOGY_TH.md)
 
 ## เริ่ม Web App
+
+Web App ใช้ React สำหรับเว็บ, hash routing และ Vite (ไม่ใช่ React Native/Expo)
+ครั้งแรกให้ติดตั้ง dependency:
+
+    cd web-app
+    npm install
+    cd ..
 
 เปิดเฉพาะ web app:
 
@@ -89,11 +99,20 @@ LLM เริ่มต้นคือ `qwen3:4b` ผ่าน Ollama ส่ว�
 
     ./start-demo.sh
 
-หน้า Login เปิดที่ http://app.phishradar.localhost:5505/login.html และ backend ใช้ http://api.phishradar.localhost:8765/ โดย URL แบบ `127.0.0.1` ยังใช้เป็น fallback ได้
+หน้า Login เปิดที่ http://app.phishradar.localhost:5505/#/login และ backend ใช้ http://api.phishradar.localhost:8765/ โดย URL แบบ `127.0.0.1` ยังใช้เป็น fallback ได้
 
-บัญชีใหม่มี Role เป็น `user` เสมอ ทั้ง User และ Admin เข้าสู่ระบบจากหน้าเดียวกัน หากต้องการตั้งบัญชีแรกเป็น Admin ให้สมัครผ่านหน้า Register ก่อน แล้วใช้คำสั่งเลื่อนสิทธิ์ใน [คู่มือฐานข้อมูล](database/sqlserver/README_TH.md) ห้ามเก็บหรือ INSERT รหัสผ่านจริงลง SQL Server
+สร้างไฟล์สำหรับนำขึ้น Hosting ด้วย:
 
-ระบบเก็บรหัสผ่านด้วย Argon2, เก็บ session/device token เฉพาะค่า hash ใน SQL Server และส่ง session ให้เบราว์เซอร์ด้วยคุกกี้ HttpOnly โดยไม่เก็บ password หรือ session secret ใน localStorage
+    cd web-app
+    npm run build
+
+ผลลัพธ์อยู่ที่ `web-app/dist/` ห้ามแก้ไฟล์ใน `dist/` ด้วยมือ รายละเอียดโครงสร้าง
+Component, Router, Context และสิ่งที่ต้องรู้เมื่อพัฒนาต่ออยู่ใน
+[คู่มือ React Web App](docs/REACT_WEB_APP_TH.md)
+
+บัญชีใหม่มี Role เป็น `user` เสมอ ทั้ง User และ Admin เข้าสู่ระบบจากหน้าเดียวกัน หากต้องการตั้งบัญชีแรกเป็น Admin ให้สมัครผ่านหน้า Register ก่อน แล้วใช้คำสั่งเลื่อนสิทธิ์ใน [คู่มือฐานข้อมูล](database/mysql/README_TH.md) ห้ามเก็บหรือ INSERT รหัสผ่านจริงลง MySQL/MariaDB
+
+ระบบเก็บรหัสผ่านด้วย Argon2, เก็บ session/device token เฉพาะค่า hash ใน MySQL/MariaDB และส่ง session ให้เบราว์เซอร์ด้วยคุกกี้ HttpOnly โดยไม่เก็บ password หรือ session secret ใน localStorage
 
 ทดสอบวงจรระบบบัญชีด้วยบัญชีชั่วคราว (สคริปต์ล้างข้อมูลทดสอบให้อัตโนมัติ):
 
@@ -116,6 +135,11 @@ LLM เริ่มต้นคือ `qwen3:4b` ผ่าน Ollama ส่ว�
 
     powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./scripts/clean_project.ps1 -IncludeVenv
 
+หากต้องการคืนพื้นที่จาก React dependencies ด้วย ให้เพิ่ม `-IncludeNodeModules`
+จากนั้นต้องรัน `npm install` ใน `web-app/` ก่อนเปิดเว็บอีกครั้ง:
+
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./scripts/clean_project.ps1 -IncludeNodeModules
+
 `.venv` และไฟล์ชั่วคราวถูกกันออกจาก Git อยู่แล้ว จึงไม่เพิ่มขนาด Repository บน GitHub ส่วน `backend/model.pkl` ถูกบีบอัดด้วย LZMA แต่ยังโหลดด้วย `joblib.load()` ได้ตามเดิม
 
 ## แนวทางรักษาโครงสร้าง
@@ -126,12 +150,15 @@ LLM เริ่มต้นคือ `qwen3:4b` ผ่าน Ollama ส่ว�
 - เก็บ feed และ training_urls.csv ไว้เฉพาะเครื่อง; บันทึก manifest และผลประเมินเพื่อทำซ้ำการทดลอง
 - อย่าสร้างโฟลเดอร์ backup-* ในโปรเจกต์ ให้ใช้ Git commit หรือ branch แทน
 - analyzer.js ที่ root และ web-app/analyzer.js เป็นคนละ runtime เมื่อแก้ logic ควรตรวจทั้งสองชุด
+- Web App เป็น React/Vite ส่วน Chrome Extension ยังเป็น Manifest V3 + JavaScript แยกกัน
+- แก้ React source ใน web-app/src/ และให้ `npm run build` สร้าง dist/
 - รัน validation ทุกครั้งก่อน package หรือส่งต่อโปรเจกต์
 
 ## เอกสารเพิ่มเติม
 
 - [ดัชนีเอกสาร](docs/README.md)
-- [ฐานข้อมูลสมาชิก SQL Server](database/sqlserver/README_TH.md)
+- [ฐานข้อมูลสมาชิก MySQL/MariaDB](database/mysql/README_TH.md)
+- [โครงสร้าง React Web App](docs/REACT_WEB_APP_TH.md)
 - [วิธีสร้างและประเมิน Risk Model](docs/RISK_MODEL_METHODOLOGY_TH.md)
 - [สคริปต์นำเสนอ](docs/PRESENTATION_NOTES_TH.md)
 - [ประวัติการพัฒนาเดิม](docs/PROJECT_HISTORY_TH.md)

@@ -2,7 +2,7 @@
 
 โปรเจกต์กำหนดชื่อสำหรับใช้งานบนเครื่องนี้ไว้ดังนี้:
 
-- Web App: `http://app.phishradar.localhost:5505/login.html`
+- Web App: `http://app.phishradar.localhost:5505/#/login`
 - Backend: `http://api.phishradar.localhost:8765/health`
 - URL เดิม `127.0.0.1` และ `localhost` ยังใช้เป็น fallback ได้
 

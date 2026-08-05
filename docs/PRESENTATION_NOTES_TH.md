@@ -65,16 +65,16 @@ Analyzer ให้คะแนนความเสี่ยง 0–100
 
 ## ข้อจำกัด
 
-- ยังไม่ใช่โมเดล ML ที่ train จาก dataset จริง
+- โมเดล URL-only ยังไม่ครอบคลุม DOM, reputation และอายุโดเมน
 - ยังไม่เชื่อมฐานข้อมูลภัยคุกคาม เช่น Google Safe Browsing หรือ VirusTotal
 - ยังไม่ตรวจอายุโดเมนจริง เพราะต้องใช้ WHOIS/RDAP API
 - อาจมี false positive และ false negative
 
 ## แนวทางต่อยอด
 
-1. เพิ่ม backend ด้วย FastAPI หรือ Node.js
-2. เพิ่ม ML model เช่น Random Forest หรือ XGBoost จาก dataset phishing URL
-3. เชื่อม Safe Browsing / VirusTotal API
+1. เพิ่ม time-split และ source-held-out evaluation
+2. เพิ่ม benign dataset ให้มากพอสำหรับยืนยัน FPR ระดับต่ำ
+3. เชื่อม Safe Browsing / VirusTotal API เป็น evidence layer
 4. เพิ่มฐานข้อมูล blacklist/whitelist
 5. เพิ่ม dashboard สถิติ URL ที่ถูกบล็อก
 6. ตรวจ screenshot หรือ DOM similarity กับหน้า login ของแบรนด์จริง
@@ -82,7 +82,7 @@ Analyzer ให้คะแนนความเสี่ยง 0–100
 
 ## ประโยคปิดนำเสนอ
 
-โปรเจคนี้แสดงให้เห็นว่า แม้ยังไม่ใช้ ML model ก็สามารถสร้างระบบป้องกัน phishing เบื้องต้นที่ใช้งานจริงและอธิบายได้ โดยออกแบบให้ตรวจจับก่อนผู้ใช้กรอกข้อมูลสำคัญ และสามารถต่อยอดเป็นระบบ AI + Threat Intelligence ที่สมบูรณ์ในอนาคต
+โปรเจคนี้แสดงการทำงานร่วมกันของ L1 Logistic URL Risk Model, local rule evidence และ decision policy ที่ควบคุม False Positive โดยออกแบบให้ตรวจจับก่อนผู้ใช้กรอกข้อมูลสำคัญ และยังตรวจสอบย้อนหลังได้จาก model/policy version
 
 ## คำอธิบายตอนเจอ false positive บน Google Search
 

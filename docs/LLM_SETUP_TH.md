@@ -23,7 +23,7 @@ export OLLAMA_MODEL=qwen3:4b
 ./start-demo.sh
 ```
 
-จากนั้นเปิด `http://127.0.0.1:5505/login.html` และคงหน้าต่าง Git Bash ไว้ กด `Ctrl+C` เพื่อหยุด Backend/Web App
+จากนั้นเปิด `http://127.0.0.1:5505/#/login` และคงหน้าต่าง Git Bash ไว้ กด `Ctrl+C` เพื่อหยุด Backend/Web App
 
 ## ใช้ OpenAI เป็นตัวเลือกสำรอง
 
@@ -40,6 +40,6 @@ export OPENAI_MODEL=gpt-5.6-luna
 
 ระบบส่ง URL ให้ LLM หลังตัด username/password, query string และ fragment ออกแล้ว เหลือเฉพาะ protocol, hostname, port และ path ที่จำเป็นต่อการอธิบาย เมื่อเปิด Privacy Mode จะไม่เรียก LLM
 
-หาก Ollama ยังไม่พร้อม ระบบยังใช้ Rule-based + ML ได้ตามปกติ และจะแสดงคำอธิบายสำรองแทน
+หาก Ollama ยังไม่พร้อม ระบบยังใช้ URL Risk Model และหลักฐานหลายชั้นได้ตามปกติ และจะแสดงคำอธิบายสำรองแทน
 
 ดูตัวเลือกโมเดลและแผนทดสอบได้ที่ [LLM_COMPARISON_TH.md](LLM_COMPARISON_TH.md)

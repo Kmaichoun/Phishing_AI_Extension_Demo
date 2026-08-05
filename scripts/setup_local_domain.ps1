@@ -79,6 +79,6 @@ if ($PSCmdlet.ShouldProcess($resolvedHosts, $action)) {
 if ($Remove) {
   Write-Host 'Removed Phish Radar local domains.' -ForegroundColor Yellow
 } else {
-  Write-Host "Web App: http://$WebDomain`:5505/login.html" -ForegroundColor Green
+  Write-Host "Web App: http://$WebDomain`:5505/#/login" -ForegroundColor Green
   Write-Host "Backend: http://$ApiDomain`:8765/health" -ForegroundColor Green
 }

@@ -34,14 +34,14 @@
           <span class="score-breakdown-kicker">Score sources</span>
           <h3 id="scoreBreakdownTitle">คะแนนนี้มาจากอะไรบ้าง</h3>
         </div>
-        <span id="scoreFormulaBadge" class="score-formula-badge">Rule + ML (กำลังโหลด policy)</span>
+        <span id="scoreFormulaBadge" class="score-formula-badge">กำลังโหลด Risk Model policy</span>
       </div>
 
       <div class="score-source-list" id="scoreBreakdown">
         <div class="score-source-row" id="sourceRuleRow" data-tone="danger">
           <div class="score-source-text">
-            <span>Rule-base</span>
-            <small id="sourceRuleMeta">ตรวจรูปแบบ URL และสัญญาณหลอกลวงตามกฎ</small>
+            <span>Rule evidence</span>
+            <small id="sourceRuleMeta">หลักฐานจากกฎและบริบทหน้าเว็บ</small>
           </div>
           <strong id="sourceRuleValue">--</strong>
           <div class="score-source-track" aria-hidden="true"><i id="sourceRuleFill"></i></div>
@@ -49,8 +49,8 @@
 
         <div class="score-source-row" id="sourceMlRow" data-tone="muted">
           <div class="score-source-text">
-            <span>Machine Learning</span>
-            <small id="sourceMlMeta">รอข้อมูลจาก backend</small>
+            <span>URL Risk Model</span>
+            <small id="sourceMlMeta">รอความน่าจะเป็นจาก backend</small>
           </div>
           <strong id="sourceMlValue">--</strong>
           <div class="score-source-track" aria-hidden="true"><i id="sourceMlFill"></i></div>

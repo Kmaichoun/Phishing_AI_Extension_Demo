@@ -5,11 +5,13 @@
 ## คู่มือหลัก
 
 - [LLM_SETUP_TH.md](LLM_SETUP_TH.md) — การเปิด backend และตั้งค่า LLM
+- [REACT_WEB_APP_TH.md](REACT_WEB_APP_TH.md) — โครงสร้าง React, Router, Context, Vite และแนวทางพัฒนาต่อ
 - [LLM_COMPARISON_TH.md](LLM_COMPARISON_TH.md) — เปรียบเทียบ OpenAI/Ollama และแผน benchmark
-- [RISK_MODEL_METHODOLOGY_TH.md](RISK_MODEL_METHODOLOGY_TH.md) — Dataset, cross-validation, calibration และการเลือก alpha/threshold
+- [RISK_MODEL_METHODOLOGY_TH.md](RISK_MODEL_METHODOLOGY_TH.md) — L1 Logistic RiskScore, grouped evaluation, layered evidence และการเลือก warn/block threshold ภายใต้ FPR
 - [PRESENTATION_NOTES_TH.md](PRESENTATION_NOTES_TH.md) — บันทึกสำหรับนำเสนอ
+- [WEEKLY_PROGRESS_PRESENTATION_TH.md](WEEKLY_PROGRESS_PRESENTATION_TH.md) — บทพูด 5–7 นาทีและรายการภาพประกอบสำหรับรายงานความคืบหน้า
 - [PROJECT_HISTORY_TH.md](PROJECT_HISTORY_TH.md) — README เดิมและประวัติฟีเจอร์รุ่นก่อน
-- [ฐานข้อมูลสมาชิก SQL Server](../database/sqlserver/README_TH.md) — schema, ตารางผู้ใช้ และข้อมูลอุปกรณ์
+- [ฐานข้อมูลสมาชิก MySQL/MariaDB](../database/mysql/README_TH.md) — schema, ตารางผู้ใช้ และข้อมูลอุปกรณ์
 
 ## บันทึกการอัปเดต
 

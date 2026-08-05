@@ -29,19 +29,29 @@ async function getSettings() {
 
 function warningUrl(target, source = 'navigation', extra = {}) {
   const ruleScore = extra.ruleScore ?? extra.rule_score ?? extra.score ?? '';
-  const mlScore = extra.mlScore ?? extra.ml_score ?? extra.ml?.ml_score ?? '';
-  const finalScore = extra.finalScore ?? extra.final_score ?? extra.score ?? '';
-  const alpha = extra.alpha ?? extra.ml?.alpha ?? '';
-  const decisionThreshold = extra.decisionThreshold ?? extra.decision_threshold ?? extra.ml?.decision_threshold ?? '';
+  const riskProbability = extra.riskProbability ?? extra.risk_probability ?? extra.ml?.risk_probability ?? '';
+  const riskScore = extra.riskScore ?? extra.risk_score ?? extra.finalScore ?? extra.final_score ?? extra.score ?? '';
+  const decision = extra.decision ?? extra.ml?.decision ?? '';
+  const warningThreshold = extra.warningThreshold ?? extra.warning_threshold ?? extra.decisionThreshold ?? extra.decision_threshold ?? extra.ml?.warning_threshold ?? '';
+  const blockingThreshold = extra.blockingThreshold ?? extra.blocking_threshold ?? extra.ml?.blocking_threshold ?? '';
+  const modelVersion = extra.modelVersion ?? extra.model_version ?? extra.ml?.model_version ?? '';
+  const policyVersion = extra.policyVersion ?? extra.policy_version ?? extra.ml?.policy_version ?? '';
   const params = new URLSearchParams({
     target,
     source,
-    score: String(finalScore),
+    score: String(riskScore),
     rule_score: String(ruleScore),
-    ml_score: mlScore === null || mlScore === undefined ? '' : String(mlScore),
-    final_score: String(finalScore),
-    alpha: alpha === null || alpha === undefined ? '' : String(alpha),
-    decision_threshold: decisionThreshold === null || decisionThreshold === undefined ? '' : String(decisionThreshold),
+    risk_probability: riskProbability === null || riskProbability === undefined ? '' : String(riskProbability),
+    risk_score: String(riskScore),
+    decision: String(decision),
+    warning_threshold: warningThreshold === null || warningThreshold === undefined ? '' : String(warningThreshold),
+    blocking_threshold: blockingThreshold === null || blockingThreshold === undefined ? '' : String(blockingThreshold),
+    model_version: String(modelVersion),
+    policy_version: String(policyVersion),
+    // Legacy aliases keep an already-open older warning page readable.
+    ml_score: extra.mlScore ?? extra.ml_score ?? extra.ml?.ml_score ?? '',
+    final_score: String(riskScore),
+    decision_threshold: warningThreshold === null || warningThreshold === undefined ? '' : String(warningThreshold),
     privacy_mode: extra.privacyMode || extra.privacy_mode ? '1' : '',
     reasons: JSON.stringify(extra.reasons ?? [])
   });
@@ -52,6 +62,11 @@ function localOnlyMlResult(ruleScore) {
   return {
     ok: false,
     model_status: 'privacy-mode',
+    risk_probability: null,
+    risk_score: ruleScore,
+    decision: null,
+    warning_threshold: 61,
+    blocking_threshold: 81,
     ml_score: null,
     final_score: ruleScore,
     privacy_mode: true
@@ -60,8 +75,14 @@ function localOnlyMlResult(ruleScore) {
 
 function effectiveRiskThreshold(settings, result) {
   const userThreshold = Number(settings?.threshold || 61);
-  const modelThreshold = Number(result?.decisionThreshold ?? result?.decision_threshold ?? result?.ml?.decision_threshold);
+  const modelThreshold = Number(result?.warningThreshold ?? result?.warning_threshold ?? result?.decisionThreshold ?? result?.decision_threshold ?? result?.ml?.warning_threshold);
   return Number.isFinite(modelThreshold) ? modelThreshold : userThreshold;
+}
+
+function shouldShowWarning(settings, result) {
+  if (result?.decision === 'warn' || result?.decision === 'block') return true;
+  if (result?.decision === 'allow') return false;
+  return Number(result?.score || 0) >= effectiveRiskThreshold(settings, result);
 }
 
 function privacyLlmFallback() {
@@ -72,9 +93,9 @@ function privacyLlmFallback() {
     privacy_mode: true,
     llm: {
       risk_type: 'Privacy Mode เปิดอยู่',
-      simple_explanation: 'ระบบวิเคราะห์จาก Rule-based และหลักฐานบนหน้าเว็บภายใน browser เท่านั้น จึงไม่ส่ง URL ไป backend หรือ LLM',
+      simple_explanation: 'ระบบวิเคราะห์จาก Rule evidence และหลักฐานบนหน้าเว็บภายใน browser เท่านั้น จึงไม่ส่ง URL ไป backend หรือ LLM',
       user_advice: 'ตรวจสอบโดเมนให้แน่ใจก่อนกรอกข้อมูลสำคัญ หากต้องการคำอธิบายจาก LLM ให้ปิด Privacy Mode ชั่วคราว',
-      confidence_note: 'โหมดนี้เน้นความเป็นส่วนตัว จึงปิด Machine Learning backend และ AI explanation ในรอบนี้'
+      confidence_note: 'โหมดนี้เน้นความเป็นส่วนตัว จึงปิด URL Risk Model backend และ AI explanation ในรอบนี้'
     }
   };
 }
@@ -87,7 +108,7 @@ function llmDisabledFallback() {
     status: 'llm_disabled',
     llm: {
       risk_type: 'ปิดคำอธิบายจาก LLM',
-      simple_explanation: 'ระบบยังใช้ Rule-based และ Machine Learning ตรวจจับความเสี่ยงตามปกติ แต่รอบนี้ไม่ส่งคำขอไป AI provider',
+      simple_explanation: 'ระบบยังใช้ URL Risk Model และหลักฐานหลายชั้นตรวจจับความเสี่ยงตามปกติ แต่รอบนี้ไม่ส่งคำขอไป AI provider',
       user_advice: 'ตรวจสอบโดเมนและเหตุผลจากระบบก่อนกรอกข้อมูลสำคัญ เปิด LLM เฉพาะเมื่อต้องการคำอธิบายเพิ่มเติม',
       confidence_note: 'LLM ถูกปิดจาก Popup จึงไม่มีการส่งคำขอไป Qwen/Ollama'
     }
@@ -158,6 +179,11 @@ async function analyzeUrlWithMl(url, options = {}) {
     return {
       ...ruleResult,
       ruleScore: ruleResult.score,
+      riskProbability: null,
+      riskScore: ruleResult.score,
+      decision: null,
+      warningThreshold: Number(settings.threshold || 61),
+      blockingThreshold: Math.min(100, Number(settings.threshold || 61) + 20),
       mlScore: null,
       finalScore: ruleResult.score,
       score: ruleResult.score,
@@ -170,6 +196,11 @@ async function analyzeUrlWithMl(url, options = {}) {
     return {
       ...ruleResult,
       ruleScore: ruleResult.score,
+      riskProbability: null,
+      riskScore: ruleResult.score,
+      decision: null,
+      warningThreshold: Number(settings.threshold || 61),
+      blockingThreshold: Math.min(100, Number(settings.threshold || 61) + 20),
       mlScore: null,
       finalScore: ruleResult.score,
       score: ruleResult.score,
@@ -182,14 +213,22 @@ async function analyzeUrlWithMl(url, options = {}) {
     return phishRadarCombineMlResult(ruleResult, ml);
   }
 
-  const finalScore = ml?.final_score ?? ruleResult.score;
+  const finalScore = ml?.risk_score ?? ml?.final_score ?? ruleResult.score;
   return {
     ...ruleResult,
     ruleScore: ruleResult.score,
-    mlScore: ml?.ml_score ?? null,
+    riskProbability: ml?.risk_probability ?? null,
+    riskScore: finalScore,
+    decision: ml?.decision ?? null,
+    warningThreshold: ml?.warning_threshold ?? null,
+    blockingThreshold: ml?.blocking_threshold ?? null,
+    modelVersion: ml?.model_version ?? null,
+    policyVersion: ml?.policy_version ?? null,
+    featureSchemaVersion: ml?.feature_schema_version ?? null,
+    layerResults: ml?.layer_results ?? {},
+    mlScore: ml?.model_status === 'ready' ? finalScore : null,
     finalScore,
-    alpha: Number.isFinite(ml?.alpha) ? ml.alpha : null,
-    decisionThreshold: Number.isFinite(ml?.decision_threshold) ? ml.decision_threshold : null,
+    decisionThreshold: Number.isFinite(ml?.warning_threshold) ? ml.warning_threshold : null,
     score: finalScore,
     ml
   };
@@ -246,7 +285,7 @@ async function applySafePreviewIfNeeded(tabId, url) {
 async function updateBadge(tabId, result) {
   if (!tabId || tabId < 0) return;
   const classification = typeof phishRadarClassifyPolicy === 'function'
-    ? phishRadarClassifyPolicy(result.score, result.decisionThreshold)
+    ? phishRadarClassifyPolicy(result.score, result.warningThreshold, result.blockingThreshold, result.decision)
     : { level: result.level || 'low', text: result.levelText || 'ไม่ทราบระดับ' };
   const text = classification.level === 'critical' ? '!!' : classification.level === 'high' ? 'HIGH' : classification.level === 'medium' ? 'WARN' : '✓';
   const color = classification.level === 'critical' ? '#991b1b' : classification.level === 'high' ? '#ef4444' : classification.level === 'medium' ? '#f59e0b' : '#22c55e';
@@ -341,7 +380,7 @@ chrome.webNavigation.onBeforeNavigate.addListener(async details => {
   if (await isWhitelisted(url.hostname)) return;
 
   const result = await analyzeUrlWithMl(details.url);
-  if (result.score >= effectiveRiskThreshold(settings, result)) {
+  if (shouldShowWarning(settings, result)) {
     await updateBadge(details.tabId, result);
     try {
       await chrome.tabs.update(details.tabId, { url: warningUrl(details.url, 'direct-navigation', result) });

@@ -5,6 +5,7 @@ import os
 import secrets
 import threading
 import time
+import uuid
 from collections import defaultdict, deque
 from collections.abc import Generator
 from datetime import datetime, timedelta, timezone
@@ -63,7 +64,7 @@ def _session_scope() -> Generator[Session, None, None]:
         database.rollback()
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="ระบบบัญชียังเชื่อมต่อฐานข้อมูลไม่ได้ กรุณาตรวจสอบ SQL Server",
+            detail="ระบบบัญชียังเชื่อมต่อฐานข้อมูลไม่ได้ กรุณาตรวจสอบ MySQL/MariaDB",
         ) from error
     finally:
         database.close()
@@ -136,7 +137,7 @@ def _verify_current_password(
         )
 
     stored_hash = database.execute(
-        text("SELECT PasswordHash FROM auth.Users WHERE UserId = :user_id AND IsActive = 1"),
+        text("SELECT PasswordHash FROM Users WHERE UserId = :user_id AND IsActive = 1"),
         {"user_id": user_id},
     ).scalar_one_or_none()
 
@@ -167,7 +168,7 @@ def _create_or_update_device(
         text(
             """
             SELECT UserDeviceId
-            FROM auth.UserDevices
+            FROM UserDevices
             WHERE UserId = :user_id AND DeviceKeyHash = :key_hash
             """
         ),
@@ -178,11 +179,11 @@ def _create_or_update_device(
         database.execute(
             text(
                 """
-                UPDATE auth.UserDevices
+                UPDATE UserDevices
                 SET DeviceName = :device_name,
                     IsRevoked = 0,
                     RevokedAt = NULL,
-                    LastSeenAt = SYSUTCDATETIME()
+                    LastSeenAt = UTC_TIMESTAMP(3)
                 WHERE UserDeviceId = :device_id
                 """
             ),
@@ -190,27 +191,28 @@ def _create_or_update_device(
         )
         return int(existing)
 
-    return int(
-        database.execute(
-            text(
-                """
-                INSERT INTO auth.UserDevices (UserId, DeviceName, DeviceKeyHash)
-                OUTPUT INSERTED.UserDeviceId
-                VALUES (:user_id, :device_name, :key_hash)
-                """
-            ),
-            {"user_id": user_id, "device_name": device_name, "key_hash": key_hash},
-        ).scalar_one()
+    result = database.execute(
+        text(
+            """
+            INSERT INTO UserDevices (UserId, DeviceName, DeviceKeyHash)
+            VALUES (:user_id, :device_name, :key_hash)
+            """
+        ),
+        {"user_id": user_id, "device_name": device_name, "key_hash": key_hash},
     )
+    if result.lastrowid is None:
+        raise RuntimeError("MySQL did not return UserDeviceId")
+    return int(result.lastrowid)
 
 
 def _create_session(database: Session, user_id: int, device_id: int) -> str:
     session_token = secrets.token_urlsafe(32)
+    session_id = str(uuid.uuid4())
     now = _utc_now()
     database.execute(
         text(
             """
-            UPDATE auth.Sessions
+            UPDATE Sessions
             SET RevokedAt = COALESCE(RevokedAt, :now)
             WHERE UserDeviceId = :device_id AND RevokedAt IS NULL
             """
@@ -220,13 +222,14 @@ def _create_session(database: Session, user_id: int, device_id: int) -> str:
     database.execute(
         text(
             """
-            INSERT INTO auth.Sessions
-                (UserId, UserDeviceId, TokenHash, CreatedAt, LastSeenAt, ExpiresAt)
+            INSERT INTO Sessions
+                (SessionId, UserId, UserDeviceId, TokenHash, CreatedAt, LastSeenAt, ExpiresAt)
             VALUES
-                (:user_id, :device_id, :token_hash, :now, :now, :expires_at)
+                (:session_id, :user_id, :device_id, :token_hash, :now, :now, :expires_at)
             """
         ),
         {
+            "session_id": session_id,
             "user_id": user_id,
             "device_id": device_id,
             "token_hash": _token_hash(session_token),
@@ -261,12 +264,12 @@ def require_authenticated_user(
             """
             SELECT u.UserId, u.Username, u.Email, u.Role,
                    d.UserDeviceId, d.DeviceName, s.SessionId
-            FROM auth.Sessions AS s
-            INNER JOIN auth.Users AS u ON u.UserId = s.UserId
-            INNER JOIN auth.UserDevices AS d ON d.UserDeviceId = s.UserDeviceId
+            FROM Sessions AS s
+            INNER JOIN Users AS u ON u.UserId = s.UserId
+            INNER JOIN UserDevices AS d ON d.UserDeviceId = s.UserDeviceId
             WHERE s.TokenHash = :token_hash
               AND s.RevokedAt IS NULL
-              AND s.ExpiresAt > SYSUTCDATETIME()
+              AND s.ExpiresAt > UTC_TIMESTAMP(3)
               AND u.IsActive = 1
               AND d.IsRevoked = 0
             """
@@ -280,12 +283,22 @@ def require_authenticated_user(
     database.execute(
         text(
             """
-            UPDATE auth.Sessions SET LastSeenAt = SYSUTCDATETIME() WHERE SessionId = :session_id;
-            UPDATE auth.UserDevices SET LastSeenAt = SYSUTCDATETIME()
-            WHERE UserDeviceId = (SELECT UserDeviceId FROM auth.Sessions WHERE SessionId = :session_id);
+            UPDATE Sessions
+            SET LastSeenAt = UTC_TIMESTAMP(3)
+            WHERE SessionId = :session_id
             """
         ),
         {"session_id": row["SessionId"]},
+    )
+    database.execute(
+        text(
+            """
+            UPDATE UserDevices
+            SET LastSeenAt = UTC_TIMESTAMP(3)
+            WHERE UserDeviceId = :device_id
+            """
+        ),
+        {"device_id": row["UserDeviceId"]},
     )
     database.commit()
     return dict(row)
@@ -308,22 +321,22 @@ def register(
     hashed_password = password_hash.hash(payload.password.get_secret_value())
 
     try:
-        user_id = int(
-            database.execute(
-                text(
-                    """
-                    INSERT INTO auth.Users (Username, PasswordHash, Email, Role)
-                    OUTPUT INSERTED.UserId
-                    VALUES (:username, :password_hash, :email, N'user')
-                    """
-                ),
-                {
-                    "username": payload.username,
-                    "password_hash": hashed_password,
-                    "email": str(payload.email).lower(),
-                },
-            ).scalar_one()
+        result = database.execute(
+            text(
+                """
+                INSERT INTO Users (Username, PasswordHash, Email, Role)
+                VALUES (:username, :password_hash, :email, 'user')
+                """
+            ),
+            {
+                "username": payload.username,
+                "password_hash": hashed_password,
+                "email": str(payload.email).lower(),
+            },
         )
+        if result.lastrowid is None:
+            raise RuntimeError("MySQL did not return UserId")
+        user_id = int(result.lastrowid)
         device_id = _create_or_update_device(database, user_id, payload.device_name, device_token)
         session_token = _create_session(database, user_id, device_id)
         database.commit()
@@ -363,9 +376,9 @@ def login(
         text(
             """
             SELECT UserId, Username, Email, PasswordHash, Role, IsActive
-            FROM auth.Users
-            WHERE NormalizedUsername = LOWER(LTRIM(RTRIM(:identifier)))
-               OR NormalizedEmail = LOWER(LTRIM(RTRIM(:identifier)))
+            FROM Users
+            WHERE NormalizedUsername = LOWER(TRIM(:identifier))
+               OR NormalizedEmail = LOWER(TRIM(:identifier))
             """
         ),
         {"identifier": payload.identifier},
@@ -390,7 +403,7 @@ def login(
     device_id = _create_or_update_device(database, int(row["UserId"]), payload.device_name, device_token)
     session_token = _create_session(database, int(row["UserId"]), device_id)
     database.execute(
-        text("UPDATE auth.Users SET LastLoginAt = SYSUTCDATETIME(), UpdatedAt = SYSUTCDATETIME() WHERE UserId = :user_id"),
+        text("UPDATE Users SET LastLoginAt = UTC_TIMESTAMP(3), UpdatedAt = UTC_TIMESTAMP(3) WHERE UserId = :user_id"),
         {"user_id": row["UserId"]},
     )
     database.commit()
@@ -430,25 +443,34 @@ def update_profile(
     email = str(payload.email).lower()
 
     try:
-        row = database.execute(
+        result = database.execute(
             text(
                 """
-                UPDATE auth.Users
+                UPDATE Users
                 SET Username = :username,
                     EmailVerified = CASE
-                        WHEN LOWER(LTRIM(RTRIM(Email))) <> :email THEN 0
+                        WHEN LOWER(TRIM(Email)) <> :email THEN 0
                         ELSE EmailVerified
                     END,
                     Email = :email,
-                    UpdatedAt = SYSUTCDATETIME()
-                OUTPUT INSERTED.Username, INSERTED.Email, INSERTED.Role
+                    UpdatedAt = UTC_TIMESTAMP(3)
                 WHERE UserId = :user_id AND IsActive = 1
                 """
             ),
             {"username": payload.username, "email": email, "user_id": user_id},
-        ).mappings().one_or_none()
-        if row is None:
+        )
+        if result.rowcount != 1:
             raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="ไม่พบบัญชีที่ใช้งานอยู่")
+        row = database.execute(
+            text(
+                """
+                SELECT Username, Email, Role
+                FROM Users
+                WHERE UserId = :user_id AND IsActive = 1
+                """
+            ),
+            {"user_id": user_id},
+        ).mappings().one()
         database.commit()
     except IntegrityError as error:
         database.rollback()
@@ -487,8 +509,8 @@ def change_password(
     database.execute(
         text(
             """
-            UPDATE auth.Users
-            SET PasswordHash = :password_hash, UpdatedAt = SYSUTCDATETIME()
+            UPDATE Users
+            SET PasswordHash = :password_hash, UpdatedAt = UTC_TIMESTAMP(3)
             WHERE UserId = :user_id AND IsActive = 1
             """
         ),
@@ -497,8 +519,8 @@ def change_password(
     revoked = database.execute(
         text(
             """
-            UPDATE auth.Sessions
-            SET RevokedAt = COALESCE(RevokedAt, SYSUTCDATETIME())
+            UPDATE Sessions
+            SET RevokedAt = COALESCE(RevokedAt, UTC_TIMESTAMP(3))
             WHERE UserId = :user_id
               AND SessionId <> :session_id
               AND RevokedAt IS NULL
@@ -522,8 +544,8 @@ def logout(
         database.execute(
             text(
                 """
-                UPDATE auth.Sessions
-                SET RevokedAt = COALESCE(RevokedAt, SYSUTCDATETIME())
+                UPDATE Sessions
+                SET RevokedAt = COALESCE(RevokedAt, UTC_TIMESTAMP(3))
                 WHERE TokenHash = :token_hash
                 """
             ),

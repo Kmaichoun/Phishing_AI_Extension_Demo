@@ -1,0 +1,4 @@
+# Generated binary artifacts
+*.bacpac binary
+*.pdf binary
+*.pkl binary

@@ -17,19 +17,32 @@ DATASET_PATH = DATA_DIR / "training_urls.csv"
 
 def main() -> None:
     report = json.loads(REPORT_PATH.read_text(encoding="utf-8"))
-    selected = report["policy_search"]["selected"]
-    max_fpr = float(report["policy_search"]["max_false_positive_rate"])
-    assert 0.0 <= float(selected["alpha"]) <= 1.0
-    assert 0.0 < float(selected["threshold"]) < 1.0
-    assert float(selected["false_positive_rate"]) <= max_fpr
-    assert len(report["policy_search"]["alpha_values"]) == 21
-    assert len(report["policy_search"]["threshold_values"]) == 91
+    warning = report["policy"]["warning"]
+    blocking = report["policy"]["blocking"]
+    assert report["model"]["family"] == "L1-regularized logistic regression"
+    assert report["model"]["risk_formula"] == "RiskScore = 100 * sigmoid(w dot x + b)"
+    assert report["evaluation_design"]["group"] == "hostname"
+    assert float(warning["threshold"]) <= float(blocking["threshold"])
+    assert float(warning["false_positive_rate_upper_95"]) <= float(
+        warning["max_false_positive_rate"]
+    )
+    assert float(blocking["false_positive_rate_upper_95"]) <= float(
+        blocking["max_false_positive_rate"]
+    )
+    assert warning["meets_fpr_constraint"] is True
+    assert blocking["meets_fpr_constraint"] is True
 
     bundle = joblib.load(MODEL_PATH)
-    assert bundle["calibration"] == "sigmoid"
-    assert abs(float(bundle["alpha"]) - float(selected["alpha"])) < 1e-9
+    assert bundle["model_version"] == report["model"]["version"]
+    assert bundle["probability_method"] == "intrinsic_logistic_sigmoid"
+    assert "alpha" not in bundle
     assert abs(
-        float(bundle["decision_threshold"]) - float(selected["threshold"]) * 100.0
+        float(bundle["policy"]["warning_threshold"])
+        - float(warning["threshold"]) * 100.0
+    ) < 1e-9
+    assert abs(
+        float(bundle["policy"]["blocking_threshold"])
+        - float(blocking["threshold"]) * 100.0
     ) < 1e-9
 
     if DATASET_PATH.exists():
@@ -51,16 +64,22 @@ def main() -> None:
             rule_score=90,
         )
     )
-    assert safe["model_status"] == "calibrated_model"
+    assert safe["model_status"] == "ready"
     assert safe["label"] == "safe"
+    assert safe["decision"] == "allow"
     assert risky["label"] == "phishing"
-    assert safe["alpha"] == bundle["alpha"]
-    assert safe["decision_threshold"] == bundle["decision_threshold"]
+    assert risky["decision"] in {"warn", "block"}
+    assert safe["risk_score"] == safe["ml_score"] == safe["final_score"]
+    assert safe["alpha"] is None
+    assert safe["warning_threshold"] == bundle["policy"]["warning_threshold"]
+    assert safe["blocking_threshold"] == bundle["policy"]["blocking_threshold"]
+    assert safe["layer_results"]["local_rule_evidence"]["status"] == "evidence_only"
 
     print(
         "Risk pipeline test passed: "
-        f"alpha={bundle['alpha']}, threshold={bundle['decision_threshold']}, "
-        f"FPR={selected['false_positive_rate']}"
+        f"warn={bundle['policy']['warning_threshold']}, "
+        f"block={bundle['policy']['blocking_threshold']}, "
+        f"holdout ROC-AUC={report['independent_holdout']['probability']['roc_auc']}"
     )
 
 

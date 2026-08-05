@@ -17,23 +17,20 @@ def _database_url() -> URL | str:
     if explicit_url:
         return explicit_url
 
-    server = os.getenv("SQL_SERVER", r"localhost\SQLEXPRESS")
-    database = os.getenv("SQL_DATABASE", "PhishRadarDB")
-    driver = os.getenv("SQL_DRIVER", "ODBC Driver 18 for SQL Server")
-    trusted = os.getenv("SQL_TRUSTED_CONNECTION", "yes")
-    encrypt = os.getenv("SQL_ENCRYPT", "no")
-    trust_certificate = os.getenv("SQL_TRUST_SERVER_CERTIFICATE", "yes")
-    query = {
-        "driver": driver,
-        "Trusted_Connection": trusted,
-        "Encrypt": encrypt,
-        "TrustServerCertificate": trust_certificate,
-    }
+    host = os.getenv("MYSQL_HOST", "localhost").strip()
+    port = int(os.getenv("MYSQL_PORT", "3306"))
+    database = os.getenv("MYSQL_DATABASE", "ip_std6730202581").strip()
+    username = os.getenv("MYSQL_USER", "").strip()
+    password = os.getenv("MYSQL_PASSWORD", "")
+    charset = os.getenv("MYSQL_CHARSET", "utf8mb4").strip()
     return URL.create(
-        "mssql+pyodbc",
-        host=server,
+        "mysql+pymysql",
+        username=username or None,
+        password=password or None,
+        host=host,
+        port=port,
         database=database,
-        query=query,
+        query={"charset": charset},
     )
 
 
@@ -41,7 +38,11 @@ engine = create_engine(
     _database_url(),
     pool_pre_ping=True,
     pool_recycle=1800,
-    connect_args={"timeout": 5},
+    connect_args={
+        "connect_timeout": 5,
+        "read_timeout": 10,
+        "write_timeout": 10,
+    },
 )
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
@@ -57,14 +58,27 @@ def database_status() -> dict[str, object]:
                 text(
                     """
                     SELECT
-                        CAST(1 AS bit) AS Connected,
-                        DB_NAME() AS DatabaseName,
-                        CAST(CASE WHEN OBJECT_ID(N'auth.Users', N'U') IS NOT NULL
-                                   AND OBJECT_ID(N'auth.UserDevices', N'U') IS NOT NULL
-                                   AND OBJECT_ID(N'auth.Sessions', N'U') IS NOT NULL
-                                  THEN 1 ELSE 0 END AS bit) AS AuthSchemaReady,
-                        CAST(CASE WHEN OBJECT_ID(N'auth.SearchHistory', N'U') IS NOT NULL
-                                  THEN 1 ELSE 0 END AS bit) AS HistorySchemaReady
+                        1 AS Connected,
+                        DATABASE() AS DatabaseName,
+                        CASE WHEN (
+                            SELECT COUNT(*)
+                            FROM information_schema.tables
+                            WHERE table_schema = DATABASE()
+                              AND table_name IN ('Users', 'UserDevices', 'Sessions')
+                        ) = 3 THEN 1 ELSE 0 END AS AuthSchemaReady,
+                        CASE WHEN EXISTS (
+                            SELECT 1
+                            FROM information_schema.tables
+                            WHERE table_schema = DATABASE()
+                              AND table_name = 'SearchHistory'
+                        ) THEN 1 ELSE 0 END AS HistorySchemaReady,
+                        CASE WHEN (
+                            SELECT COUNT(DISTINCT column_name)
+                            FROM information_schema.columns
+                            WHERE table_schema = DATABASE()
+                              AND table_name = 'SearchHistory'
+                              AND column_name IN ('RiskScore', 'Decision', 'ModelVersion')
+                        ) = 3 THEN 1 ELSE 0 END AS RiskAuditSchemaReady
                     """
                 )
             ).mappings().one()
@@ -73,6 +87,7 @@ def database_status() -> dict[str, object]:
             "database": row["DatabaseName"],
             "auth_schema_ready": bool(row["AuthSchemaReady"]),
             "history_schema_ready": bool(row["HistorySchemaReady"]),
+            "risk_audit_schema_ready": bool(row["RiskAuditSchemaReady"]),
         }
     except Exception as error:
         return {
@@ -80,5 +95,6 @@ def database_status() -> dict[str, object]:
             "database": None,
             "auth_schema_ready": False,
             "history_schema_ready": False,
+            "risk_audit_schema_ready": False,
             "error": error.__class__.__name__,
         }

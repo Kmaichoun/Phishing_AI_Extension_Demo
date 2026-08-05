@@ -17,6 +17,6 @@ BACKEND_PID=$!
 WEB_PID=$!
 
 echo "Phish Radar is starting. Keep this Git Bash window open."
-echo "Open http://app.phishradar.localhost:5505/login.html in your browser."
-echo "Fallback: http://127.0.0.1:5505/login.html"
+echo "Open http://app.phishradar.localhost:5505/#/login in your browser."
+echo "Fallback: http://127.0.0.1:5505/#/login"
 wait

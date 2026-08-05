@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlsplit, urlunsplit
@@ -41,6 +42,43 @@ def _history_response(row: dict[str, object]) -> SearchHistoryResponse:
         url=str(row["Url"]),
         hostname=str(row["Hostname"]),
         rule_score=int(row["RuleScore"]),
+        risk_probability=(
+            float(row["RiskProbability"])
+            if row.get("RiskProbability") is not None
+            else None
+        ),
+        risk_score=(
+            int(row["RiskScore"]) if row.get("RiskScore") is not None else None
+        ),
+        decision=(
+            str(row["Decision"]) if row.get("Decision") is not None else None
+        ),
+        warning_threshold=(
+            float(row["WarningThreshold"])
+            if row.get("WarningThreshold") is not None
+            else None
+        ),
+        blocking_threshold=(
+            float(row["BlockingThreshold"])
+            if row.get("BlockingThreshold") is not None
+            else None
+        ),
+        model_version=(
+            str(row["ModelVersion"]) if row.get("ModelVersion") is not None else None
+        ),
+        policy_version=(
+            str(row["PolicyVersion"]) if row.get("PolicyVersion") is not None else None
+        ),
+        feature_schema_version=(
+            str(row["FeatureSchemaVersion"])
+            if row.get("FeatureSchemaVersion") is not None
+            else None
+        ),
+        layer_results=(
+            json.loads(str(row["LayerResults"]))
+            if row.get("LayerResults")
+            else {}
+        ),
         ml_score=int(row["MlScore"]) if row["MlScore"] is not None else None,
         final_score=int(row["FinalScore"]),
         alpha=float(row["Alpha"]) if row["Alpha"] is not None else None,
@@ -64,22 +102,22 @@ def create_history(
     safe_url, hostname, url_hash = _safe_history_url(payload.url)
     cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=RETENTION_DAYS)
     database.execute(
-        text("DELETE FROM auth.SearchHistory WHERE UserId = :user_id AND CreatedAt < :cutoff"),
+        text("DELETE FROM SearchHistory WHERE UserId = :user_id AND CreatedAt < :cutoff"),
         {"user_id": current_user["UserId"], "cutoff": cutoff},
     )
-    row = database.execute(
+    result = database.execute(
         text(
             """
-            INSERT INTO auth.SearchHistory
+            INSERT INTO SearchHistory
                 (UserId, UserDeviceId, Url, UrlHash, Hostname, RuleScore, MlScore,
-                 FinalScore, Alpha, DecisionThreshold, DetectionLabel, ModelStatus, Source)
-            OUTPUT INSERTED.HistoryId, INSERTED.Url, INSERTED.Hostname,
-                   INSERTED.RuleScore, INSERTED.MlScore, INSERTED.FinalScore,
-                   INSERTED.Alpha, INSERTED.DecisionThreshold, INSERTED.DetectionLabel,
-                   INSERTED.ModelStatus, INSERTED.Source, INSERTED.CreatedAt
+                 FinalScore, Alpha, DecisionThreshold, DetectionLabel, ModelStatus, Source,
+                 RiskProbability, RiskScore, Decision, WarningThreshold, BlockingThreshold,
+                 ModelVersion, PolicyVersion, FeatureSchemaVersion, LayerResults)
             VALUES
                 (:user_id, :device_id, :url, :url_hash, :hostname, :rule_score, :ml_score,
-                 :final_score, :alpha, :decision_threshold, :detection_label, :model_status, :source)
+                 :final_score, :alpha, :decision_threshold, :detection_label, :model_status, :source,
+                 :risk_probability, :risk_score, :decision, :warning_threshold, :blocking_threshold,
+                 :model_version, :policy_version, :feature_schema_version, :layer_results)
             """
         ),
         {
@@ -96,12 +134,41 @@ def create_history(
             "detection_label": payload.detection_label,
             "model_status": payload.model_status,
             "source": payload.source,
+            "risk_probability": payload.risk_probability,
+            "risk_score": payload.risk_score,
+            "decision": payload.decision,
+            "warning_threshold": payload.warning_threshold,
+            "blocking_threshold": payload.blocking_threshold,
+            "model_version": payload.model_version,
+            "policy_version": payload.policy_version,
+            "feature_schema_version": payload.feature_schema_version,
+            "layer_results": (
+                json.dumps(payload.layer_results, ensure_ascii=False, separators=(",", ":"))
+                if payload.layer_results
+                else None
+            ),
         },
+    )
+    if result.lastrowid is None:
+        raise RuntimeError("MySQL did not return HistoryId")
+    row = database.execute(
+        text(
+            """
+            SELECT h.HistoryId, h.Url, h.Hostname, h.RuleScore, h.MlScore,
+                   h.FinalScore, h.Alpha, h.DecisionThreshold, h.DetectionLabel,
+                   h.ModelStatus, h.Source, h.CreatedAt, d.DeviceName,
+                   h.RiskProbability, h.RiskScore, h.Decision,
+                   h.WarningThreshold, h.BlockingThreshold, h.ModelVersion,
+                   h.PolicyVersion, h.FeatureSchemaVersion, h.LayerResults
+            FROM SearchHistory AS h
+            INNER JOIN UserDevices AS d ON d.UserDeviceId = h.UserDeviceId
+            WHERE h.HistoryId = :history_id AND h.UserId = :user_id
+            """
+        ),
+        {"history_id": int(result.lastrowid), "user_id": current_user["UserId"]},
     ).mappings().one()
     database.commit()
-    values = dict(row)
-    values["DeviceName"] = current_user["DeviceName"]
-    return _history_response(values)
+    return _history_response(dict(row))
 
 
 @router.get("", response_model=SearchHistoryList)
@@ -115,14 +182,17 @@ def list_history(
     rows = database.execute(
         text(
             """
-            SELECT TOP (:limit)
-                   h.HistoryId, h.Url, h.Hostname, h.RuleScore, h.MlScore,
+            SELECT h.HistoryId, h.Url, h.Hostname, h.RuleScore, h.MlScore,
                    h.FinalScore, h.Alpha, h.DecisionThreshold, h.DetectionLabel,
-                   h.ModelStatus, h.Source, h.CreatedAt, d.DeviceName
-            FROM auth.SearchHistory AS h
-            INNER JOIN auth.UserDevices AS d ON d.UserDeviceId = h.UserDeviceId
+                   h.ModelStatus, h.Source, h.CreatedAt, d.DeviceName,
+                   h.RiskProbability, h.RiskScore, h.Decision,
+                   h.WarningThreshold, h.BlockingThreshold, h.ModelVersion,
+                   h.PolicyVersion, h.FeatureSchemaVersion, h.LayerResults
+            FROM SearchHistory AS h
+            INNER JOIN UserDevices AS d ON d.UserDeviceId = h.UserDeviceId
             WHERE h.UserId = :user_id
             ORDER BY h.CreatedAt DESC, h.HistoryId DESC
+            LIMIT :limit
             """
         ),
         {"limit": limit, "user_id": current_user["UserId"]},
@@ -139,7 +209,7 @@ def clear_history(
 ) -> dict[str, int | bool]:
     _require_web_client(request)
     result = database.execute(
-        text("DELETE FROM auth.SearchHistory WHERE UserId = :user_id"),
+        text("DELETE FROM SearchHistory WHERE UserId = :user_id"),
         {"user_id": current_user["UserId"]},
     )
     database.commit()

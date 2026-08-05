@@ -1,11 +1,11 @@
 ﻿{
   "name": "Phish Radar AI Web",
   "short_name": "Phish Radar",
-  "start_url": "./login.html",
+  "start_url": "/#/login",
   "display": "standalone",
   "background_color": "#f5f8fb",
   "theme_color": "#0f766e",
   "icons": [
-    { "src": "assets/icon128.png", "sizes": "128x128", "type": "image/png" }
+    { "src": "/assets/icon128.png", "sizes": "128x128", "type": "image/png" }
   ]
 }

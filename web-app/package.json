@@ -1,0 +1,22 @@
+{
+  "name": "phish-radar-web-app",
+  "version": "2.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 5505",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 5505",
+    "test:contract": "node ../scripts/test_web_app_ui.js"
+  },
+  "dependencies": {
+    "@gsap/react": "^2.1.2",
+    "gsap": "^3.13.0",
+    "jsqr": "^1.4.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.0.2",
+    "vite": "^7.1.4"
+  }
+}

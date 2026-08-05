@@ -107,33 +107,49 @@ try {
     'backend/llm_explainer.py',
     'backend/requirements.txt',
     'backend/data/seed_urls.csv',
-    'database/sqlserver/README_TH.md',
-    'database/sqlserver/migrations/001_create_auth_schema.sql',
-    'database/sqlserver/migrations/002_create_auth_sessions.sql',
+    'database/mysql/README_TH.md',
+    'database/mysql/create_database.sql',
+    'database/mysql/migrations/001_create_users.sql',
+    'database/mysql/migrations/002_create_user_devices.sql',
+    'database/mysql/migrations/003_create_sessions.sql',
+    'database/mysql/migrations/004_create_search_history.sql',
     'scripts/test_auth_flow.py',
+    'scripts/test_mysql_contract.py',
     'scripts/test_domain_cors.py',
     'scripts/test_app_trust.js',
     'scripts/test_popup_ui.js',
     'scripts/test_web_app_ui.js',
     'scripts/setup_local_domain.ps1',
     'scripts/test_local_domain_setup.ps1',
-    'web-app/login.html',
-    'web-app/runtime-config.js',
+    'web-app/package.json',
+    'web-app/package-lock.json',
+    'web-app/vite.config.mjs',
     'web-app/auth.css',
     'web-app/dockit-theme.css',
-    'web-app/theme.js',
-    'web-app/motion.js',
-    'web-app/awwwards-motion.js',
     'web-app/fonts.css',
     'web-app/professional-ui.css',
-    'web-app/auth.js',
     'web-app/index.html',
     'web-app/styles.css',
-    'web-app/app.js',
     'web-app/analyzer.js',
-    'web-app/server.js',
-    'web-app/sw.js',
     'web-app/manifest.webmanifest',
+    'web-app/src/main.jsx',
+    'web-app/src/App.jsx',
+    'web-app/src/react.css',
+    'web-app/src/components/AppHeader.jsx',
+    'web-app/src/components/MotionFrame.jsx',
+    'web-app/src/components/ProtectedRoute.jsx',
+    'web-app/src/contexts/AuthContext.jsx',
+    'web-app/src/contexts/AppContext.jsx',
+    'web-app/src/contexts/RouterContext.jsx',
+    'web-app/src/contexts/ThemeContext.jsx',
+    'web-app/src/pages/LoginPage.jsx',
+    'web-app/src/pages/ScannerPage.jsx',
+    'web-app/src/pages/QrPage.jsx',
+    'web-app/src/pages/DashboardPage.jsx',
+    'web-app/src/pages/SettingsPage.jsx',
+    'web-app/src/services/api.js',
+    'web-app/src/services/risk.js',
+    'web-app/src/services/runtime.js',
     'web-app/assets/brand-mark.svg',
     'web-app/assets/icon128.png',
     'web-app/assets/fonts/outfit-latin-400-700.woff2',
@@ -141,30 +157,28 @@ try {
     'web-app/assets/fonts/ibm-plex-sans-thai-500.woff2',
     'web-app/assets/fonts/ibm-plex-sans-thai-600.woff2',
     'web-app/assets/fonts/ibm-plex-sans-thai-700.woff2',
-    'web-app/assets/fonts/noto-serif-thai-500-600.woff2',
-    'web-app/vendor/gsap.min.js',
-    'web-app/vendor/ScrollTrigger.min.js'
+    'web-app/assets/fonts/noto-serif-thai-500-600.woff2'
   )
   foreach ($requiredFile in $requiredFiles) {
     Test-ProjectFile $requiredFile
   }
 
-  $authSchemaPath = Join-Path $ProjectRoot 'database/sqlserver/migrations/001_create_auth_schema.sql'
+  $authSchemaPath = Join-Path $ProjectRoot 'database/mysql/migrations/001_create_users.sql'
   if (Test-Path -LiteralPath $authSchemaPath -PathType Leaf) {
     $authSchema = Get-Content -Raw -LiteralPath $authSchemaPath
     $requiredSchemaFragments = @(
-      'CREATE TABLE [auth].[Users]',
-      '[PasswordHash] NVARCHAR(255) NOT NULL',
-      'CREATE TABLE [auth].[UserDevices]',
-      'FOREIGN KEY ([UserId])',
-      'ON DELETE CASCADE'
+      'CREATE TABLE IF NOT EXISTS `Users`',
+      '`PasswordHash` VARCHAR(255) NOT NULL',
+      '`Role` ENUM(''user'', ''admin'')',
+      'UNIQUE (`NormalizedUsername`)',
+      'UNIQUE (`NormalizedEmail`)'
     )
     foreach ($requiredSchemaFragment in $requiredSchemaFragments) {
       if (-not $authSchema.Contains($requiredSchemaFragment)) {
         Add-ValidationError "Authentication schema is missing: $requiredSchemaFragment"
       }
     }
-    if ($authSchema -match '(?im)^\s*\[Password\]\s+') {
+    if ($authSchema -match '(?im)^\s*`Password`\s+') {
       Add-ValidationError 'Authentication schema must not contain a plaintext Password column.'
     }
   }
@@ -231,6 +245,11 @@ try {
       & $pythonPath (Join-Path $PSScriptRoot 'test_domain_cors.py')
       if ($LASTEXITCODE -ne 0) {
         Add-ValidationError 'Custom Web App domain CORS test failed.'
+      }
+
+      & $pythonPath (Join-Path $PSScriptRoot 'test_mysql_contract.py')
+      if ($LASTEXITCODE -ne 0) {
+        Add-ValidationError 'MySQL schema and Backend contract test failed.'
       }
     } finally {
       $env:PYTHONDONTWRITEBYTECODE = $previousBytecodeSetting

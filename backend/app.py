@@ -13,7 +13,12 @@ from pydantic import BaseModel, Field
 
 from auth_router import WEB_ORIGINS, router as auth_router
 from database import database_status
-from feature_extractor import FEATURE_NAMES, extract_features, feature_vector
+from feature_extractor import (
+    FEATURE_NAMES,
+    FEATURE_SCHEMA_VERSION,
+    extract_features,
+    feature_vector,
+)
 from history_router import router as history_router
 from llm_explainer import ExplainRequest, explain_with_llm, llm_status
 
@@ -21,7 +26,7 @@ BASE_DIR = Path(__file__).resolve().parent
 MODEL_PATH = BASE_DIR / "model.pkl"
 FEEDBACK_PATH = BASE_DIR / "data" / "feedback.csv"
 
-app = FastAPI(title="Phish Radar API", version="1.2.0")
+app = FastAPI(title="Phish Radar API", version="2.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=sorted(WEB_ORIGINS),
@@ -61,21 +66,78 @@ def load_model_bundle() -> dict[str, object] | None:
 def model_policy(bundle: dict[str, object] | None) -> dict[str, object]:
     if bundle is None:
         return {
-            "alpha": 0.6,
-            "decision_threshold": 61.0,
-            "calibration": "none_fallback",
+            "model_version": None,
+            "policy_version": "local-evidence-fallback-1.0",
+            "feature_schema_version": FEATURE_SCHEMA_VERSION,
+            "warning_threshold": 61.0,
+            "blocking_threshold": 81.0,
+            "probability_method": "unavailable",
             "cv_strategy": None,
             "metrics": None,
         }
+    policy = bundle.get("policy")
+    if isinstance(policy, dict):
+        return {
+            "model_version": bundle.get("model_version"),
+            "policy_version": bundle.get("policy_version"),
+            "feature_schema_version": bundle.get(
+                "feature_schema_version", FEATURE_SCHEMA_VERSION
+            ),
+            "warning_threshold": float(policy.get("warning_threshold", 61.0)),
+            "blocking_threshold": float(policy.get("blocking_threshold", 81.0)),
+            "warning_max_fpr": policy.get("warning_max_fpr"),
+            "blocking_max_fpr": policy.get("blocking_max_fpr"),
+            "probability_method": bundle.get(
+                "probability_method", "intrinsic_logistic_sigmoid"
+            ),
+            "cv_strategy": bundle.get("cv_strategy"),
+            "metrics": bundle.get("metrics"),
+            "trained_at": bundle.get("trained_at"),
+            "dataset_row_count": bundle.get("dataset_row_count"),
+        }
+
+    # Compatibility for a model bundle produced before Risk Model v2.
+    legacy_threshold = float(bundle.get("decision_threshold", 61.0))
     return {
-        "alpha": float(bundle.get("alpha", 0.6)),
-        "decision_threshold": float(bundle.get("decision_threshold", 61.0)),
-        "calibration": bundle.get("calibration", "legacy_uncalibrated"),
+        "model_version": "legacy-alpha-model",
+        "policy_version": "legacy-single-threshold",
+        "feature_schema_version": bundle.get(
+            "feature_schema_version", FEATURE_SCHEMA_VERSION
+        ),
+        "warning_threshold": legacy_threshold,
+        "blocking_threshold": min(100.0, max(81.0, legacy_threshold + 20.0)),
+        "probability_method": bundle.get("calibration", "legacy_uncalibrated"),
         "cv_strategy": bundle.get("cv_strategy"),
         "metrics": bundle.get("metrics"),
         "trained_at": bundle.get("trained_at"),
         "dataset_row_count": bundle.get("dataset_row_count"),
     }
+
+
+def local_evidence_score(features: dict[str, float | int]) -> float:
+    """Deterministic offline evidence score; never presented as ML probability."""
+    return min(
+        100.0,
+        float(
+            features["suspicious_word_count"] * 12
+            + features["risky_tld"] * 18
+            + features["has_ip_host"] * 16
+            + features["has_at_symbol"] * 18
+            + features["has_nested_url"] * 14
+            + features["is_shortener"] * 12
+            + features["credential_parameter_count"] * 5
+            + features["redirect_parameter_count"] * 4
+            + max(0, features["url_length"] - 90) * 0.25
+        ),
+    )
+
+
+def risk_decision(score: float, warning_threshold: float, blocking_threshold: float) -> str:
+    if score >= blocking_threshold:
+        return "block"
+    if score >= warning_threshold:
+        return "warn"
+    return "allow"
 
 
 def write_feedback_csv(path: Path, row: dict[str, object]) -> Path:
@@ -120,56 +182,74 @@ def predict(payload: PredictRequest):
     policy = model_policy(bundle)
     model = bundle.get("model") if bundle else None
 
-    if model is None:
-        ml_score_value = min(
-            100,
-            float(
-                features["suspicious_word_count"] * 12
-                + features["risky_tld"] * 18
-                + features["has_ip_host"] * 16
-                + features["has_at_symbol"] * 18
-                + features["has_nested_url"] * 14
-                + features["is_shortener"] * 12
-                + max(0, features["url_length"] - 90) * 0.25
-            ),
-        )
-        ml_score = int(round(ml_score_value))
-        confidence = round(ml_score / 100, 4)
-        model_status = "fallback_heuristic_no_model"
-    else:
+    warning_threshold = float(policy["warning_threshold"])
+    blocking_threshold = float(policy["blocking_threshold"])
+    rule_score = payload.rule_score
+
+    if model is not None:
         probabilities = model.predict_proba([feature_vector(payload.url)])[0]
         class_values = list(model.classes_)
         phishing_probability = float(probabilities[class_values.index(1)])
-        ml_score_value = phishing_probability * 100.0
-        ml_score = int(round(ml_score_value))
+        risk_score_value = phishing_probability * 100.0
+        risk_probability: float | None = round(phishing_probability, 6)
+        risk_score = int(round(risk_score_value))
+        ml_score: int | None = risk_score
         confidence = round(phishing_probability, 4)
-        model_status = (
-            "calibrated_model"
-            if policy["calibration"] in {"sigmoid", "isotonic"}
-            else "legacy_model"
+        model_status = "ready"
+        risk_source = "url_risk_model"
+    else:
+        risk_score_value = (
+            float(rule_score)
+            if rule_score is not None
+            else local_evidence_score(features)
         )
+        risk_probability = None
+        risk_score = int(round(risk_score_value))
+        ml_score = None
+        confidence = None
+        model_status = "model_unavailable_local_evidence"
+        risk_source = "local_rule_evidence"
 
-    rule_score = payload.rule_score
-    alpha = float(policy["alpha"])
-    threshold = float(policy["decision_threshold"])
-    final_score_value = (
-        ml_score_value
-        if rule_score is None
-        else rule_score * alpha + ml_score_value * (1.0 - alpha)
+    decision = risk_decision(
+        risk_score_value, warning_threshold, blocking_threshold
     )
-    final_score = int(round(final_score_value))
-    label = "phishing" if final_score_value >= threshold else "safe"
+    label = "safe" if decision == "allow" else "phishing"
 
     return {
         "ok": True,
         "label": label,
+        "decision": decision,
+        "risk_probability": risk_probability,
+        "risk_score": risk_score,
+        "risk_source": risk_source,
+        "warning_threshold": warning_threshold,
+        "blocking_threshold": blocking_threshold,
+        "risk_margin": round(risk_score_value - warning_threshold, 2),
+        "model_version": policy.get("model_version"),
+        "policy_version": policy.get("policy_version"),
+        "feature_schema_version": policy.get("feature_schema_version"),
+        "probability_method": policy.get("probability_method"),
+        "model_status": model_status,
+        "layer_results": {
+            "normalization": {"status": "complete"},
+            "url_risk_model": {
+                "status": "ready" if model is not None else "unavailable",
+                "score": risk_score if model is not None else None,
+            },
+            "local_rule_evidence": {
+                "status": "evidence_only",
+                "score": rule_score,
+            },
+            "external_reputation": {"status": "not_configured"},
+            "page_context": {"status": "client_side"},
+            "llm_explanation": {"status": "on_demand"},
+        },
+        # Temporary response aliases keep older Web/Extension builds working.
         "ml_score": ml_score,
         "confidence": confidence,
-        "final_score": final_score,
-        "alpha": alpha,
-        "decision_threshold": threshold,
-        "risk_margin": round(final_score_value - threshold, 2),
-        "model_status": model_status,
+        "final_score": risk_score,
+        "alpha": None,
+        "decision_threshold": warning_threshold,
         "features": {name: features[name] for name in FEATURE_NAMES},
     }
 

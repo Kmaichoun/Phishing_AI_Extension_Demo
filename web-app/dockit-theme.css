@@ -349,7 +349,7 @@ table {
   .theme-toggle { transition: none; }
 }
 
-/* Dockit-inspired motion and native command palette */
+/* Dockit-inspired navigation and state motion */
 @property --score {
   syntax: "<number>";
   inherits: false;
@@ -359,8 +359,6 @@ table {
 :root {
   --ease-out-quart: cubic-bezier(.25, 1, .5, 1);
   --ease-out-quint: cubic-bezier(.22, 1, .36, 1);
-  --z-command-backdrop: 80;
-  --z-command: 90;
 }
 
 .tabs {
@@ -405,213 +403,6 @@ table {
   clip: rect(0, 0, 0, 0) !important;
   white-space: nowrap !important;
   border: 0 !important;
-}
-
-.command-trigger {
-  min-height: 38px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 9px;
-  color: var(--muted);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 9px;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.command-trigger:hover {
-  color: var(--ink);
-  border-color: var(--accent);
-  background: var(--soft);
-}
-
-.command-trigger-icon {
-  color: var(--accent-dark);
-  font-size: 19px;
-  line-height: 1;
-}
-
-.command-trigger kbd,
-.command-palette kbd {
-  min-width: 24px;
-  padding: 3px 6px;
-  color: var(--muted);
-  background: var(--soft);
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  box-shadow: 0 1px 0 var(--line);
-  font: 700 10px/1.2 Inter, "Segoe UI", sans-serif;
-  text-align: center;
-}
-
-.command-palette {
-  width: min(640px, calc(100% - 24px));
-  max-height: min(560px, calc(100dvh - 96px));
-  margin: max(56px, 8vh) auto auto;
-  padding: 0;
-  color: var(--ink);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  box-shadow: 0 4px 8px rgb(0 0 0 / .26);
-  overflow: hidden;
-  z-index: var(--z-command);
-}
-
-.command-palette::backdrop {
-  background: rgb(9 9 10 / .68);
-  backdrop-filter: blur(4px);
-}
-
-.command-palette[open] {
-  animation: dockit-dialog-in 220ms var(--ease-out-quint) both;
-}
-
-.command-palette[open]::backdrop {
-  animation: dockit-backdrop-in 180ms ease-out both;
-}
-
-.command-palette.is-closing {
-  animation: dockit-dialog-out 150ms ease-in both;
-}
-
-.command-palette.is-closing::backdrop {
-  animation: dockit-backdrop-out 150ms ease-in both;
-}
-
-.command-shell {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  max-height: inherit;
-  background: var(--surface);
-}
-
-.command-head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 64px;
-  padding: 10px 12px 10px 16px;
-  border-bottom: 1px solid var(--line);
-  background: var(--surface);
-}
-
-.command-search-icon {
-  flex: 0 0 auto;
-  color: var(--accent-dark);
-  font-size: 23px;
-  line-height: 1;
-}
-
-.command-search-copy {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.command-search-copy input {
-  width: 100%;
-  min-height: 42px;
-  padding: 0;
-  color: var(--ink);
-  background: transparent;
-  border: 0;
-  outline: 0;
-  font: 600 16px/1.4 Inter, "Noto Sans Thai", "Segoe UI", sans-serif;
-}
-
-.command-search-copy input::placeholder {
-  color: var(--muted);
-  opacity: 1;
-}
-
-.command-close {
-  min-height: 30px;
-  padding: 0 8px;
-  color: var(--muted);
-  background: var(--soft);
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  font-size: 10px;
-  font-weight: 800;
-}
-
-.command-list {
-  display: grid;
-  gap: 4px;
-  max-height: 420px;
-  padding: 8px;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-}
-
-.command-list button {
-  width: 100%;
-  min-height: 60px;
-  display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 11px;
-  padding: 9px 11px;
-  color: var(--ink);
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  text-align: left;
-}
-
-.command-list button[hidden] { display: none; }
-
-.command-list button:is(:hover, .is-active) {
-  background: var(--accent-soft);
-  border-color: color-mix(in srgb, var(--accent) 50%, var(--line));
-}
-
-.command-list button > span:nth-child(2) {
-  min-width: 0;
-  display: grid;
-  gap: 2px;
-}
-
-.command-list strong {
-  color: var(--ink);
-  font-size: 13px;
-}
-
-.command-list small {
-  color: var(--muted);
-  font-size: 11px;
-  line-height: 1.35;
-}
-
-.command-icon {
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  color: var(--accent-dark);
-  background: var(--soft);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  font-size: 17px;
-}
-
-.command-footer {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
-  padding: 9px 12px;
-  color: var(--muted);
-  background: var(--soft);
-  border-top: 1px solid var(--line);
-  font-size: 10px;
-}
-
-.command-footer span {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
 }
 
 button:not(:disabled):active,
@@ -738,19 +529,6 @@ button:not(:disabled):active,
   animation: dockit-theme-in 200ms var(--ease-out-quart) both;
 }
 
-@keyframes dockit-dialog-in {
-  from { opacity: 0; transform: translateY(-8px) scale(.985); filter: blur(3px); }
-  to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
-}
-
-@keyframes dockit-dialog-out {
-  from { opacity: 1; transform: translateY(0) scale(1); }
-  to { opacity: 0; transform: translateY(-5px) scale(.988); }
-}
-
-@keyframes dockit-backdrop-in { from { opacity: 0; } to { opacity: 1; } }
-@keyframes dockit-backdrop-out { from { opacity: 1; } to { opacity: 0; } }
-
 @keyframes dockit-page-in {
   from { opacity: .55; transform: translateY(5px); }
   to { opacity: 1; transform: translateY(0); }
@@ -790,25 +568,7 @@ button:not(:disabled):active,
 @keyframes dockit-theme-out { to { opacity: 0; } }
 @keyframes dockit-theme-in { from { opacity: 0; } }
 
-@media (max-width: 1180px) {
-  .command-trigger-label,
-  .command-trigger kbd { display: none; }
-  .command-trigger { width: 38px; justify-content: center; padding: 0; }
-}
-
-@media (max-width: 560px) {
-  .command-palette {
-    width: calc(100% - 16px);
-    max-height: calc(100dvh - 24px);
-    margin-top: 12px;
-  }
-  .command-list small { white-space: normal; }
-  .command-footer { gap: 9px; }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .command-palette,
-  .command-palette::backdrop,
   .page.is-entering,
   .auth-form.is-entering,
   .auth-message.is-updating,
