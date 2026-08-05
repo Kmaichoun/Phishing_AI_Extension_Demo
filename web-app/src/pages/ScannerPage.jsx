@@ -10,8 +10,10 @@ function reportText(item) {
   return [
     'Phish Radar AI Report',
     `URL: ${item.privacy ? item.displayUrl : item.url}`,
-    `Local rule evidence: ${item.ruleScore}/100`,
-    `URL Risk Model: ${Number.isFinite(item.riskScore) ? item.riskScore : (item.privacy ? 'local-only' : 'offline')}`,
+    `RuleScore: ${item.ruleScore}/100`,
+    `MLScore: ${Number.isFinite(item.mlScore) ? item.mlScore : (item.privacy ? 'local-only' : 'offline')}`,
+    `FinalScore: ${item.finalScore}/100`,
+    `Formula: ${item.riskFormula || 'FinalScore = 0.40(RuleScore) + 0.60(MLScore)'}`,
     `Risk probability: ${Number.isFinite(item.riskProbability) ? item.riskProbability : '-'}`,
     `Decision: ${item.decision || '-'}`,
     `Warning threshold: ${Number.isFinite(item.warningThreshold) ? item.warningThreshold : '-'}`,
@@ -94,10 +96,16 @@ function AnalysisResult({ result, phase }) {
       </div>
 
       <div className="score-grid">
-        <div><span>Rule evidence</span><strong>{result.ruleScore}</strong></div>
-        <div><span>URL Risk Model</span><strong>{Number.isFinite(result.mlScore) ? result.mlScore : (result.privacy ? 'local' : 'offline')}</strong></div>
-        <div><span>RiskScore</span><strong>{result.finalScore}</strong></div>
+        <div><span>RuleScore · 40%</span><strong>{result.ruleScore}</strong></div>
+        <div><span>MLScore · 60%</span><strong>{Number.isFinite(result.mlScore) ? result.mlScore : (result.privacy ? 'local' : 'offline')}</strong></div>
+        <div><span>FinalScore</span><strong>{result.finalScore}</strong></div>
       </div>
+
+      <p className="score-formula">
+        {Number.isFinite(result.mlScore)
+          ? 'FinalScore = 0.40(RuleScore) + 0.60(MLScore)'
+          : 'ML ยังไม่พร้อม จึงใช้ RuleScore เป็นคะแนนสำรองชั่วคราว'}
+      </p>
 
       <section className="block">
         <div className="row-title">
@@ -113,7 +121,7 @@ function AnalysisResult({ result, phase }) {
       <section className="insight block">
         <div className="row-title">
           <h3>Brand / Visual clues beta</h3>
-          <span>{result.finalScore >= 61 ? 'ควรตรวจสอบ' : 'ตรวจแล้ว'}</span>
+          <span>{result.finalScore >= (result.warningThreshold ?? 61) ? 'ควรตรวจสอบ' : 'ตรวจแล้ว'}</span>
         </div>
         <ul>{(result.insights || []).map(insight => <li key={insight}>{insight}</li>)}</ul>
       </section>

@@ -16,7 +16,7 @@ Privacy Mode เป็นโหมดสำหรับผู้ใช้ที�
 ## เมื่อปิด Privacy Mode
 
 - ระบบกลับไปใช้ workflow เต็ม ได้แก่ layered evidence + URL Risk Model + FPR policy + LLM explanation + Feedback backend
-- RiskScore มาจาก probability ของโมเดลโดยตรง และใช้ warn/block threshold ที่เลือกจาก grouped development predictions
+- FinalScore มาจาก RuleScore 40% + MLScore 60% และใช้ warn/block threshold ที่เลือกจาก grouped development predictions
 - LLM ใช้เพื่ออธิบายเหตุผล ไม่ได้นำมาบวกคะแนนโดยตรง
 
 ## จุดขายของฟีเจอร์

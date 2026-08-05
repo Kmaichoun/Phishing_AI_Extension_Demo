@@ -37,8 +37,11 @@ SEED_DATASET_PATH = DATA_DIR / "seed_urls.csv"
 MODEL_PATH = BASE_DIR / "model.pkl"
 REPORT_PATH = DATA_DIR / "risk_model_evaluation.json"
 MODEL_COMPRESSION: tuple[str, int] = ("lzma", 3)
-MODEL_VERSION = "url-risk-l1-logistic-1.0"
-POLICY_VERSION = "fpr-two-threshold-1.0"
+MODEL_VERSION = "url-risk-l1-logistic-1.1"
+POLICY_VERSION = "fixed-blend-40-60-fpr-1.0"
+RULE_WEIGHT = 0.40
+ML_WEIGHT = 0.60
+RISK_FORMULA = "FinalScore = 0.40 * RuleScore + 0.60 * MLScore"
 DEFAULT_C_VALUES = (0.01, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0)
 
 
@@ -115,7 +118,7 @@ def load_rows(path: Path) -> dict[str, object]:
 
     missing = [index for index, score in enumerate(rule_scores) if score is None]
     if missing:
-        print(f"Calculating {len(missing):,} missing RuleScore values for audit only...")
+        print(f"Calculating {len(missing):,} missing RuleScore values...")
         calculated = calculate_rule_scores([urls[index] for index in missing])
         for index, score in zip(missing, calculated, strict=True):
             rule_scores[index] = float(score)
@@ -194,6 +197,15 @@ def probability_metrics(y_true: np.ndarray, scores: np.ndarray) -> dict[str, flo
         "roc_auc": safe_float(roc_auc_score(y_true, scores)),
         "pr_auc": safe_float(average_precision_score(y_true, scores)),
     }
+
+
+def blend_scores(rule_scores: np.ndarray, ml_probabilities: np.ndarray) -> np.ndarray:
+    """Return the fixed 40% RuleScore + 60% MLScore on a normalized 0-1 scale."""
+    rounded_rule_scores = np.rint(np.clip(rule_scores, 0.0, 1.0) * 100.0)
+    rounded_ml_scores = np.rint(np.clip(ml_probabilities, 0.0, 1.0) * 100.0)
+    return (
+        RULE_WEIGHT * rounded_rule_scores + ML_WEIGHT * rounded_ml_scores
+    ) / 100.0
 
 
 def classification_metrics(
@@ -374,17 +386,23 @@ def select_policy(
 
 def evaluate_policy(
     y: np.ndarray,
-    scores: np.ndarray,
+    risk_scores: np.ndarray,
     policy: dict[str, object],
+    ml_probabilities: np.ndarray | None = None,
 ) -> dict[str, object]:
     warning = policy["warning"]
     blocking = policy["blocking"]
     if not isinstance(warning, dict) or not isinstance(blocking, dict):
         raise TypeError("Policy thresholds are malformed.")
+    probability_scores = risk_scores if ml_probabilities is None else ml_probabilities
     return {
-        "probability": probability_metrics(y, scores),
-        "warning": classification_metrics(y, scores, float(warning["threshold"])),
-        "blocking": classification_metrics(y, scores, float(blocking["threshold"])),
+        "probability": probability_metrics(y, probability_scores),
+        "final_score_ranking": {
+            "roc_auc": safe_float(roc_auc_score(y, risk_scores)),
+            "pr_auc": safe_float(average_precision_score(y, risk_scores)),
+        },
+        "warning": classification_metrics(y, risk_scores, float(warning["threshold"])),
+        "blocking": classification_metrics(y, risk_scores, float(blocking["threshold"])),
     }
 
 
@@ -427,7 +445,8 @@ def train(args: argparse.Namespace) -> None:
     x = data["x"]
     y = data["y"]
     groups = data["groups"]
-    if not all(isinstance(value, np.ndarray) for value in (x, y, groups)):
+    rule = data["rule"]
+    if not all(isinstance(value, np.ndarray) for value in (x, y, groups, rule)):
         raise TypeError("Dataset arrays were not constructed correctly.")
 
     holdout_splits, holdout_fold_count = split_indices(
@@ -437,6 +456,7 @@ def train(args: argparse.Namespace) -> None:
     x_development = x[development_index]
     y_development = y[development_index]
     groups_development = groups[development_index]
+    rule_development = rule[development_index] / 100.0
 
     print(
         f"Dataset: {len(y):,} rows | labels={dict(Counter(map(int, y)))} | "
@@ -455,9 +475,10 @@ def train(args: argparse.Namespace) -> None:
         args.cv_folds,
         args.seed,
     )
+    development_final_scores = blend_scores(rule_development, development_oof)
     policy = select_policy(
         y_development,
-        development_oof,
+        development_final_scores,
         args.warn_max_fpr,
         args.block_max_fpr,
     )
@@ -465,7 +486,10 @@ def train(args: argparse.Namespace) -> None:
     holdout_model = make_model(selected_c, args.seed)
     holdout_model.fit(x_development, y_development)
     holdout_scores = holdout_model.predict_proba(x[holdout_index])[:, 1]
-    holdout_evaluation = evaluate_policy(y[holdout_index], holdout_scores, policy)
+    holdout_final_scores = blend_scores(rule[holdout_index] / 100.0, holdout_scores)
+    holdout_evaluation = evaluate_policy(
+        y[holdout_index], holdout_final_scores, policy, holdout_scores
+    )
 
     # Preserve the hyperparameter chosen without access to the independent
     # holdout. Re-selecting C on the full dataset here would leak holdout
@@ -479,6 +503,7 @@ def train(args: argparse.Namespace) -> None:
         args.cv_folds,
         args.seed + 20_000,
     )
+    full_final_scores = blend_scores(rule / 100.0, full_oof)
     final_model = make_model(final_c, args.seed)
     final_model.fit(x, y)
 
@@ -493,7 +518,10 @@ def train(args: argparse.Namespace) -> None:
         "model": {
             "version": MODEL_VERSION,
             "family": "L1-regularized logistic regression",
-            "risk_formula": "RiskScore = 100 * sigmoid(w dot x + b)",
+            "ml_score_formula": "MLScore = 100 * sigmoid(w dot x + b)",
+            "risk_formula": RISK_FORMULA,
+            "rule_weight": RULE_WEIGHT,
+            "ml_weight": ML_WEIGHT,
             "selected_c_on_development": selected_c,
             "selected_c_for_final_model": final_c,
             "feature_schema_version": FEATURE_SCHEMA_VERSION,
@@ -534,14 +562,32 @@ def train(args: argparse.Namespace) -> None:
                 "lower Brier score and log loss indicate better probability quality."
             ),
         },
+        "fixed_score_blend": {
+            "formula": RISK_FORMULA,
+            "rule_weight": RULE_WEIGHT,
+            "ml_weight": ML_WEIGHT,
+            "development_out_of_fold": {
+                "roc_auc": safe_float(
+                    roc_auc_score(y_development, development_final_scores)
+                ),
+                "pr_auc": safe_float(
+                    average_precision_score(y_development, development_final_scores)
+                ),
+            },
+            "threshold_selection_input": "blended development out-of-fold FinalScore",
+        },
         "policy": policy,
         "independent_holdout": holdout_evaluation,
         "final_model_oof_probability": probability_metrics(y, full_oof),
+        "final_model_oof_risk_score": {
+            "roc_auc": safe_float(roc_auc_score(y, full_final_scores)),
+            "pr_auc": safe_float(average_precision_score(y, full_final_scores)),
+        },
         "coefficients": coefficient_report(final_model),
         "rule_engine": {
             "role": (
-                "Local/offline evidence and explanation layer. RuleScore is not "
-                "arithmetically mixed into RiskScore."
+                "Local/offline evidence and weighted input. RuleScore contributes "
+                "40 percent to FinalScore when the ML model is available."
             ),
             "audit_only_summary": {
                 str(label): {
@@ -566,7 +612,9 @@ def train(args: argparse.Namespace) -> None:
         "policy_version": POLICY_VERSION,
         "feature_names": FEATURE_NAMES,
         "feature_schema_version": FEATURE_SCHEMA_VERSION,
-        "risk_formula": "RiskScore = 100 * sigmoid(w dot x + b)",
+        "risk_formula": RISK_FORMULA,
+        "rule_weight": RULE_WEIGHT,
+        "ml_weight": ML_WEIGHT,
         "policy": {
             "warning_threshold": float(warning["threshold"]) * 100.0,
             "blocking_threshold": float(blocking["threshold"]) * 100.0,

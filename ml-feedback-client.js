@@ -75,6 +75,7 @@ function phishRadarClassifyPolicy(score, warningThreshold, blockingThreshold, de
 
 function phishRadarCombineMlResult(ruleResult, ml) {
   const riskScore = ml && Number.isFinite(ml.risk_score) ? ml.risk_score : ruleResult.score;
+  const mlScore = ml && Number.isFinite(ml.ml_score) ? ml.ml_score : null;
   const warningThreshold = ml && Number.isFinite(ml.warning_threshold) ? ml.warning_threshold : null;
   const blockingThreshold = ml && Number.isFinite(ml.blocking_threshold) ? ml.blocking_threshold : null;
   const classification = phishRadarClassifyPolicy(riskScore, warningThreshold, blockingThreshold, ml?.decision);
@@ -90,8 +91,11 @@ function phishRadarCombineMlResult(ruleResult, ml) {
     policyVersion: ml?.policy_version || null,
     featureSchemaVersion: ml?.feature_schema_version || null,
     layerResults: ml?.layer_results || {},
-    mlScore: ml?.model_status === 'ready' ? riskScore : null,
+    mlScore: ml?.model_status === 'ready' ? mlScore : null,
     finalScore: riskScore,
+    ruleWeight: Number.isFinite(ml?.rule_weight) ? ml.rule_weight : 0.4,
+    mlWeight: Number.isFinite(ml?.ml_weight) ? ml.ml_weight : 0.6,
+    riskFormula: ml?.risk_formula || 'FinalScore = 0.40(RuleScore) + 0.60(MLScore)',
     decisionThreshold: warningThreshold,
     score: riskScore,
     level: classification.level,

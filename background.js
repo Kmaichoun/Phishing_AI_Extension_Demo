@@ -226,7 +226,7 @@ async function analyzeUrlWithMl(url, options = {}) {
     policyVersion: ml?.policy_version ?? null,
     featureSchemaVersion: ml?.feature_schema_version ?? null,
     layerResults: ml?.layer_results ?? {},
-    mlScore: ml?.model_status === 'ready' ? finalScore : null,
+    mlScore: ml?.model_status === 'ready' && Number.isFinite(ml?.ml_score) ? ml.ml_score : null,
     finalScore,
     decisionThreshold: Number.isFinite(ml?.warning_threshold) ? ml.warning_threshold : null,
     score: finalScore,

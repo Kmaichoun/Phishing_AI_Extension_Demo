@@ -53,8 +53,10 @@ function mapServerHistory(item) {
     policyVersion: item.policy_version,
     featureSchemaVersion: item.feature_schema_version,
     layerResults: item.layer_results || {},
-    mlScore: item.risk_score ?? item.ml_score,
+    mlScore: item.ml_score,
     finalScore: item.risk_score ?? item.final_score,
+    ruleWeight: item.alpha ?? 0.4,
+    mlWeight: item.alpha == null ? 0.6 : 1 - item.alpha,
     decisionThreshold: item.warning_threshold ?? item.decision_threshold,
     detectionLabel: item.detection_label,
     modelStatus: item.model_status,
@@ -168,7 +170,7 @@ export function AppProvider({ children }) {
           ? `Online · Database ${databaseReady ? 'พร้อม' : 'ยังไม่พร้อม'}`
           : 'ไม่พร้อม',
         modelText: response.model_ready
-          ? `${policy?.model_version || 'Risk Model'} · warn ${policy?.warning_threshold ?? '-'} · block ${policy?.blocking_threshold ?? '-'}`
+          ? `${policy?.model_version || 'Risk Model'} · Rule 40% + ML 60% · warn ${policy?.warning_threshold ?? '-'} · block ${policy?.blocking_threshold ?? '-'}`
           : 'ยังไม่พบ model.pkl',
         llmText: response.llm?.llm_ready
           ? `พร้อมใช้ ${llmModel || 'LLM'}`
@@ -314,12 +316,15 @@ export function AppProvider({ children }) {
       policyVersion: prediction.policy_version || null,
       featureSchemaVersion: prediction.feature_schema_version || null,
       layerResults: prediction.layer_results || {},
-      mlScore: Number.isFinite(prediction.risk_score) && prediction.model_status === 'ready'
-        ? prediction.risk_score
+      mlScore: Number.isFinite(prediction.ml_score) && prediction.model_status === 'ready'
+        ? prediction.ml_score
         : null,
       finalScore: Number.isFinite(prediction.risk_score)
         ? prediction.risk_score
         : ruleResult.score,
+      ruleWeight: Number.isFinite(prediction.rule_weight) ? prediction.rule_weight : 0.4,
+      mlWeight: Number.isFinite(prediction.ml_weight) ? prediction.ml_weight : 0.6,
+      riskFormula: prediction.risk_formula || 'FinalScore = 0.40(RuleScore) + 0.60(MLScore)',
       decisionThreshold: Number.isFinite(prediction.warning_threshold)
         ? prediction.warning_threshold
         : null,
@@ -358,7 +363,7 @@ export function AppProvider({ children }) {
           layer_results: result.layerResults,
           ml_score: Number.isFinite(result.mlScore) ? result.mlScore : null,
           final_score: result.finalScore,
-          alpha: null,
+          alpha: result.ruleWeight,
           decision_threshold: result.warningThreshold,
           detection_label: result.detectionLabel,
           model_status: result.modelStatus,
@@ -376,6 +381,9 @@ export function AppProvider({ children }) {
         const response = await api.explain({
           url,
           rule_score: result.ruleScore,
+          ml_score: result.mlScore,
+          final_score: result.finalScore,
+          alpha: result.ruleWeight,
           risk_probability: result.riskProbability,
           risk_score: result.riskScore,
           decision: result.decision,

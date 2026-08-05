@@ -103,6 +103,7 @@ function llmBreakdownState(response) {
 
 function renderScoreBreakdown(llmResponse = null) {
   const ruleScore = clampRiskScore(getNumericWarningParam('rule_score') ?? result.ruleScore ?? result.score);
+  const mlScore = clampRiskScore(getNumericWarningParam('ml_score'));
   const riskScore = clampRiskScore(getNumericWarningParam('risk_score') ?? getNumericWarningParam('final_score') ?? result.finalScore ?? result.score);
   const riskProbability = getNumericWarningParam('risk_probability');
   const warningThreshold = getNumericWarningParam('warning_threshold') ?? getNumericWarningParam('decision_threshold');
@@ -110,11 +111,11 @@ function renderScoreBreakdown(llmResponse = null) {
   const decision = getWarningParam('decision') || '';
   const modelVersion = getWarningParam('model_version') || '';
 
-  setSourceRow('Rule', ruleScore, 'หลักฐานจากกฎและบริบทหน้าเว็บ ใช้อธิบายผลและเป็นโหมดสำรอง ไม่ถูกนำไปถ่วงน้ำหนักกับโมเดล');
+  setSourceRow('Rule', ruleScore, 'RuleScore มีน้ำหนัก 40% ใน FinalScore เมื่อโมเดลพร้อมใช้งาน');
   if (privacyMode) {
     setSourceRow('Ml', null, 'ปิด URL Risk Model เพื่อไม่ส่ง URL ออกนอก browser', { valueText: 'ปิด', percent: 12, tone: 'muted' });
   } else {
-    setSourceRow('Ml', riskScore, Number.isFinite(riskProbability) ? `ความน่าจะเป็นจาก L1 Logistic URL Risk Model${modelVersion ? ` (${modelVersion})` : ''}; RiskScore = 100 × probability` : 'โมเดลไม่พร้อม รอบนี้จึงแสดงหลักฐาน local โดยไม่เรียกว่า ML probability', { tone: Number.isFinite(riskProbability) ? scoreTone(riskScore) : 'muted' });
+    setSourceRow('Ml', mlScore, Number.isFinite(riskProbability) ? `MLScore มีน้ำหนัก 60% และมาจาก L1 Logistic URL Risk Model${modelVersion ? ` (${modelVersion})` : ''}` : 'โมเดลไม่พร้อม รอบนี้จึงใช้หลักฐาน local เป็นคะแนนสำรอง', { tone: Number.isFinite(mlScore) ? scoreTone(mlScore) : 'muted' });
   }
 
   const llmState = llmBreakdownState(llmResponse);
@@ -131,7 +132,7 @@ function renderScoreBreakdown(llmResponse = null) {
     blend.textContent = privacyMode
       ? 'คะแนน local ' + riskScore + '/100 มาจาก Rule evidence และหลักฐานบนหน้าเว็บเท่านั้น รอบนี้ไม่ส่ง URL ไป Risk Model หรือ LLM'
       : Number.isFinite(riskProbability)
-        ? 'RiskScore ' + riskScore + '/100 คำนวณจาก probability ของโมเดลโดยตรง; ผลคือ ' + (decision || 'ไม่ระบุ') + ' เมื่อ warn ≥ ' + (Number.isFinite(warningThreshold) ? warningThreshold : '-') + ' และ block ≥ ' + (Number.isFinite(blockingThreshold) ? blockingThreshold : '-') + '. Rule evidence และ LLM ไม่ได้ถูกบวกเข้าคะแนน'
+        ? 'FinalScore ' + riskScore + '/100 = 0.40(RuleScore ' + ruleScore + ') + 0.60(MLScore ' + mlScore + '); ผลคือ ' + (decision || 'ไม่ระบุ') + ' เมื่อ warn ≥ ' + (Number.isFinite(warningThreshold) ? warningThreshold : '-') + ' และ block ≥ ' + (Number.isFinite(blockingThreshold) ? blockingThreshold : '-')
         : 'Risk Model ไม่พร้อม จึงใช้ Rule evidence เป็นหลักฐาน local ชั่วคราว และแสดงสถานะนี้อย่างชัดเจน';
   }
 }

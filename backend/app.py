@@ -25,6 +25,9 @@ from llm_explainer import ExplainRequest, explain_with_llm, llm_status
 BASE_DIR = Path(__file__).resolve().parent
 MODEL_PATH = BASE_DIR / "model.pkl"
 FEEDBACK_PATH = BASE_DIR / "data" / "feedback.csv"
+RULE_WEIGHT = 0.40
+ML_WEIGHT = 0.60
+RISK_FORMULA = "FinalScore = 0.40 * RuleScore + 0.60 * MLScore"
 
 app = FastAPI(title="Phish Radar API", version="2.0.0")
 app.add_middleware(
@@ -72,6 +75,9 @@ def model_policy(bundle: dict[str, object] | None) -> dict[str, object]:
             "warning_threshold": 61.0,
             "blocking_threshold": 81.0,
             "probability_method": "unavailable",
+            "rule_weight": RULE_WEIGHT,
+            "ml_weight": ML_WEIGHT,
+            "risk_formula": RISK_FORMULA,
             "cv_strategy": None,
             "metrics": None,
         }
@@ -90,6 +96,9 @@ def model_policy(bundle: dict[str, object] | None) -> dict[str, object]:
             "probability_method": bundle.get(
                 "probability_method", "intrinsic_logistic_sigmoid"
             ),
+            "rule_weight": float(bundle.get("rule_weight", RULE_WEIGHT)),
+            "ml_weight": float(bundle.get("ml_weight", ML_WEIGHT)),
+            "risk_formula": bundle.get("risk_formula", RISK_FORMULA),
             "cv_strategy": bundle.get("cv_strategy"),
             "metrics": bundle.get("metrics"),
             "trained_at": bundle.get("trained_at"),
@@ -107,6 +116,9 @@ def model_policy(bundle: dict[str, object] | None) -> dict[str, object]:
         "warning_threshold": legacy_threshold,
         "blocking_threshold": min(100.0, max(81.0, legacy_threshold + 20.0)),
         "probability_method": bundle.get("calibration", "legacy_uncalibrated"),
+        "rule_weight": float(bundle.get("alpha", RULE_WEIGHT)),
+        "ml_weight": 1.0 - float(bundle.get("alpha", RULE_WEIGHT)),
+        "risk_formula": bundle.get("risk_formula", RISK_FORMULA),
         "cv_strategy": bundle.get("cv_strategy"),
         "metrics": bundle.get("metrics"),
         "trained_at": bundle.get("trained_at"),
@@ -184,31 +196,37 @@ def predict(payload: PredictRequest):
 
     warning_threshold = float(policy["warning_threshold"])
     blocking_threshold = float(policy["blocking_threshold"])
-    rule_score = payload.rule_score
+    rule_score_value = (
+        float(payload.rule_score)
+        if payload.rule_score is not None
+        else local_evidence_score(features)
+    )
+    rule_score = int(round(rule_score_value))
 
     if model is not None:
         probabilities = model.predict_proba([feature_vector(payload.url)])[0]
         class_values = list(model.classes_)
         phishing_probability = float(probabilities[class_values.index(1)])
-        risk_score_value = phishing_probability * 100.0
+        ml_score_value = phishing_probability * 100.0
+        ml_score: int | None = int(round(ml_score_value))
+        risk_score_value = (
+            RULE_WEIGHT * rule_score + ML_WEIGHT * ml_score
+        )
         risk_probability: float | None = round(phishing_probability, 6)
         risk_score = int(round(risk_score_value))
-        ml_score: int | None = risk_score
         confidence = round(phishing_probability, 4)
         model_status = "ready"
-        risk_source = "url_risk_model"
+        risk_source = "fixed_rule_ml_blend"
+        formula_applied = True
     else:
-        risk_score_value = (
-            float(rule_score)
-            if rule_score is not None
-            else local_evidence_score(features)
-        )
+        risk_score_value = rule_score_value
         risk_probability = None
         risk_score = int(round(risk_score_value))
         ml_score = None
         confidence = None
         model_status = "model_unavailable_local_evidence"
         risk_source = "local_rule_evidence"
+        formula_applied = False
 
     decision = risk_decision(
         risk_score_value, warning_threshold, blocking_threshold
@@ -222,6 +240,10 @@ def predict(payload: PredictRequest):
         "risk_probability": risk_probability,
         "risk_score": risk_score,
         "risk_source": risk_source,
+        "risk_formula": RISK_FORMULA,
+        "rule_weight": RULE_WEIGHT,
+        "ml_weight": ML_WEIGHT,
+        "formula_applied": formula_applied,
         "warning_threshold": warning_threshold,
         "blocking_threshold": blocking_threshold,
         "risk_margin": round(risk_score_value - warning_threshold, 2),
@@ -234,11 +256,12 @@ def predict(payload: PredictRequest):
             "normalization": {"status": "complete"},
             "url_risk_model": {
                 "status": "ready" if model is not None else "unavailable",
-                "score": risk_score if model is not None else None,
+                "score": ml_score,
             },
             "local_rule_evidence": {
-                "status": "evidence_only",
+                "status": "weighted_input" if model is not None else "fallback",
                 "score": rule_score,
+                "weight": RULE_WEIGHT,
             },
             "external_reputation": {"status": "not_configured"},
             "page_context": {"status": "client_side"},
@@ -248,7 +271,7 @@ def predict(payload: PredictRequest):
         "ml_score": ml_score,
         "confidence": confidence,
         "final_score": risk_score,
-        "alpha": None,
+        "alpha": RULE_WEIGHT,
         "decision_threshold": warning_threshold,
         "features": {name: features[name] for name in FEATURE_NAMES},
     }

@@ -80,7 +80,7 @@ LLM เริ่มต้นคือ `qwen3:4b` ผ่าน Ollama ส่ว�
     ./.venv/Scripts/python.exe ./backend/train_model.py
     ./.venv/Scripts/python.exe ./scripts/test_risk_pipeline.py
 
-ตัวฝึกใช้ L1-regularized Logistic Regression และคำนวณ `RiskScore = 100 × sigmoid(w·x+b)` โดยแบ่งข้อมูลแบบ Stratified Group ตาม hostname กัน grouped holdout ออกจากการเลือกโมเดล และเลือก warning/blocking threshold ภายใต้เพดาน FPR พร้อม one-sided Wilson upper bound 95% ระบบเลิกใช้สูตร alpha แบบกำหนดน้ำหนักเองแล้ว ผลเต็มอยู่ที่ `backend/data/risk_model_evaluation.json` และคำอธิบายวิธีทดลองอยู่ที่ [docs/RISK_MODEL_METHODOLOGY_TH.md](docs/RISK_MODEL_METHODOLOGY_TH.md)
+ตัวฝึกใช้ L1-regularized Logistic Regression สร้าง `MLScore = 100 × sigmoid(w·x+b)` แล้วคำนวณ `FinalScore = 0.40(RuleScore) + 0.60(MLScore)` โดยแบ่งข้อมูลแบบ Stratified Group ตาม hostname กัน grouped holdout ออกจากการเลือกโมเดล และเลือก warning/blocking threshold บน FinalScore ภายใต้เพดาน FPR พร้อม one-sided Wilson upper bound 95% ผลเต็มอยู่ที่ `backend/data/risk_model_evaluation.json` และคำอธิบายวิธีทดลองอยู่ที่ [docs/RISK_MODEL_METHODOLOGY_TH.md](docs/RISK_MODEL_METHODOLOGY_TH.md)
 
 ## เริ่ม Web App
 

@@ -20,7 +20,11 @@ def main() -> None:
     warning = report["policy"]["warning"]
     blocking = report["policy"]["blocking"]
     assert report["model"]["family"] == "L1-regularized logistic regression"
-    assert report["model"]["risk_formula"] == "RiskScore = 100 * sigmoid(w dot x + b)"
+    assert report["model"]["risk_formula"] == (
+        "FinalScore = 0.40 * RuleScore + 0.60 * MLScore"
+    )
+    assert report["model"]["rule_weight"] == 0.4
+    assert report["model"]["ml_weight"] == 0.6
     assert report["evaluation_design"]["group"] == "hostname"
     assert float(warning["threshold"]) <= float(blocking["threshold"])
     assert float(warning["false_positive_rate_upper_95"]) <= float(
@@ -35,7 +39,9 @@ def main() -> None:
     bundle = joblib.load(MODEL_PATH)
     assert bundle["model_version"] == report["model"]["version"]
     assert bundle["probability_method"] == "intrinsic_logistic_sigmoid"
-    assert "alpha" not in bundle
+    assert bundle["rule_weight"] == 0.4
+    assert bundle["ml_weight"] == 0.6
+    assert bundle["risk_formula"] == report["model"]["risk_formula"]
     assert abs(
         float(bundle["policy"]["warning_threshold"])
         - float(warning["threshold"]) * 100.0
@@ -69,11 +75,16 @@ def main() -> None:
     assert safe["decision"] == "allow"
     assert risky["label"] == "phishing"
     assert risky["decision"] in {"warn", "block"}
-    assert safe["risk_score"] == safe["ml_score"] == safe["final_score"]
-    assert safe["alpha"] is None
+    assert safe["risk_score"] == safe["final_score"]
+    assert safe["risk_score"] == round(0.4 * safe["layer_results"]["local_rule_evidence"]["score"] + 0.6 * safe["ml_score"])
+    assert risky["risk_score"] == round(0.4 * risky["layer_results"]["local_rule_evidence"]["score"] + 0.6 * risky["ml_score"])
+    assert safe["alpha"] == 0.4
+    assert safe["rule_weight"] == 0.4
+    assert safe["ml_weight"] == 0.6
+    assert safe["formula_applied"] is True
     assert safe["warning_threshold"] == bundle["policy"]["warning_threshold"]
     assert safe["blocking_threshold"] == bundle["policy"]["blocking_threshold"]
-    assert safe["layer_results"]["local_rule_evidence"]["status"] == "evidence_only"
+    assert safe["layer_results"]["local_rule_evidence"]["status"] == "weighted_input"
 
     print(
         "Risk pipeline test passed: "

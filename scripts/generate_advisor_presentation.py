@@ -437,7 +437,7 @@ def slide_problem(c: canvas.Canvas, page: int) -> None:
     badge(c, 506, 320, "วัตถุประสงค์", fill=BLUE_DARK, color=TEXT)
     objectives = [
         ("01", "ตรวจลิงก์และบริบทหน้าเว็บก่อนเข้าถึง"),
-        ("02", "เรียน RiskScore จากข้อมูลและกำหนดนโยบายด้วยเพดาน FPR"),
+        ("02", "ผสม RuleScore 40% กับ MLScore 60% และคุม FPR"),
         ("03", "เก็บบัญชี อุปกรณ์ Session และประวัติอย่างปลอดภัย"),
         ("04", "ให้ LLM อธิบายผล แต่ไม่อนุญาตให้เปลี่ยนคำตัดสิน"),
     ]
@@ -523,8 +523,8 @@ def slide_flow(c: canvas.Canvas, page: int) -> None:
     flow = [
         ("1", "รับ URL / หน้าเว็บ", "navigation, link, form,\nclipboard หรือ QR"),
         ("2", "คำนวณ RuleScore", "URL structure, brand,\nredirect, DOM context"),
-        ("3", "ขอ RiskScore", "sigmoid probability\nจาก L1 Logistic"),
-        ("4", "กำหนด Decision", "RiskScore + warn/block\nจาก model bundle"),
+        ("3", "คำนวณ MLScore", "sigmoid probability\nจาก L1 Logistic"),
+        ("4", "คำนวณ FinalScore", "Rule 40% + ML 60%\nแล้วกำหนด decision"),
         ("5", "ตอบสนอง", "อนุญาต / เตือน / บันทึก\nและอธิบายเหตุผล"),
     ]
     for index, (number, heading, body) in enumerate(flow):
@@ -690,19 +690,19 @@ def slide_policy(c: canvas.Canvas, page: int) -> None:
         c,
         page,
         "06 / Learned Risk",
-        "RiskScore เรียนจากข้อมูล ไม่ใช้ alpha ที่กำหนดเอง",
-        "Rule evidence ใช้อธิบายและ fallback ส่วน decision มาจาก probability policy",
+        "FinalScore = 0.40(RuleScore) + 0.60(MLScore)",
+        "MLScore เรียนจากข้อมูล ส่วน RuleScore มาจากกฎและบริบทใน browser",
     )
 
     warning = RISK_REPORT["policy"]["warning"]
     blocking = RISK_REPORT["policy"]["blocking"]
     rounded_card(c, 54, 245, 552, 137, fill=SURFACE, stroke=BORDER)
-    draw_text(c, 78, 344, "RiskScore", font=FONT_BOLD, size=13, color=ROSE)
+    draw_text(c, 78, 344, "FinalScore", font=FONT_BOLD, size=13, color=ROSE)
     draw_text(
         c,
         78,
         299,
-        "100 x sigmoid(w dot x + b)",
+        "0.40 x RuleScore + 0.60 x MLScore",
         font=FONT_BOLD,
         size=24,
         color=TEXT,
@@ -734,7 +734,7 @@ def slide_policy(c: canvas.Canvas, page: int) -> None:
     components = [
         (76, "Rule evidence", "อธิบายสัญญาณได้\nและทำงาน local"),
         (285, "URL features", "lexical และ host clues\nschema มี version"),
-        (494, "RiskScore", "probability จากโมเดล\nไม่ผสม RuleScore"),
+        (494, "FinalScore", "RuleScore 40%\nMLScore 60%"),
         (703, "Decision", "allow / warn / block\nจาก model policy"),
     ]
     for index, (x, title, body) in enumerate(components):
@@ -1116,8 +1116,8 @@ def slide_qa(c: canvas.Canvas, page: int) -> None:
 
     questions = [
         (
-            "ทำไมยกเลิก alpha 0.4?",
-            "ไม่มีหลักฐานว่าน้ำหนักคงที่เหมาะทุกข้อมูล จึงให้ L1 Logistic เรียน w,b และเลือก threshold ภายใต้ FPR",
+            "ทำไมใช้ Rule 40% และ ML 60%?",
+            "เป็น policy คงที่ของการทดลอง โดย ML มีน้ำหนักหลัก และเลือก threshold ใหม่บน FinalScore ภายใต้เพดาน FPR",
         ),
         (
             "ทำไมใช้ Logistic Regression?",
