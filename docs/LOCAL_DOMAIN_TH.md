@@ -28,7 +28,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup_local_do
 
 ## วิธีที่ Extension จดจำ Web App
 
-ไฟล์ `app-trust.js` เป็นรายการ Origin ที่ Extension เชื่อว่าเป็น Web App ของระบบ การตรวจใช้ค่า `protocol + hostname + port` แบบตรงตัว ไม่ได้เชื่อถือทุก service ที่อยู่บน localhost
+ไฟล์ `extension/app-trust.js` เป็นรายการ Origin ที่ Extension เชื่อว่าเป็น Web App ของระบบ การตรวจใช้ค่า `protocol + hostname + port` แบบตรงตัว ไม่ได้เชื่อถือทุก service ที่อยู่บน localhost
 
 เมื่ออยู่บน Web App:
 
@@ -41,7 +41,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup_local_do
 
 Domain `.localhost` ใช้ได้เฉพาะเครื่องพัฒนา หากต้องการให้ผู้อื่นเข้าใช้งาน ต้องมี Domain จริง, DNS, HTTPS และ Server/Hosting สำหรับทั้ง Web App กับ Backend จากนั้น:
 
-1. เพิ่ม HTTPS Origin ของ Web App ใน `TRUSTED_WEB_APP_ORIGINS` ที่ `app-trust.js`
+1. เพิ่ม HTTPS Origin ของ Web App ใน `TRUSTED_WEB_APP_ORIGINS` ที่ `extension/app-trust.js`
 2. เพิ่ม Origin เดียวกันในตัวแปร `AUTH_WEB_ORIGINS` ของ Backend
 3. กำหนด `window.PHISH_RADAR_API_BASE` ให้ชี้ไป HTTPS API หรือวาง reverse proxy ที่ `/api`
 4. Reload/Package Extension ใหม่

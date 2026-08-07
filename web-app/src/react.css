@@ -40,6 +40,10 @@
   margin-top: 18px;
 }
 
+.scores.score-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .score-formula {
   margin: 10px 0 0;
   color: var(--muted);
@@ -73,4 +77,12 @@
   .react-form-enter {
     animation: none;
   }
+}
+
+@media (max-width: 900px) {
+  .scores.score-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 560px) {
+  .scores.score-grid { grid-template-columns: 1fr; }
 }

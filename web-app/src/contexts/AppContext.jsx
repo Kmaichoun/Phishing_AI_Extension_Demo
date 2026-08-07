@@ -39,6 +39,8 @@ function safeHistoryItem(item) {
 }
 
 function mapServerHistory(item) {
+  const layers = item.layer_results || {};
+  const fusion = layers.learned_fusion || {};
   return {
     historyId: item.history_id,
     url: item.url,
@@ -52,11 +54,18 @@ function mapServerHistory(item) {
     modelVersion: item.model_version,
     policyVersion: item.policy_version,
     featureSchemaVersion: item.feature_schema_version,
-    layerResults: item.layer_results || {},
+    layerResults: layers,
+    fuzzyScore: layers.fuzzy_rule_evidence?.score ?? null,
+    randomForestScore: item.ml_score,
+    fusionMethod: fusion.method || null,
+    fusionApplied: fusion.status === 'ready',
     mlScore: item.ml_score,
     finalScore: item.risk_score ?? item.final_score,
-    ruleWeight: item.alpha ?? 0.4,
-    mlWeight: item.alpha == null ? 0.6 : 1 - item.alpha,
+    ruleWeight: item.alpha ?? null,
+    mlWeight: item.alpha == null ? null : 1 - item.alpha,
+    riskFormula: fusion.method
+      ? 'FinalScore = 100 × LearnedFusion(FuzzyScore, RandomForestScore)'
+      : null,
     decisionThreshold: item.warning_threshold ?? item.decision_threshold,
     detectionLabel: item.detection_label,
     modelStatus: item.model_status,
@@ -170,7 +179,7 @@ export function AppProvider({ children }) {
           ? `Online · Database ${databaseReady ? 'พร้อม' : 'ยังไม่พร้อม'}`
           : 'ไม่พร้อม',
         modelText: response.model_ready
-          ? `${policy?.model_version || 'Risk Model'} · Rule 40% + ML 60% · warn ${policy?.warning_threshold ?? '-'} · block ${policy?.blocking_threshold ?? '-'}`
+          ? `${policy?.model_version || 'Risk Model'} · Fuzzy + Random Forest + learned fusion · warn ${policy?.warning_threshold ?? '-'} · block ${policy?.blocking_threshold ?? '-'}`
           : 'ยังไม่พบ model.pkl',
         llmText: response.llm?.llm_ready
           ? `พร้อมใช้ ${llmModel || 'LLM'}`
@@ -316,15 +325,21 @@ export function AppProvider({ children }) {
       policyVersion: prediction.policy_version || null,
       featureSchemaVersion: prediction.feature_schema_version || null,
       layerResults: prediction.layer_results || {},
+      fuzzyScore: Number.isFinite(prediction.fuzzy_score) ? prediction.fuzzy_score : null,
+      randomForestScore: Number.isFinite(prediction.random_forest_score)
+        ? prediction.random_forest_score
+        : Number.isFinite(prediction.ml_score) ? prediction.ml_score : null,
+      fusionMethod: prediction.fusion_method || null,
+      fusionApplied: Boolean(prediction.fusion_applied),
       mlScore: Number.isFinite(prediction.ml_score) && prediction.model_status === 'ready'
         ? prediction.ml_score
         : null,
       finalScore: Number.isFinite(prediction.risk_score)
         ? prediction.risk_score
         : ruleResult.score,
-      ruleWeight: Number.isFinite(prediction.rule_weight) ? prediction.rule_weight : 0.4,
-      mlWeight: Number.isFinite(prediction.ml_weight) ? prediction.ml_weight : 0.6,
-      riskFormula: prediction.risk_formula || 'FinalScore = 0.40(RuleScore) + 0.60(MLScore)',
+      ruleWeight: Number.isFinite(prediction.rule_weight) ? prediction.rule_weight : null,
+      mlWeight: Number.isFinite(prediction.ml_weight) ? prediction.ml_weight : null,
+      riskFormula: prediction.risk_formula || 'FinalScore = 100 × LearnedFusion(FuzzyScore, RandomForestScore)',
       decisionThreshold: Number.isFinite(prediction.warning_threshold)
         ? prediction.warning_threshold
         : null,
@@ -381,6 +396,9 @@ export function AppProvider({ children }) {
         const response = await api.explain({
           url,
           rule_score: result.ruleScore,
+          fuzzy_score: result.fuzzyScore,
+          random_forest_score: result.randomForestScore,
+          fusion_method: result.fusionMethod,
           ml_score: result.mlScore,
           final_score: result.finalScore,
           alpha: result.ruleWeight,

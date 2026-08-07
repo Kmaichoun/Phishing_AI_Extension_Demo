@@ -89,8 +89,23 @@ async function sendToTab(tabId, message) {
   });
 }
 
+function isInjectablePageUrl(value) {
+  try {
+    const protocol = new URL(String(value || '')).protocol;
+    return protocol === 'http:' || protocol === 'https:' || protocol === 'file:';
+  } catch (_) {
+    return false;
+  }
+}
+
 async function ensureContentScript(tabId) {
   if (!tabId) return false;
+  try {
+    const tab = await chrome.tabs.get(tabId);
+    if (!isInjectablePageUrl(tab?.url)) return false;
+  } catch (_) {
+    return false;
+  }
   const ping = await sendToTab(tabId, { type: 'GET_LAST_SCAN' });
   if (ping?.ok) return true;
 
@@ -106,8 +121,10 @@ async function ensureContentScript(tabId) {
     await new Promise(resolve => setTimeout(resolve, 350));
     const check = await sendToTab(tabId, { type: 'GET_LAST_SCAN' });
     return !!check?.ok;
-  } catch (error) {
-    console.warn('Phish Radar injection failed:', error);
+  } catch (_) {
+    // Chrome rejects injection on browser error pages, restricted pages and
+    // tabs navigating between documents. This is an expected unavailable
+    // state, not an extension failure; callers already render a fallback.
     return false;
   }
 }

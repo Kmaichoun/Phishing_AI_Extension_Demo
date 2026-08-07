@@ -7,15 +7,16 @@
 ## โครงสร้างโปรเจกต์
 
     .
-    ├── manifest.json             # จุดเริ่มต้นของ Chrome Extension
-    ├── analyzer.js               # เครื่องมือวิเคราะห์ URL สำหรับ extension
-    ├── background.js             # service worker และ navigation protection
-    ├── content.js / content.css  # ตรวจหน้าเว็บ ลิงก์ และแบบฟอร์ม
-    ├── popup.*                   # หน้าควบคุมของ extension
-    ├── warning.*                 # หน้าเตือนและ feedback
-    ├── qr-scanner.*              # เครื่องมือตรวจ QR
-    ├── safe-preview.*            # โหมดเปิดหน้าเสี่ยงแบบจำกัด
-    ├── icons/                    # ไอคอน extension
+    ├── extension/                # Chrome/Brave Extension ทั้งหมด
+    │   ├── manifest.json         # จุดเริ่มต้นของ Manifest V3
+    │   ├── analyzer.js           # Rule-based analyzer ของ Extension
+    │   ├── background.js         # service worker และ navigation protection
+    │   ├── content.*             # ตรวจหน้าเว็บ ลิงก์ และแบบฟอร์ม
+    │   ├── popup.*               # หน้าควบคุมของ Extension
+    │   ├── warning.*             # หน้าเตือนและ feedback
+    │   ├── qr-scanner.*          # เครื่องมือตรวจ QR
+    │   ├── safe-preview.*        # โหมดเปิดหน้าเสี่ยงแบบจำกัด
+    │   └── icons/                # ไอคอน Extension
     ├── backend/                  # FastAPI, Login/Session, ML model และ LLM integration
     │   └── data/                 # seed dataset และ feedback ที่เกิดระหว่างใช้งาน
     ├── database/                 # MySQL/MariaDB schema และ migration scripts
@@ -28,7 +29,7 @@
 1. เปิด chrome://extensions/
 2. เปิด **Developer mode**
 3. กด **Load unpacked**
-4. เลือกโฟลเดอร์รากของโปรเจกต์นี้
+4. เลือกโฟลเดอร์ `extension/` ภายในโปรเจกต์นี้
 5. เมื่อแก้โค้ด ให้กด **Reload** ที่หน้า Extensions
 
 Extension ทำงานแบบ rule-based ได้โดยไม่ต้องเปิด backend ส่วน ML, LLM และการบันทึก feedback ไปยังไฟล์ต้องเปิด backend เพิ่ม
@@ -80,7 +81,21 @@ LLM เริ่มต้นคือ `qwen3:4b` ผ่าน Ollama ส่ว�
     ./.venv/Scripts/python.exe ./backend/train_model.py
     ./.venv/Scripts/python.exe ./scripts/test_risk_pipeline.py
 
-ตัวฝึกใช้ L1-regularized Logistic Regression สร้าง `MLScore = 100 × sigmoid(w·x+b)` แล้วคำนวณ `FinalScore = 0.40(RuleScore) + 0.60(MLScore)` โดยแบ่งข้อมูลแบบ Stratified Group ตาม hostname กัน grouped holdout ออกจากการเลือกโมเดล และเลือก warning/blocking threshold บน FinalScore ภายใต้เพดาน FPR พร้อม one-sided Wilson upper bound 95% ผลเต็มอยู่ที่ `backend/data/risk_model_evaluation.json` และคำอธิบายวิธีทดลองอยู่ที่ [docs/RISK_MODEL_METHODOLOGY_TH.md](docs/RISK_MODEL_METHODOLOGY_TH.md)
+โมเดลที่อยู่ในโปรเจกต์ขณะนี้ฝึกด้วย 20,000 URL ให้สร้างรุ่นขนาดเดียวกันด้วย:
+
+    ./.venv/Scripts/python.exe ./backend/collect_legitimate_deep_links.py
+    ./.venv/Scripts/python.exe ./backend/build_dataset.py --refresh --phishing-limit 10000 --legitimate-limit 10000
+    ./.venv/Scripts/python.exe ./backend/train_model.py
+
+หากล้าง source-feed cache เพื่อลดขนาดโปรเจกต์แล้ว แต่ยังมี `training_urls.csv`
+ให้สร้างข้อมูลรุ่นใหม่จากไฟล์เดิมโดยไม่ดาวน์โหลดซ้ำ:
+
+    ./.venv/Scripts/python.exe ./backend/build_dataset.py --reuse-existing
+
+ตัวสร้างข้อมูลจะเพิ่ม curated hard negatives และปรับสัดส่วน legitimate URL ที่มี
+path, query และ subdomain ให้ใกล้กับฝั่ง phishing เพื่อลด dataset shortcut
+
+ระดับที่ใช้อยู่คือ “ประยุกต์แนวคิด”: RuleScore ถูกแปลงเป็น `FuzzyScore`, โมเดล Random Forest สร้างคะแนนดิบซึ่งถูก calibrate ด้วย Platt scaling จาก out-of-fold predictions แล้ว Logistic meta-model จึงเรียนวิธีรวม `FuzzyScore` และ `RandomForestScore` โดยไม่มีน้ำหนักคงที่ 40/60 ขั้นสุดท้ายมี consensus guardrail ซึ่งยกระดับผลเฉพาะเมื่อ Fuzzy และ ML ให้หลักฐานสูงตรงกัน ระบบแบ่งข้อมูลแบบ Stratified Group ตาม hostname, กัน grouped holdout ออกจากการฝึก และเลือก warning/blocking threshold ภายใต้เพดาน FPR พร้อม one-sided Wilson upper bound 95% ผลเต็มอยู่ที่ `backend/data/risk_model_evaluation.json` และคำอธิบายวิธีทดลองอยู่ที่ [docs/RISK_MODEL_METHODOLOGY_TH.md](docs/RISK_MODEL_METHODOLOGY_TH.md)
 
 ## เริ่ม Web App
 
@@ -144,12 +159,12 @@ Component, Router, Context และสิ่งที่ต้องรู้�
 
 ## แนวทางรักษาโครงสร้าง
 
-- เก็บโค้ดที่ Chrome โหลดโดยตรงไว้ที่ root และอย่าย้ายโดยไม่แก้ manifest.json
+- เก็บโค้ดที่ Chrome โหลดโดยตรงไว้ใต้ `extension/` และเลือกโฟลเดอร์นี้ตอน Load unpacked
 - เก็บเอกสารทั้งหมดไว้ใต้ docs/; ให้ root เหลือเฉพาะ README และไฟล์ runtime
 - เก็บข้อมูล backend ใต้ backend/data/; feedback.csv เป็นข้อมูล runtime และถูก ignore จาก Git
 - เก็บ feed และ training_urls.csv ไว้เฉพาะเครื่อง; บันทึก manifest และผลประเมินเพื่อทำซ้ำการทดลอง
 - อย่าสร้างโฟลเดอร์ backup-* ในโปรเจกต์ ให้ใช้ Git commit หรือ branch แทน
-- analyzer.js ที่ root และ web-app/analyzer.js เป็นคนละ runtime เมื่อแก้ logic ควรตรวจทั้งสองชุด
+- `extension/analyzer.js` และ `web-app/analyzer.js` เป็นคนละ runtime เมื่อแก้ logic ควรตรวจทั้งสองชุด
 - Web App เป็น React/Vite ส่วน Chrome Extension ยังเป็น Manifest V3 + JavaScript แยกกัน
 - แก้ React source ใน web-app/src/ และให้ `npm run build` สร้าง dist/
 - รัน validation ทุกครั้งก่อน package หรือส่งต่อโปรเจกต์
@@ -157,8 +172,10 @@ Component, Router, Context และสิ่งที่ต้องรู้�
 ## เอกสารเพิ่มเติม
 
 - [ดัชนีเอกสาร](docs/README.md)
+- [แผนผังและขอบเขตแต่ละส่วน](docs/PROJECT_STRUCTURE_TH.md)
 - [ฐานข้อมูลสมาชิก MySQL/MariaDB](database/mysql/README_TH.md)
 - [โครงสร้าง React Web App](docs/REACT_WEB_APP_TH.md)
 - [วิธีสร้างและประเมิน Risk Model](docs/RISK_MODEL_METHODOLOGY_TH.md)
-- [สคริปต์นำเสนอ](docs/PRESENTATION_NOTES_TH.md)
-- [ประวัติการพัฒนาเดิม](docs/PROJECT_HISTORY_TH.md)
+ไฟล์ Presentation, PDF/PPTX และรายงาน Progress ถูกแยกออกจาก Runtime Project
+ไปไว้ที่โฟลเดอร์พี่น้อง `../presentation-progress/` เพื่อลดขนาดและป้องกัน
+เอกสารงานนำเสนอปะปนกับ Source Code

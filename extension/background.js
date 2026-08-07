@@ -30,6 +30,10 @@ async function getSettings() {
 function warningUrl(target, source = 'navigation', extra = {}) {
   const ruleScore = extra.ruleScore ?? extra.rule_score ?? extra.score ?? '';
   const riskProbability = extra.riskProbability ?? extra.risk_probability ?? extra.ml?.risk_probability ?? '';
+  const fuzzyScore = extra.fuzzyScore ?? extra.fuzzy_score ?? extra.ml?.fuzzy_score ?? '';
+  const randomForestScore = extra.randomForestScore ?? extra.random_forest_score ?? extra.ml?.random_forest_score ?? extra.mlScore ?? extra.ml_score ?? extra.ml?.ml_score ?? '';
+  const fusionMethod = extra.fusionMethod ?? extra.fusion_method ?? extra.ml?.fusion_method ?? '';
+  const fusionApplied = extra.fusionApplied ?? extra.fusion_applied ?? extra.ml?.fusion_applied ?? false;
   const riskScore = extra.riskScore ?? extra.risk_score ?? extra.finalScore ?? extra.final_score ?? extra.score ?? '';
   const decision = extra.decision ?? extra.ml?.decision ?? '';
   const warningThreshold = extra.warningThreshold ?? extra.warning_threshold ?? extra.decisionThreshold ?? extra.decision_threshold ?? extra.ml?.warning_threshold ?? '';
@@ -41,6 +45,10 @@ function warningUrl(target, source = 'navigation', extra = {}) {
     source,
     score: String(riskScore),
     rule_score: String(ruleScore),
+    fuzzy_score: String(fuzzyScore),
+    random_forest_score: String(randomForestScore),
+    fusion_method: String(fusionMethod),
+    fusion_applied: fusionApplied ? '1' : '',
     risk_probability: riskProbability === null || riskProbability === undefined ? '' : String(riskProbability),
     risk_score: String(riskScore),
     decision: String(decision),
@@ -185,6 +193,10 @@ async function analyzeUrlWithMl(url, options = {}) {
       warningThreshold: Number(settings.threshold || 61),
       blockingThreshold: Math.min(100, Number(settings.threshold || 61) + 20),
       mlScore: null,
+      fuzzyScore: null,
+      randomForestScore: null,
+      fusionMethod: null,
+      fusionApplied: false,
       finalScore: ruleResult.score,
       score: ruleResult.score,
       privacyMode: true,
@@ -226,6 +238,10 @@ async function analyzeUrlWithMl(url, options = {}) {
     policyVersion: ml?.policy_version ?? null,
     featureSchemaVersion: ml?.feature_schema_version ?? null,
     layerResults: ml?.layer_results ?? {},
+    fuzzyScore: ml?.fuzzy_score ?? null,
+    randomForestScore: ml?.random_forest_score ?? ml?.ml_score ?? null,
+    fusionMethod: ml?.fusion_method ?? null,
+    fusionApplied: Boolean(ml?.fusion_applied),
     mlScore: ml?.model_status === 'ready' && Number.isFinite(ml?.ml_score) ? ml.ml_score : null,
     finalScore,
     decisionThreshold: Number.isFinite(ml?.warning_threshold) ? ml.warning_threshold : null,
@@ -272,14 +288,10 @@ async function applySafePreviewIfNeeded(tabId, url) {
   if (!preview) return;
   try {
     await chrome.scripting.insertCSS({ target: { tabId }, files: ['safe-preview.css'] });
-  } catch (error) {
-    console.warn('Safe Preview CSS injection failed:', error);
-  }
+  } catch (_) {}
   try {
     await chrome.scripting.executeScript({ target: { tabId }, files: ['safe-preview.js'] });
-  } catch (error) {
-    console.warn('Safe Preview script injection failed:', error);
-  }
+  } catch (_) {}
 }
 
 async function updateBadge(tabId, result) {
@@ -509,7 +521,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     if (message?.type === 'OPEN_WEB_APP') {
-      const url = APP_TRUST?.DEFAULT_WEB_APP_URL || 'http://127.0.0.1:5505/login.html';
+      const url = APP_TRUST?.DEFAULT_WEB_APP_URL || 'http://127.0.0.1:5505/#/login';
       await chrome.tabs.create({ url });
       sendResponse({ ok: true, url });
       return;

@@ -37,7 +37,7 @@ try {
   Write-Host '1/6 Validating JSON files...' -ForegroundColor Cyan
   $manifest = $null
   try {
-    $manifest = Get-Content -Raw -LiteralPath 'manifest.json' | ConvertFrom-Json
+    $manifest = Get-Content -Raw -LiteralPath 'extension/manifest.json' | ConvertFrom-Json
     Get-Content -Raw -LiteralPath 'web-app/manifest.webmanifest' | ConvertFrom-Json | Out-Null
   } catch {
     Add-ValidationError "Invalid JSON: $($_.Exception.Message)"
@@ -65,14 +65,14 @@ try {
 
     foreach ($resource in $manifestResources | Sort-Object -Unique) {
       if (-not [string]::IsNullOrWhiteSpace($resource)) {
-        Test-ProjectFile $resource
+        Test-ProjectFile ("extension/" + $resource)
       }
     }
   }
 
   Write-Host '3/6 Validating local HTML resources...' -ForegroundColor Cyan
   $htmlFiles = @(
-    Get-ChildItem -LiteralPath $ProjectRoot -File -Filter '*.html'
+    Get-ChildItem -LiteralPath (Join-Path $ProjectRoot 'extension') -File -Filter '*.html'
     Get-ChildItem -LiteralPath (Join-Path $ProjectRoot 'web-app') -File -Filter '*.html'
   )
   foreach ($htmlFile in $htmlFiles) {
@@ -95,11 +95,26 @@ try {
   Write-Host '4/6 Checking required project files...' -ForegroundColor Cyan
   $requiredFiles = @(
     'DESIGN.md',
-    'app-trust.js',
-    'dockit-extension.css',
-    'extension-theme.js',
-    'extension-motion.js',
+    'extension/manifest.json',
+    'extension/README.md',
+    'extension/analyzer.js',
+    'extension/app-trust.js',
+    'extension/background.js',
+    'extension/content.js',
+    'extension/content.css',
+    'extension/dockit-extension.css',
+    'extension/extension-theme.js',
+    'extension/extension-motion.js',
+    'extension/ml-feedback-client.js',
+    'extension/popup.html',
+    'extension/popup.css',
+    'extension/popup.js',
+    'extension/qr-scanner.html',
+    'extension/safe-preview.js',
+    'extension/warning.html',
+    'extension/icons/icon128.png',
     'backend/app.py',
+    'backend/fuzzy_scoring.py',
     'backend/auth_models.py',
     'backend/auth_router.py',
     'backend/database.py',
@@ -190,6 +205,7 @@ try {
   } else {
     $javascriptFiles = @(
       Get-ChildItem -LiteralPath $ProjectRoot -File -Filter '*.js'
+      Get-ChildItem -LiteralPath (Join-Path $ProjectRoot 'extension') -File -Filter '*.js'
       Get-ChildItem -LiteralPath (Join-Path $ProjectRoot 'web-app') -File -Filter '*.js'
       Get-ChildItem -LiteralPath $PSScriptRoot -File -Filter '*.js'
     )
@@ -257,6 +273,21 @@ try {
   }
 
   Write-Host '6/6 Checking generated and backup artifacts...' -ForegroundColor Cyan
+  $misplacedExtensionFiles = @(
+    'manifest.json',
+    'background.js',
+    'content.js',
+    'popup.html',
+    'warning.html',
+    'qr-scanner.html',
+    'analyzer.js'
+  )
+  foreach ($misplacedExtensionFile in $misplacedExtensionFiles) {
+    if (Test-Path -LiteralPath (Join-Path $ProjectRoot $misplacedExtensionFile)) {
+      Add-ValidationError "Extension runtime file must stay in extension/: $misplacedExtensionFile"
+    }
+  }
+
   $backupArtifacts = @(
     Get-ChildItem -LiteralPath $ProjectRoot -Directory -Filter 'backup-*'
     Get-ChildItem -LiteralPath $ProjectRoot -File -Filter '*.backup-*'
@@ -270,13 +301,6 @@ try {
   foreach ($pythonCache in $pythonCaches) {
     $relativeCache = Get-ProjectRelativePath $pythonCache.FullName
     Add-ValidationError "Python cache should be removed: $relativeCache"
-  }
-
-  $inspectionArtifacts = Get-ChildItem -LiteralPath (Join-Path $ProjectRoot 'output') `
-    -Recurse -File -Filter '*.inspect.ndjson' -ErrorAction SilentlyContinue
-  foreach ($inspectionArtifact in $inspectionArtifacts) {
-    $relativeArtifact = Get-ProjectRelativePath $inspectionArtifact.FullName
-    Add-ValidationError "Generated inspection artifact should be removed: $relativeArtifact"
   }
 
   if ($validationErrors.Count -gt 0) {

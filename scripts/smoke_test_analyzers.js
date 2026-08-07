@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 
 const analyzerPaths = [
-  path.resolve(__dirname, '..', 'analyzer.js'),
+  path.resolve(__dirname, '..', 'extension', 'analyzer.js'),
   path.resolve(__dirname, '..', 'web-app', 'analyzer.js')
 ];
 

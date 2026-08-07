@@ -82,8 +82,8 @@ assert(scanner.includes('ท่องเว็บไซต์อย่างป�
 assert(scanner.includes('Phis radar AI'), 'Requested hero brand line is missing.');
 assert(scanner.includes('className="input-row scan-input-row"'), 'Scanner URL field must use the responsive input-row layout.');
 assert(!scanner.includes('https://example.com/login'), 'Scanner URL field must not show the retired example URL.');
-assert(scanner.includes('RuleScore · 40%') && scanner.includes('MLScore · 60%'), 'Fixed 40/60 score breakdown is missing.');
-assert(scanner.includes('FinalScore = 0.40(RuleScore) + 0.60(MLScore)'), 'Fixed FinalScore formula is missing.');
+assert(scanner.includes('FuzzyScore') && scanner.includes('Random Forest'), 'Fuzzy and Random Forest score breakdown is missing.');
+assert(scanner.includes('FinalScore = 100 × LearnedFusion(FuzzyScore, RandomForestScore)'), 'Learned fusion formula is missing.');
 assert(scanner.includes('คำอธิบายจาก LLM'), 'LLM explanation panel is missing.');
 assert(qr.includes("from 'jsqr'") && qr.includes('BarcodeDetector'), 'QR fallback and native reader support are missing.');
 assert(dashboard.includes('Export CSV') && dashboard.includes('Export JSON'), 'Dashboard exports are missing.');

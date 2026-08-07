@@ -9,7 +9,7 @@
     'http://localhost:5505'
   ]);
 
-  const DEFAULT_WEB_APP_URL = `${TRUSTED_WEB_APP_ORIGINS[0]}/login.html`;
+  const DEFAULT_WEB_APP_URL = `${TRUSTED_WEB_APP_ORIGINS[0]}/#/login`;
 
   function normalizeHttpOrigin(value) {
     try {

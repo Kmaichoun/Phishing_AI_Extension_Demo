@@ -40,9 +40,9 @@ The Dockit source remains a historical visual reference and is licensed under MI
 
 - `web-app/dockit-theme.css` is the Web App/Login theme layer.
 - `web-app/professional-ui.css` is the final Web App, Login, and Settings composition layer.
-- `popup.css` owns the compact Popup treatment and its light/dark theme tokens.
-- `dockit-extension.css` is the shared theme layer for Warning and QR pages.
-- `content.css` and `safe-preview.css` contain scoped Dockit overrides for UI injected into third-party pages; they must never style the host page globally.
+- `extension/popup.css` owns the compact Popup treatment and its light/dark theme tokens.
+- `extension/dockit-extension.css` is the shared theme layer for Warning and QR pages.
+- `extension/content.css` and `extension/safe-preview.css` contain scoped Dockit overrides for UI injected into third-party pages; they must never style the host page globally.
 
 ## Motion and navigation
 

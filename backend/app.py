@@ -19,15 +19,18 @@ from feature_extractor import (
     extract_features,
     feature_vector,
 )
+from fuzzy_scoring import FUZZY_SCHEMA_VERSION, fuzzy_audit, fuzzy_score
 from history_router import router as history_router
 from llm_explainer import ExplainRequest, explain_with_llm, llm_status
+from risk_policy import apply_consensus_guardrail
 
 BASE_DIR = Path(__file__).resolve().parent
 MODEL_PATH = BASE_DIR / "model.pkl"
 FEEDBACK_PATH = BASE_DIR / "data" / "feedback.csv"
-RULE_WEIGHT = 0.40
-ML_WEIGHT = 0.60
-RISK_FORMULA = "FinalScore = 0.40 * RuleScore + 0.60 * MLScore"
+LEGACY_RULE_WEIGHT = 0.40
+LEGACY_ML_WEIGHT = 0.60
+RISK_FORMULA = "FinalScore = 100 * LearnedFusion(FuzzyScore, RandomForestScore)"
+LEGACY_RISK_FORMULA = "FinalScore = 0.40 * RuleScore + 0.60 * MLScore"
 
 app = FastAPI(title="Phish Radar API", version="2.0.0")
 app.add_middleware(
@@ -56,14 +59,22 @@ class FeedbackRequest(BaseModel):
     source: str | None = None
 
 
-@lru_cache(maxsize=1)
-def load_model_bundle() -> dict[str, object] | None:
-    if not MODEL_PATH.exists():
-        return None
+@lru_cache(maxsize=2)
+def _load_model_bundle(model_modified_ns: int) -> dict[str, object]:
+    """Load one immutable model revision while avoiding disk I/O per request."""
     bundle = joblib.load(MODEL_PATH)
     if isinstance(bundle, dict) and "model" in bundle:
         return bundle
     return {"model": bundle}
+
+
+def load_model_bundle() -> dict[str, object] | None:
+    """Reload the model automatically whenever model.pkl is replaced."""
+    try:
+        model_modified_ns = MODEL_PATH.stat().st_mtime_ns
+    except FileNotFoundError:
+        return None
+    return _load_model_bundle(model_modified_ns)
 
 
 def model_policy(bundle: dict[str, object] | None) -> dict[str, object]:
@@ -75,9 +86,11 @@ def model_policy(bundle: dict[str, object] | None) -> dict[str, object]:
             "warning_threshold": 61.0,
             "blocking_threshold": 81.0,
             "probability_method": "unavailable",
-            "rule_weight": RULE_WEIGHT,
-            "ml_weight": ML_WEIGHT,
+            "rule_weight": None,
+            "ml_weight": None,
             "risk_formula": RISK_FORMULA,
+            "fusion_method": "unavailable",
+            "fuzzy_schema_version": FUZZY_SCHEMA_VERSION,
             "cv_strategy": None,
             "metrics": None,
         }
@@ -96,9 +109,15 @@ def model_policy(bundle: dict[str, object] | None) -> dict[str, object]:
             "probability_method": bundle.get(
                 "probability_method", "intrinsic_logistic_sigmoid"
             ),
-            "rule_weight": float(bundle.get("rule_weight", RULE_WEIGHT)),
-            "ml_weight": float(bundle.get("ml_weight", ML_WEIGHT)),
+            "rule_weight": bundle.get("rule_weight"),
+            "ml_weight": bundle.get("ml_weight"),
             "risk_formula": bundle.get("risk_formula", RISK_FORMULA),
+            "fusion_method": bundle.get("fusion_method"),
+            "fusion_version": bundle.get("fusion_version"),
+            "calibration_version": bundle.get("calibration_version"),
+            "fuzzy_schema_version": bundle.get(
+                "fuzzy_schema_version", FUZZY_SCHEMA_VERSION
+            ),
             "cv_strategy": bundle.get("cv_strategy"),
             "metrics": bundle.get("metrics"),
             "trained_at": bundle.get("trained_at"),
@@ -116,9 +135,11 @@ def model_policy(bundle: dict[str, object] | None) -> dict[str, object]:
         "warning_threshold": legacy_threshold,
         "blocking_threshold": min(100.0, max(81.0, legacy_threshold + 20.0)),
         "probability_method": bundle.get("calibration", "legacy_uncalibrated"),
-        "rule_weight": float(bundle.get("alpha", RULE_WEIGHT)),
-        "ml_weight": 1.0 - float(bundle.get("alpha", RULE_WEIGHT)),
-        "risk_formula": bundle.get("risk_formula", RISK_FORMULA),
+        "rule_weight": float(bundle.get("alpha", LEGACY_RULE_WEIGHT)),
+        "ml_weight": 1.0 - float(bundle.get("alpha", LEGACY_RULE_WEIGHT)),
+        "risk_formula": bundle.get("risk_formula", LEGACY_RISK_FORMULA),
+        "fusion_method": "legacy_fixed_blend",
+        "fuzzy_schema_version": None,
         "cv_strategy": bundle.get("cv_strategy"),
         "metrics": bundle.get("metrics"),
         "trained_at": bundle.get("trained_at"),
@@ -193,6 +214,10 @@ def predict(payload: PredictRequest):
     bundle = load_model_bundle()
     policy = model_policy(bundle)
     model = bundle.get("model") if bundle else None
+    fusion_model = bundle.get("fusion_model") if bundle else None
+    probability_calibrator = (
+        bundle.get("probability_calibrator") if bundle else None
+    )
 
     warning_threshold = float(policy["warning_threshold"])
     blocking_threshold = float(policy["blocking_threshold"])
@@ -202,30 +227,84 @@ def predict(payload: PredictRequest):
         else local_evidence_score(features)
     )
     rule_score = int(round(rule_score_value))
+    fuzzy_audit_result = fuzzy_audit(rule_score_value)
+    fuzzy_score_value = fuzzy_score(rule_score_value)
+    fuzzy_score_rounded = int(round(fuzzy_score_value))
+    rule_weight = policy.get("rule_weight")
+    ml_weight = policy.get("ml_weight")
+    applied_formula = str(policy.get("risk_formula") or RISK_FORMULA)
+    fusion_method = policy.get("fusion_method")
 
     if model is not None:
         probabilities = model.predict_proba([feature_vector(payload.url)])[0]
         class_values = list(model.classes_)
-        phishing_probability = float(probabilities[class_values.index(1)])
+        raw_phishing_probability = float(probabilities[class_values.index(1)])
+        if probability_calibrator is not None:
+            calibrated = probability_calibrator.predict_proba(
+                [[raw_phishing_probability]]
+            )[0]
+            calibration_classes = list(probability_calibrator.classes_)
+            phishing_probability = float(
+                calibrated[calibration_classes.index(1)]
+            )
+            probability_calibrated = True
+        else:
+            phishing_probability = raw_phishing_probability
+            probability_calibrated = False
         ml_score_value = phishing_probability * 100.0
         ml_score: int | None = int(round(ml_score_value))
-        risk_score_value = (
-            RULE_WEIGHT * rule_score + ML_WEIGHT * ml_score
-        )
-        risk_probability: float | None = round(phishing_probability, 6)
+        if fusion_model is not None:
+            fusion_probabilities = fusion_model.predict_proba(
+                [[fuzzy_score_value / 100.0, phishing_probability]]
+            )[0]
+            fusion_classes = list(fusion_model.classes_)
+            risk_probability_value = float(
+                fusion_probabilities[fusion_classes.index(1)]
+            )
+            learned_fusion_probability = risk_probability_value
+            risk_probability_value, consensus_trigger = apply_consensus_guardrail(
+                fuzzy_score_value / 100.0,
+                phishing_probability,
+                learned_fusion_probability,
+            )
+            risk_score_value = risk_probability_value * 100.0
+            risk_source = (
+                "fuzzy_random_forest_consensus_guardrail"
+                if consensus_trigger
+                else "fuzzy_random_forest_learned_fusion"
+            )
+            fusion_applied = True
+        else:
+            learned_fusion_probability = None
+            consensus_trigger = None
+            legacy_rule_weight = float(rule_weight or LEGACY_RULE_WEIGHT)
+            legacy_ml_weight = float(ml_weight or LEGACY_ML_WEIGHT)
+            risk_score_value = (
+                legacy_rule_weight * rule_score + legacy_ml_weight * ml_score
+            )
+            risk_probability_value = phishing_probability
+            risk_source = "legacy_fixed_rule_ml_blend"
+            fusion_method = "legacy_fixed_blend"
+            fusion_applied = False
+        risk_probability: float | None = round(risk_probability_value, 6)
         risk_score = int(round(risk_score_value))
-        confidence = round(phishing_probability, 4)
+        confidence = round(risk_probability_value, 4)
         model_status = "ready"
-        risk_source = "fixed_rule_ml_blend"
         formula_applied = True
     else:
-        risk_score_value = rule_score_value
+        raw_phishing_probability = None
+        probability_calibrated = False
+        learned_fusion_probability = None
+        consensus_trigger = None
+        risk_score_value = fuzzy_score_value
         risk_probability = None
         risk_score = int(round(risk_score_value))
         ml_score = None
         confidence = None
-        model_status = "model_unavailable_local_evidence"
-        risk_source = "local_rule_evidence"
+        model_status = "model_unavailable_fuzzy_evidence"
+        risk_source = "local_fuzzy_evidence"
+        fusion_method = "unavailable"
+        fusion_applied = False
         formula_applied = False
 
     decision = risk_decision(
@@ -240,9 +319,25 @@ def predict(payload: PredictRequest):
         "risk_probability": risk_probability,
         "risk_score": risk_score,
         "risk_source": risk_source,
-        "risk_formula": RISK_FORMULA,
-        "rule_weight": RULE_WEIGHT,
-        "ml_weight": ML_WEIGHT,
+        "risk_formula": applied_formula,
+        "rule_weight": rule_weight,
+        "ml_weight": ml_weight,
+        "fuzzy_score": fuzzy_score_rounded,
+        "random_forest_score": ml_score,
+        "random_forest_raw_score": (
+            int(round(raw_phishing_probability * 100.0))
+            if raw_phishing_probability is not None
+            else None
+        ),
+        "probability_calibrated": probability_calibrated,
+        "fusion_method": fusion_method,
+        "fusion_applied": fusion_applied,
+        "learned_fusion_probability": (
+            round(learned_fusion_probability, 6)
+            if learned_fusion_probability is not None
+            else None
+        ),
+        "consensus_trigger": consensus_trigger,
         "formula_applied": formula_applied,
         "warning_threshold": warning_threshold,
         "blocking_threshold": blocking_threshold,
@@ -257,11 +352,31 @@ def predict(payload: PredictRequest):
             "url_risk_model": {
                 "status": "ready" if model is not None else "unavailable",
                 "score": ml_score,
+                "raw_score": (
+                    int(round(raw_phishing_probability * 100.0))
+                    if raw_phishing_probability is not None
+                    else None
+                ),
+                "calibrated": probability_calibrated,
+                "family": bundle.get("model_family") if bundle else None,
             },
             "local_rule_evidence": {
-                "status": "weighted_input" if model is not None else "fallback",
+                "status": "fuzzy_input" if model is not None else "fallback",
                 "score": rule_score,
-                "weight": RULE_WEIGHT,
+            },
+            "fuzzy_rule_evidence": {
+                "status": "ready",
+                "score": fuzzy_score_rounded,
+                "audit": fuzzy_audit_result,
+            },
+            "learned_fusion": {
+                "status": "ready" if fusion_applied else "unavailable",
+                "method": fusion_method,
+                "score": risk_score if fusion_applied else None,
+            },
+            "consensus_guardrail": {
+                "status": "triggered" if consensus_trigger else "not_triggered",
+                "trigger": consensus_trigger,
             },
             "external_reputation": {"status": "not_configured"},
             "page_context": {"status": "client_side"},
@@ -271,7 +386,7 @@ def predict(payload: PredictRequest):
         "ml_score": ml_score,
         "confidence": confidence,
         "final_score": risk_score,
-        "alpha": RULE_WEIGHT,
+        "alpha": rule_weight,
         "decision_threshold": warning_threshold,
         "features": {name: features[name] for name in FEATURE_NAMES},
     }

@@ -103,19 +103,27 @@ function llmBreakdownState(response) {
 
 function renderScoreBreakdown(llmResponse = null) {
   const ruleScore = clampRiskScore(getNumericWarningParam('rule_score') ?? result.ruleScore ?? result.score);
-  const mlScore = clampRiskScore(getNumericWarningParam('ml_score'));
+  const fuzzyScore = clampRiskScore(getNumericWarningParam('fuzzy_score'));
+  const randomForestScore = clampRiskScore(getNumericWarningParam('random_forest_score') ?? getNumericWarningParam('ml_score'));
   const riskScore = clampRiskScore(getNumericWarningParam('risk_score') ?? getNumericWarningParam('final_score') ?? result.finalScore ?? result.score);
   const riskProbability = getNumericWarningParam('risk_probability');
   const warningThreshold = getNumericWarningParam('warning_threshold') ?? getNumericWarningParam('decision_threshold');
   const blockingThreshold = getNumericWarningParam('blocking_threshold');
   const decision = getWarningParam('decision') || '';
   const modelVersion = getWarningParam('model_version') || '';
+  const fusionApplied = getWarningParam('fusion_applied') === '1';
 
-  setSourceRow('Rule', ruleScore, 'RuleScore มีน้ำหนัก 40% ใน FinalScore เมื่อโมเดลพร้อมใช้งาน');
+  setSourceRow(
+    'Rule',
+    Number.isFinite(fuzzyScore) ? fuzzyScore : ruleScore,
+    Number.isFinite(fuzzyScore)
+      ? `FuzzyScore แปลง RuleScore ${ruleScore}/100 เป็นระดับสมาชิกความเสี่ยงก่อนรวมผล`
+      : 'RuleScore เป็นหลักฐานจากกฎภายใน browser'
+  );
   if (privacyMode) {
     setSourceRow('Ml', null, 'ปิด URL Risk Model เพื่อไม่ส่ง URL ออกนอก browser', { valueText: 'ปิด', percent: 12, tone: 'muted' });
   } else {
-    setSourceRow('Ml', mlScore, Number.isFinite(riskProbability) ? `MLScore มีน้ำหนัก 60% และมาจาก L1 Logistic URL Risk Model${modelVersion ? ` (${modelVersion})` : ''}` : 'โมเดลไม่พร้อม รอบนี้จึงใช้หลักฐาน local เป็นคะแนนสำรอง', { tone: Number.isFinite(mlScore) ? scoreTone(mlScore) : 'muted' });
+    setSourceRow('Ml', randomForestScore, Number.isFinite(riskProbability) ? `RandomForestScore จาก URL Risk Model${modelVersion ? ` (${modelVersion})` : ''}` : 'โมเดลไม่พร้อม รอบนี้จึงใช้หลักฐาน local เป็นคะแนนสำรอง', { tone: Number.isFinite(randomForestScore) ? scoreTone(randomForestScore) : 'muted' });
   }
 
   const llmState = llmBreakdownState(llmResponse);
@@ -126,13 +134,13 @@ function renderScoreBreakdown(llmResponse = null) {
   if (badge) {
     badge.textContent = privacyMode
       ? 'Privacy Mode • Local analysis'
-      : Number.isFinite(riskProbability) ? 'Learned Risk Model • Layered evidence' : 'Local evidence • Risk Model offline';
+      : fusionApplied ? 'Fuzzy + Random Forest • Learned fusion' : 'Local evidence • Risk Model offline';
   }
   if (blend) {
     blend.textContent = privacyMode
       ? 'คะแนน local ' + riskScore + '/100 มาจาก Rule evidence และหลักฐานบนหน้าเว็บเท่านั้น รอบนี้ไม่ส่ง URL ไป Risk Model หรือ LLM'
-      : Number.isFinite(riskProbability)
-        ? 'FinalScore ' + riskScore + '/100 = 0.40(RuleScore ' + ruleScore + ') + 0.60(MLScore ' + mlScore + '); ผลคือ ' + (decision || 'ไม่ระบุ') + ' เมื่อ warn ≥ ' + (Number.isFinite(warningThreshold) ? warningThreshold : '-') + ' และ block ≥ ' + (Number.isFinite(blockingThreshold) ? blockingThreshold : '-')
+      : fusionApplied
+        ? 'FinalScore ' + riskScore + '/100 มาจาก learned fusion ระหว่าง FuzzyScore ' + fuzzyScore + ' และ RandomForestScore ' + randomForestScore + '; ผลคือ ' + (decision || 'ไม่ระบุ') + ' เมื่อ warn ≥ ' + (Number.isFinite(warningThreshold) ? warningThreshold : '-') + ' และ block ≥ ' + (Number.isFinite(blockingThreshold) ? blockingThreshold : '-')
         : 'Risk Model ไม่พร้อม จึงใช้ Rule evidence เป็นหลักฐาน local ชั่วคราว และแสดงสถานะนี้อย่างชัดเจน';
   }
 }
@@ -290,6 +298,10 @@ function requestLlmExplanation() {
   const payload = {
     url: target,
     rule_score: getNumericWarningParam('rule_score') ?? result.ruleScore ?? result.score,
+    fuzzy_score: getNumericWarningParam('fuzzy_score'),
+    random_forest_score: getNumericWarningParam('random_forest_score') ?? getNumericWarningParam('ml_score'),
+    fusion_method: getWarningParam('fusion_method') || null,
+    ml_score: getNumericWarningParam('ml_score'),
     risk_probability: getNumericWarningParam('risk_probability'),
     risk_score: getNumericWarningParam('risk_score') ?? result.finalScore ?? result.score,
     decision: getWarningParam('decision') || null,

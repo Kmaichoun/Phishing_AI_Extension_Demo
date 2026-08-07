@@ -4,9 +4,10 @@ const fs = require('fs');
 const path = require('path');
 
 const projectRoot = path.resolve(__dirname, '..');
-const html = fs.readFileSync(path.join(projectRoot, 'popup.html'), 'utf8');
-const css = fs.readFileSync(path.join(projectRoot, 'popup.css'), 'utf8');
-const script = fs.readFileSync(path.join(projectRoot, 'popup.js'), 'utf8');
+const extensionRoot = path.join(projectRoot, 'extension');
+const html = fs.readFileSync(path.join(extensionRoot, 'popup.html'), 'utf8');
+const css = fs.readFileSync(path.join(extensionRoot, 'popup.css'), 'utf8');
+const script = fs.readFileSync(path.join(extensionRoot, 'popup.js'), 'utf8');
 
 const htmlIds = new Set([...html.matchAll(/\bid="([^"]+)"/g)].map(match => match[1]));
 const requiredIds = new Set([
@@ -44,6 +45,14 @@ for (const expected of [
 
 if (html.includes('popupCommandPalette')) {
   throw new Error('Legacy command palette remains in the compact popup.');
+}
+
+if (!script.includes('function isInjectablePageUrl(value)')) {
+  throw new Error('Popup must reject restricted page protocols before script injection.');
+}
+
+if (script.includes("console.warn('Phish Radar injection failed:")) {
+  throw new Error('Expected browser injection failures must not pollute Extension Errors.');
 }
 
 if (/id="openWebApp"[^>]*\bhidden\b/.test(html)) {

@@ -3,7 +3,13 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const projectRoot = path.resolve(__dirname, '..');
-const appTrust = require(path.join(projectRoot, 'app-trust.js'));
+const appTrust = require(path.join(projectRoot, 'extension', 'app-trust.js'));
+
+assert.equal(
+  appTrust.DEFAULT_WEB_APP_URL,
+  'http://app.phishradar.localhost:5505/#/login',
+  'Extension login entry must use the React hash route'
+);
 
 const trustedUrls = [
   'http://app.phishradar.localhost:5505/',

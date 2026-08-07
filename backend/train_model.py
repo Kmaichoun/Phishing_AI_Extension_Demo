@@ -12,6 +12,7 @@ from urllib.parse import urlsplit
 
 import joblib
 import numpy as np
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
     average_precision_score,
@@ -24,11 +25,20 @@ from sklearn.metrics import (
     roc_auc_score,
 )
 from sklearn.model_selection import StratifiedGroupKFold
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
 
 from build_dataset import calculate_rule_scores
-from feature_extractor import FEATURE_NAMES, FEATURE_SCHEMA_VERSION, feature_vector
+from feature_extractor import (
+    FEATURE_NAMES,
+    FEATURE_SCHEMA_VERSION,
+    extract_features,
+    feature_vector,
+)
+from fuzzy_scoring import FUZZY_SCHEMA_VERSION, fuzzy_score
+from risk_policy import (
+    CONSENSUS_GUARDRAIL_VERSION,
+    apply_consensus_guardrail,
+    consensus_guardrail_config,
+)
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = BASE_DIR / "data"
@@ -37,12 +47,14 @@ SEED_DATASET_PATH = DATA_DIR / "seed_urls.csv"
 MODEL_PATH = BASE_DIR / "model.pkl"
 REPORT_PATH = DATA_DIR / "risk_model_evaluation.json"
 MODEL_COMPRESSION: tuple[str, int] = ("lzma", 3)
-MODEL_VERSION = "url-risk-l1-logistic-1.1"
-POLICY_VERSION = "fixed-blend-40-60-fpr-1.0"
-RULE_WEIGHT = 0.40
-ML_WEIGHT = 0.60
-RISK_FORMULA = "FinalScore = 0.40 * RuleScore + 0.60 * MLScore"
-DEFAULT_C_VALUES = (0.01, 0.03, 0.1, 0.3, 1.0, 3.0, 10.0)
+MODEL_VERSION = "url-risk-random-forest-1.3"
+POLICY_VERSION = "fuzzy-calibrated-rf-consensus-fpr-1.3"
+FUSION_VERSION = "logistic-stacking-fusion-1.0"
+CALIBRATION_VERSION = "platt-group-oof-1.0"
+RISK_FORMULA = (
+    "FinalScore = 100 * ConsensusGuardrail("
+    "LearnedFusion(FuzzyScore, RandomForestScore), FuzzyScore, RandomForestScore)"
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -51,7 +63,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser = argparse.ArgumentParser(
         description=(
-            "Train an explainable L1-logistic URL risk model and select warning/blocking "
+            "Train a Random Forest URL model with FuzzyScore learned fusion and select "
             "thresholds under explicit false-positive-rate constraints."
         )
     )
@@ -61,13 +73,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--warn-max-fpr", type=float, default=0.01)
     parser.add_argument("--block-max-fpr", type=float, default=0.001)
-    parser.add_argument(
-        "--c-values",
-        type=float,
-        nargs="+",
-        default=list(DEFAULT_C_VALUES),
-        help="Inverse L1 regularization strengths evaluated with grouped cross-validation.",
-    )
+    parser.add_argument("--trees", type=int, default=240)
+    parser.add_argument("--max-depth", type=int, default=18)
+    parser.add_argument("--min-samples-leaf", type=int, default=2)
     return parser.parse_args()
 
 
@@ -167,22 +175,20 @@ def split_indices(
     return list(splitter.split(dummy, y, groups)), folds
 
 
-def make_model(c_value: float, seed: int) -> Pipeline:
-    return Pipeline(
-        [
-            ("scale", StandardScaler()),
-            (
-                "logistic",
-                LogisticRegression(
-                    penalty="l1",
-                    solver="liblinear",
-                    C=float(c_value),
-                    class_weight="balanced",
-                    max_iter=5_000,
-                    random_state=seed,
-                ),
-            ),
-        ]
+def make_model(
+    seed: int,
+    trees: int,
+    max_depth: int | None,
+    min_samples_leaf: int,
+) -> RandomForestClassifier:
+    return RandomForestClassifier(
+        n_estimators=trees,
+        max_depth=max_depth,
+        min_samples_leaf=min_samples_leaf,
+        max_features="sqrt",
+        class_weight="balanced_subsample",
+        n_jobs=-1,
+        random_state=seed,
     )
 
 
@@ -199,13 +205,199 @@ def probability_metrics(y_true: np.ndarray, scores: np.ndarray) -> dict[str, flo
     }
 
 
-def blend_scores(rule_scores: np.ndarray, ml_probabilities: np.ndarray) -> np.ndarray:
-    """Return the fixed 40% RuleScore + 60% MLScore on a normalized 0-1 scale."""
-    rounded_rule_scores = np.rint(np.clip(rule_scores, 0.0, 1.0) * 100.0)
-    rounded_ml_scores = np.rint(np.clip(ml_probabilities, 0.0, 1.0) * 100.0)
-    return (
-        RULE_WEIGHT * rounded_rule_scores + ML_WEIGHT * rounded_ml_scores
-    ) / 100.0
+def url_shape_report(urls: np.ndarray, labels: np.ndarray) -> dict[str, object]:
+    report: dict[str, object] = {}
+    for label in (0, 1):
+        selected = urls[labels == label]
+        features = [extract_features(str(url)) for url in selected]
+        count = len(features)
+        deep_links = sum(item["path_depth"] > 0 for item in features)
+        queries = sum(item["query_length"] > 0 for item in features)
+        subdomains = sum(item["subdomain_count"] > 0 for item in features)
+        report[str(label)] = {
+            "count": count,
+            "deep_link_count": deep_links,
+            "deep_link_ratio": safe_float(deep_links / count if count else 0.0),
+            "query_count": queries,
+            "query_ratio": safe_float(queries / count if count else 0.0),
+            "subdomain_count": subdomains,
+            "subdomain_ratio": safe_float(subdomains / count if count else 0.0),
+        }
+    return report
+
+
+def legitimate_segment_evaluation(
+    urls: np.ndarray,
+    labels: np.ndarray,
+    scores: np.ndarray,
+    policy: dict[str, object],
+) -> dict[str, object]:
+    warning = policy["warning"]
+    blocking = policy["blocking"]
+    if not isinstance(warning, dict) or not isinstance(blocking, dict):
+        raise TypeError("Policy thresholds are malformed.")
+    warning_threshold = float(warning["threshold"])
+    blocking_threshold = float(blocking["threshold"])
+    features = [extract_features(str(url)) for url in urls]
+    segment_masks = {
+        "all_legitimate": np.asarray(labels == 0, dtype=bool),
+        "root_url": np.asarray(
+            [label == 0 and item["path_depth"] == 0 for label, item in zip(labels, features)],
+            dtype=bool,
+        ),
+        "deep_link": np.asarray(
+            [label == 0 and item["path_depth"] > 0 for label, item in zip(labels, features)],
+            dtype=bool,
+        ),
+        "query_url": np.asarray(
+            [label == 0 and item["query_length"] > 0 for label, item in zip(labels, features)],
+            dtype=bool,
+        ),
+        "subdomain_url": np.asarray(
+            [label == 0 and item["subdomain_count"] > 0 for label, item in zip(labels, features)],
+            dtype=bool,
+        ),
+    }
+    output: dict[str, object] = {}
+    for name, mask in segment_masks.items():
+        selected_scores = scores[mask]
+        count = len(selected_scores)
+        warning_fp = int(np.sum(selected_scores >= warning_threshold))
+        blocking_fp = int(np.sum(selected_scores >= blocking_threshold))
+        output[name] = {
+            "count": count,
+            "warning_false_positive": warning_fp,
+            "warning_false_positive_rate": safe_float(
+                warning_fp / count if count else 0.0
+            ),
+            "blocking_false_positive": blocking_fp,
+            "blocking_false_positive_rate": safe_float(
+                blocking_fp / count if count else 0.0
+            ),
+        }
+    return output
+
+
+def fuzzy_scores(rule_scores: np.ndarray) -> np.ndarray:
+    return np.asarray(
+        [fuzzy_score(float(value)) / 100.0 for value in rule_scores],
+        dtype=np.float64,
+    )
+
+
+def fusion_inputs(
+    fuzzy_probabilities: np.ndarray,
+    forest_probabilities: np.ndarray,
+) -> np.ndarray:
+    return np.column_stack(
+        [
+            np.clip(fuzzy_probabilities, 0.0, 1.0),
+            np.clip(forest_probabilities, 0.0, 1.0),
+        ]
+    )
+
+
+def make_fusion_model(seed: int) -> LogisticRegression:
+    return LogisticRegression(
+        penalty="l2",
+        solver="liblinear",
+        class_weight="balanced",
+        max_iter=2_000,
+        random_state=seed,
+    )
+
+
+def fit_probability_calibrator(
+    raw_probabilities: np.ndarray,
+    labels: np.ndarray,
+    seed: int,
+) -> LogisticRegression:
+    """Fit Platt scaling on predictions that were generated out-of-fold."""
+    calibrator = LogisticRegression(
+        penalty="l2",
+        solver="liblinear",
+        max_iter=2_000,
+        random_state=seed,
+    )
+    calibrator.fit(raw_probabilities.reshape(-1, 1), labels)
+    return calibrator
+
+
+def calibrated_probabilities(
+    calibrator: LogisticRegression,
+    raw_probabilities: np.ndarray,
+) -> np.ndarray:
+    return calibrator.predict_proba(raw_probabilities.reshape(-1, 1))[:, 1]
+
+
+def cross_calibrated_probabilities(
+    raw_oof_probabilities: np.ndarray,
+    labels: np.ndarray,
+    groups: np.ndarray,
+    folds: int,
+    seed: int,
+) -> tuple[np.ndarray, int]:
+    """Calibrate without allowing a row's label into its own calibrator fit."""
+    splits, fold_count = split_indices(labels, groups, folds, seed)
+    calibrated = np.zeros(len(labels), dtype=np.float64)
+    assigned = np.zeros(len(labels), dtype=bool)
+    for fold, (train_index, test_index) in enumerate(splits, start=1):
+        calibrator = fit_probability_calibrator(
+            raw_oof_probabilities[train_index],
+            labels[train_index],
+            seed + fold,
+        )
+        calibrated[test_index] = calibrated_probabilities(
+            calibrator,
+            raw_oof_probabilities[test_index],
+        )
+        assigned[test_index] = True
+    if not np.all(assigned):
+        raise RuntimeError("Every row must receive one cross-calibrated probability.")
+    return calibrated, fold_count
+
+
+def fit_fusion_model(
+    fuzzy_probabilities: np.ndarray,
+    forest_probabilities: np.ndarray,
+    labels: np.ndarray,
+    seed: int,
+) -> LogisticRegression:
+    model = make_fusion_model(seed)
+    model.fit(fusion_inputs(fuzzy_probabilities, forest_probabilities), labels)
+    return model
+
+
+def learned_fusion_scores(
+    model: LogisticRegression,
+    fuzzy_probabilities: np.ndarray,
+    forest_probabilities: np.ndarray,
+) -> np.ndarray:
+    return model.predict_proba(
+        fusion_inputs(fuzzy_probabilities, forest_probabilities)
+    )[:, 1]
+
+
+def operational_risk_scores(
+    fuzzy_probabilities: np.ndarray,
+    forest_probabilities: np.ndarray,
+    fusion_probabilities: np.ndarray,
+) -> tuple[np.ndarray, dict[str, int]]:
+    scores = np.zeros(len(fusion_probabilities), dtype=np.float64)
+    triggers = {"warning_consensus": 0, "block_consensus": 0}
+    for index, (fuzzy, forest, fusion) in enumerate(
+        zip(
+            fuzzy_probabilities,
+            forest_probabilities,
+            fusion_probabilities,
+            strict=True,
+        )
+    ):
+        score, trigger = apply_consensus_guardrail(fuzzy, forest, fusion)
+        scores[index] = score
+        if trigger:
+            triggers[trigger] += 1
+    return scores, triggers
 
 
 def classification_metrics(
@@ -251,59 +443,28 @@ def oof_probabilities(
     x: np.ndarray,
     y: np.ndarray,
     groups: np.ndarray,
-    c_value: float,
     folds: int,
     seed: int,
+    trees: int,
+    max_depth: int | None,
+    min_samples_leaf: int,
 ) -> tuple[np.ndarray, int]:
     splits, fold_count = split_indices(y, groups, folds, seed)
     scores = np.zeros(len(y), dtype=np.float64)
     assigned = np.zeros(len(y), dtype=bool)
     for fold, (train_index, test_index) in enumerate(splits, start=1):
-        model = make_model(c_value, seed + fold)
+        model = make_model(
+            seed + fold,
+            trees=trees,
+            max_depth=max_depth,
+            min_samples_leaf=min_samples_leaf,
+        )
         model.fit(x[train_index], y[train_index])
         scores[test_index] = model.predict_proba(x[test_index])[:, 1]
         assigned[test_index] = True
     if not np.all(assigned):
         raise RuntimeError("Every development row must receive one out-of-fold probability.")
     return scores, fold_count
-
-
-def choose_regularization(
-    x: np.ndarray,
-    y: np.ndarray,
-    groups: np.ndarray,
-    c_values: list[float],
-    folds: int,
-    seed: int,
-) -> tuple[float, np.ndarray, list[dict[str, object]], int]:
-    candidates: list[dict[str, object]] = []
-    score_by_c: dict[float, np.ndarray] = {}
-    effective_folds = 0
-    for c_value in sorted({float(value) for value in c_values if value > 0}):
-        scores, effective_folds = oof_probabilities(
-            x, y, groups, c_value, folds, seed
-        )
-        score_by_c[c_value] = scores
-        metrics = probability_metrics(y, scores)
-        candidates.append({"c": c_value, **metrics})
-        print(
-            f"C={c_value:g}: log_loss={metrics['log_loss']}, "
-            f"brier={metrics['brier_score']}, ROC-AUC={metrics['roc_auc']}"
-        )
-    if not candidates:
-        raise ValueError("At least one positive C value is required.")
-    ordered = sorted(
-        candidates,
-        key=lambda item: (
-            float(item["log_loss"]),
-            float(item["brier_score"]),
-            -float(item["roc_auc"]),
-            float(item["c"]),
-        ),
-    )
-    selected_c = float(ordered[0]["c"])
-    return selected_c, score_by_c[selected_c], ordered, effective_folds
-
 
 def select_threshold(
     y: np.ndarray,
@@ -312,9 +473,23 @@ def select_threshold(
     minimum_threshold: float = 0.01,
 ) -> tuple[dict[str, object], list[dict[str, object]]]:
     candidates: list[dict[str, object]] = []
-    threshold_grid = np.unique(
-        np.append(np.linspace(max(0.01, minimum_threshold), 0.99, 99), 1.0)
+    negative_scores = scores[y == 0]
+    zero_false_positive_cutoff = (
+        np.nextafter(float(np.max(negative_scores)), 1.0)
+        if len(negative_scores)
+        else 1.0
     )
+    threshold_grid = np.unique(
+        np.concatenate(
+            [
+                np.linspace(max(0.01, minimum_threshold), 0.99, 99),
+                np.asarray([zero_false_positive_cutoff, 1.0]),
+            ]
+        )
+    )
+    threshold_grid = threshold_grid[
+        (threshold_grid >= minimum_threshold) & (threshold_grid <= 1.0)
+    ]
     for threshold in threshold_grid:
         metrics = classification_metrics(y, scores, float(threshold))
         candidates.append(metrics)
@@ -406,22 +581,20 @@ def evaluate_policy(
     }
 
 
-def coefficient_report(model: Pipeline) -> list[dict[str, object]]:
-    logistic = model.named_steps["logistic"]
-    coefficients = logistic.coef_[0]
+def feature_importance_report(
+    model: RandomForestClassifier,
+) -> list[dict[str, object]]:
     ranked = sorted(
-        zip(FEATURE_NAMES, coefficients, strict=True),
-        key=lambda item: abs(float(item[1])),
+        zip(FEATURE_NAMES, model.feature_importances_, strict=True),
+        key=lambda item: float(item[1]),
         reverse=True,
     )
     return [
         {
             "feature": name,
-            "scaled_coefficient": safe_float(float(coefficient)),
-            "direction": "risk" if coefficient > 0 else "legitimate",
+            "importance": safe_float(float(importance)),
         }
-        for name, coefficient in ranked
-        if abs(float(coefficient)) > 1e-10
+        for name, importance in ranked
     ]
 
 
@@ -438,6 +611,8 @@ def train(args: argparse.Namespace) -> None:
         raise ValueError(
             "FPR constraints must satisfy 0 <= block_max_fpr <= warn_max_fpr < 1."
         )
+    if args.trees < 20 or args.min_samples_leaf < 1:
+        raise ValueError("Random Forest requires at least 20 trees and a positive leaf size.")
 
     dataset_path = args.dataset.resolve()
     data = load_rows(dataset_path)
@@ -446,6 +621,7 @@ def train(args: argparse.Namespace) -> None:
     y = data["y"]
     groups = data["groups"]
     rule = data["rule"]
+    urls = np.asarray(data["urls"], dtype=object)
     if not all(isinstance(value, np.ndarray) for value in (x, y, groups, rule)):
         raise TypeError("Dataset arrays were not constructed correctly.")
 
@@ -456,7 +632,8 @@ def train(args: argparse.Namespace) -> None:
     x_development = x[development_index]
     y_development = y[development_index]
     groups_development = groups[development_index]
-    rule_development = rule[development_index] / 100.0
+    fuzzy_all = fuzzy_scores(rule)
+    fuzzy_development = fuzzy_all[development_index]
 
     print(
         f"Dataset: {len(y):,} rows | labels={dict(Counter(map(int, y)))} | "
@@ -467,15 +644,44 @@ def train(args: argparse.Namespace) -> None:
         f"holdout={len(holdout_index):,}"
     )
 
-    selected_c, development_oof, c_candidates, cv_fold_count = choose_regularization(
+    development_raw_oof, cv_fold_count = oof_probabilities(
         x_development,
         y_development,
         groups_development,
-        list(args.c_values),
         args.cv_folds,
         args.seed,
+        args.trees,
+        args.max_depth,
+        args.min_samples_leaf,
     )
-    development_final_scores = blend_scores(rule_development, development_oof)
+    development_oof, calibration_fold_count = cross_calibrated_probabilities(
+        development_raw_oof,
+        y_development,
+        groups_development,
+        args.cv_folds,
+        args.seed + 3_000,
+    )
+    development_calibrator = fit_probability_calibrator(
+        development_raw_oof,
+        y_development,
+        args.seed + 4_000,
+    )
+    development_fusion_model = fit_fusion_model(
+        fuzzy_development,
+        development_oof,
+        y_development,
+        args.seed + 5_000,
+    )
+    development_fusion_scores = learned_fusion_scores(
+        development_fusion_model,
+        fuzzy_development,
+        development_oof,
+    )
+    development_final_scores, development_consensus_triggers = operational_risk_scores(
+        fuzzy_development,
+        development_oof,
+        development_fusion_scores,
+    )
     policy = select_policy(
         y_development,
         development_final_scores,
@@ -483,28 +689,82 @@ def train(args: argparse.Namespace) -> None:
         args.block_max_fpr,
     )
 
-    holdout_model = make_model(selected_c, args.seed)
+    holdout_model = make_model(
+        args.seed,
+        trees=args.trees,
+        max_depth=args.max_depth,
+        min_samples_leaf=args.min_samples_leaf,
+    )
     holdout_model.fit(x_development, y_development)
-    holdout_scores = holdout_model.predict_proba(x[holdout_index])[:, 1]
-    holdout_final_scores = blend_scores(rule[holdout_index] / 100.0, holdout_scores)
+    holdout_raw_scores = holdout_model.predict_proba(x[holdout_index])[:, 1]
+    holdout_scores = calibrated_probabilities(
+        development_calibrator,
+        holdout_raw_scores,
+    )
+    holdout_fusion_scores = learned_fusion_scores(
+        development_fusion_model,
+        fuzzy_all[holdout_index],
+        holdout_scores,
+    )
+    holdout_final_scores, holdout_consensus_triggers = operational_risk_scores(
+        fuzzy_all[holdout_index],
+        holdout_scores,
+        holdout_fusion_scores,
+    )
     holdout_evaluation = evaluate_policy(
-        y[holdout_index], holdout_final_scores, policy, holdout_scores
+        y[holdout_index], holdout_final_scores, policy
+    )
+    holdout_legitimate_segments = legitimate_segment_evaluation(
+        urls[holdout_index],
+        y[holdout_index],
+        holdout_final_scores,
+        policy,
     )
 
-    # Preserve the hyperparameter chosen without access to the independent
-    # holdout. Re-selecting C on the full dataset here would leak holdout
-    # information into the final deployment policy.
-    final_c = selected_c
-    full_oof, final_cv_folds = oof_probabilities(
+    full_raw_oof, final_cv_folds = oof_probabilities(
         x,
         y,
         groups,
-        final_c,
         args.cv_folds,
         args.seed + 20_000,
+        args.trees,
+        args.max_depth,
+        args.min_samples_leaf,
     )
-    full_final_scores = blend_scores(rule / 100.0, full_oof)
-    final_model = make_model(final_c, args.seed)
+    full_oof, final_calibration_folds = cross_calibrated_probabilities(
+        full_raw_oof,
+        y,
+        groups,
+        args.cv_folds,
+        args.seed + 23_000,
+    )
+    final_calibrator = fit_probability_calibrator(
+        full_raw_oof,
+        y,
+        args.seed + 24_000,
+    )
+    final_fusion_model = fit_fusion_model(
+        fuzzy_all,
+        full_oof,
+        y,
+        args.seed + 25_000,
+    )
+    full_fusion_scores = learned_fusion_scores(
+        final_fusion_model,
+        fuzzy_all,
+        full_oof,
+    )
+    full_final_scores, full_consensus_triggers = operational_risk_scores(
+        fuzzy_all,
+        full_oof,
+        full_fusion_scores,
+    )
+    final_model = make_model(
+        args.seed,
+        trees=args.trees,
+        max_depth=args.max_depth,
+        min_samples_leaf=args.min_samples_leaf,
+    )
     final_model.fit(x, y)
 
     now = datetime.now(timezone.utc).isoformat()
@@ -517,13 +777,21 @@ def train(args: argparse.Namespace) -> None:
         "created_at": now,
         "model": {
             "version": MODEL_VERSION,
-            "family": "L1-regularized logistic regression",
-            "ml_score_formula": "MLScore = 100 * sigmoid(w dot x + b)",
+            "family": "Random Forest classifier",
+            "ml_score_formula": (
+                "RandomForestScore = 100 * PlattCalibration(mean(tree phishing votes))"
+            ),
             "risk_formula": RISK_FORMULA,
-            "rule_weight": RULE_WEIGHT,
-            "ml_weight": ML_WEIGHT,
-            "selected_c_on_development": selected_c,
-            "selected_c_for_final_model": final_c,
+            "fusion_version": FUSION_VERSION,
+            "consensus_guardrail_version": CONSENSUS_GUARDRAIL_VERSION,
+            "fuzzy_schema_version": FUZZY_SCHEMA_VERSION,
+            "hyperparameters": {
+                "n_estimators": args.trees,
+                "max_depth": args.max_depth,
+                "min_samples_leaf": args.min_samples_leaf,
+                "max_features": "sqrt",
+                "class_weight": "balanced_subsample",
+            },
             "feature_schema_version": FEATURE_SCHEMA_VERSION,
             "feature_names": FEATURE_NAMES,
         },
@@ -534,6 +802,7 @@ def train(args: argparse.Namespace) -> None:
             "labels": dict(sorted(Counter(map(int, y)).items())),
             "sources": dict(sorted(Counter(data["sources"]).items())),
             "unique_hostname_groups": len(set(groups)),
+            "url_shapes_by_label": url_shape_report(urls, y),
         },
         "evaluation_design": {
             "group": "hostname",
@@ -541,31 +810,63 @@ def train(args: argparse.Namespace) -> None:
             "holdout_folds": holdout_fold_count,
             "development_rows": len(development_index),
             "holdout_rows": len(holdout_index),
-            "model_selection_cv": "StratifiedGroupKFold",
-            "model_selection_folds": cv_fold_count,
-            "final_model_selection_folds": final_cv_folds,
+            "base_model_oof_cv": "StratifiedGroupKFold",
+            "base_model_oof_folds": cv_fold_count,
+            "final_base_model_oof_folds": final_cv_folds,
+            "calibration": "group-disjoint cross-fitted Platt scaling",
+            "calibration_version": CALIBRATION_VERSION,
+            "calibration_oof_folds": calibration_fold_count,
+            "final_calibration_oof_folds": final_calibration_folds,
+            "fusion_training_input": "out-of-fold RandomForestScore plus deterministic FuzzyScore",
             "random_seed": args.seed,
         },
-        "regularization_search": {
-            "development_candidates": c_candidates,
-            "selection_dataset": "development partition only",
-        },
         "probability_quality": {
-            "development_out_of_fold": probability_metrics(
+            "random_forest_raw_development_out_of_fold": probability_metrics(
+                y_development, development_raw_oof
+            ),
+            "random_forest_development_out_of_fold": probability_metrics(
                 y_development, development_oof
             ),
-            "independent_holdout": probability_metrics(
+            "random_forest_raw_independent_holdout": probability_metrics(
+                y[holdout_index], holdout_raw_scores
+            ),
+            "random_forest_independent_holdout": probability_metrics(
                 y[holdout_index], holdout_scores
             ),
+            "fusion_development_out_of_fold": probability_metrics(
+                y_development, development_fusion_scores
+            ),
+            "fusion_independent_holdout": probability_metrics(
+                y[holdout_index], holdout_fusion_scores
+            ),
+            "operational_development_out_of_fold": probability_metrics(
+                y_development, development_final_scores
+            ),
+            "operational_independent_holdout": probability_metrics(
+                y[holdout_index], holdout_final_scores
+            ),
             "interpretation": (
-                "Logistic regression directly estimates sigmoid probabilities; "
-                "lower Brier score and log loss indicate better probability quality."
+                "Random Forest vote fractions are calibrated with group-disjoint, "
+                "cross-fitted Platt scaling. A separate logistic meta-model learns the "
+                "final probability from FuzzyScore and calibrated out-of-fold scores."
             ),
         },
-        "fixed_score_blend": {
-            "formula": RISK_FORMULA,
-            "rule_weight": RULE_WEIGHT,
-            "ml_weight": ML_WEIGHT,
+        "probability_calibration": {
+            "version": CALIBRATION_VERSION,
+            "method": "Platt scaling (logistic regression)",
+            "training_input": "group-disjoint Random Forest out-of-fold probabilities",
+            "coefficient": safe_float(float(final_calibrator.coef_[0][0])),
+            "intercept": safe_float(float(final_calibrator.intercept_[0])),
+        },
+        "learned_fusion": {
+            "formula": "LearnedFusion(FuzzyScore, RandomForestScore)",
+            "version": FUSION_VERSION,
+            "input_order": ["fuzzy_score", "random_forest_score"],
+            "coefficients": [
+                safe_float(float(value))
+                for value in final_fusion_model.coef_[0]
+            ],
+            "intercept": safe_float(float(final_fusion_model.intercept_[0])),
             "development_out_of_fold": {
                 "roc_auc": safe_float(
                     roc_auc_score(y_development, development_final_scores)
@@ -574,20 +875,35 @@ def train(args: argparse.Namespace) -> None:
                     average_precision_score(y_development, development_final_scores)
                 ),
             },
-            "threshold_selection_input": "blended development out-of-fold FinalScore",
+            "threshold_selection_input": (
+                "operational score after learned fusion and consensus guardrail"
+            ),
+        },
+        "consensus_guardrail": {
+            **consensus_guardrail_config(),
+            "development_trigger_counts": development_consensus_triggers,
+            "independent_holdout_trigger_counts": holdout_consensus_triggers,
+            "full_oof_trigger_counts": full_consensus_triggers,
+            "role": (
+                "Raise the operational score only when strong fuzzy-rule and "
+                "calibrated-ML evidence agree; threshold selection and evaluation "
+                "use the guarded score."
+            ),
         },
         "policy": policy,
         "independent_holdout": holdout_evaluation,
+        "independent_holdout_legitimate_segments": holdout_legitimate_segments,
+        "final_model_raw_oof_probability": probability_metrics(y, full_raw_oof),
         "final_model_oof_probability": probability_metrics(y, full_oof),
         "final_model_oof_risk_score": {
             "roc_auc": safe_float(roc_auc_score(y, full_final_scores)),
             "pr_auc": safe_float(average_precision_score(y, full_final_scores)),
         },
-        "coefficients": coefficient_report(final_model),
+        "feature_importances": feature_importance_report(final_model),
         "rule_engine": {
             "role": (
-                "Local/offline evidence and weighted input. RuleScore contributes "
-                "40 percent to FinalScore when the ML model is available."
+                "RuleScore is converted to an explainable FuzzyScore. Learned fusion "
+                "determines how FuzzyScore and RandomForestScore combine; no fixed weight is used."
             ),
             "audit_only_summary": {
                 str(label): {
@@ -601,6 +917,7 @@ def train(args: argparse.Namespace) -> None:
             "The independent holdout is group-disjoint but not time-disjoint because the current dataset does not contain reliable first-seen timestamps.",
             "The current legitimate holdout is too small to make a statistically stable production claim at a 0.01% false-positive rate.",
             "Tranco membership is a legitimate-label proxy and does not guarantee that every listed website is safe at every point in time.",
+            "Synthetic benign URL shapes remove source-format shortcuts but are not a substitute for a large externally collected benign deep-link test set.",
             "DOM, form, email-provider metadata, and live reputation are separate evidence layers and are not represented in this URL-only model.",
             "Feed distributions and phishing campaigns change over time; external source-split testing, time-split testing, retraining, and drift monitoring remain required.",
         ],
@@ -608,20 +925,31 @@ def train(args: argparse.Namespace) -> None:
 
     model_bundle = {
         "model": final_model,
+        "probability_calibrator": final_calibrator,
+        "fusion_model": final_fusion_model,
         "model_version": MODEL_VERSION,
         "policy_version": POLICY_VERSION,
+        "model_family": "random_forest",
+        "fusion_version": FUSION_VERSION,
+        "consensus_guardrail_version": CONSENSUS_GUARDRAIL_VERSION,
+        "consensus_guardrail": consensus_guardrail_config(),
+        "calibration_version": CALIBRATION_VERSION,
+        "fusion_method": "learned_logistic_stacking",
+        "fusion_input_order": ["fuzzy_score", "random_forest_score"],
+        "fuzzy_schema_version": FUZZY_SCHEMA_VERSION,
         "feature_names": FEATURE_NAMES,
         "feature_schema_version": FEATURE_SCHEMA_VERSION,
         "risk_formula": RISK_FORMULA,
-        "rule_weight": RULE_WEIGHT,
-        "ml_weight": ML_WEIGHT,
+        "rule_weight": None,
+        "ml_weight": None,
         "policy": {
             "warning_threshold": float(warning["threshold"]) * 100.0,
             "blocking_threshold": float(blocking["threshold"]) * 100.0,
             "warning_max_fpr": args.warn_max_fpr,
             "blocking_max_fpr": args.block_max_fpr,
         },
-        "probability_method": "intrinsic_logistic_sigmoid",
+        "probability_method": "learned_logistic_fusion_probability",
+        "base_probability_method": "random_forest_vote_fraction_then_platt_calibration",
         "cv_strategy": "StratifiedGroupKFold(hostname) with untouched grouped holdout",
         "metrics": {
             "development_oof": {

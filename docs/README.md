@@ -1,25 +1,18 @@
 # เอกสารโปรเจกต์
 
-เอกสารถูกแยกออกจากไฟล์ runtime เพื่อให้ root ของ Chrome Extension อ่านง่ายและลดโอกาสแก้ผิดไฟล์
+เอกสารถูกแยกออกจากไฟล์ runtime เพื่อลดโอกาสแก้ผิดส่วน โดย Chrome Extension อยู่ใน `extension/` และ React Web App อยู่ใน `web-app/`
 
 ## คู่มือหลัก
 
+- [PROJECT_STRUCTURE_TH.md](PROJECT_STRUCTURE_TH.md) — แผนผัง Frontend, Extension, Backend, Database, ML/LLM และจุดแก้ปัญหา
 - [LLM_SETUP_TH.md](LLM_SETUP_TH.md) — การเปิด backend และตั้งค่า LLM
 - [REACT_WEB_APP_TH.md](REACT_WEB_APP_TH.md) — โครงสร้าง React, Router, Context, Vite และแนวทางพัฒนาต่อ
 - [LLM_COMPARISON_TH.md](LLM_COMPARISON_TH.md) — เปรียบเทียบ OpenAI/Ollama และแผน benchmark
-- [RISK_MODEL_METHODOLOGY_TH.md](RISK_MODEL_METHODOLOGY_TH.md) — L1 Logistic RiskScore, grouped evaluation, layered evidence และการเลือก warn/block threshold ภายใต้ FPR
-- [PRESENTATION_NOTES_TH.md](PRESENTATION_NOTES_TH.md) — บันทึกสำหรับนำเสนอ
-- [WEEKLY_PROGRESS_PRESENTATION_TH.md](WEEKLY_PROGRESS_PRESENTATION_TH.md) — บทพูด 5–7 นาทีและรายการภาพประกอบสำหรับรายงานความคืบหน้า
-- [PROJECT_HISTORY_TH.md](PROJECT_HISTORY_TH.md) — README เดิมและประวัติฟีเจอร์รุ่นก่อน
+- [RISK_MODEL_METHODOLOGY_TH.md](RISK_MODEL_METHODOLOGY_TH.md) — FuzzyScore, Random Forest, learned fusion, grouped evaluation และการเลือก warn/block threshold ภายใต้ FPR
 - [ฐานข้อมูลสมาชิก MySQL/MariaDB](../database/mysql/README_TH.md) — schema, ตารางผู้ใช้ และข้อมูลอุปกรณ์
 
-## บันทึกการอัปเดต
+ไฟล์นำเสนอ ประวัติการพัฒนา และรายงานความคืบหน้าอยู่แยกจาก Source Code ที่
+`../../presentation-progress/`
 
-- [PRE_CLICK_PROTECTION_TH.md](updates/PRE_CLICK_PROTECTION_TH.md)
-- [PRIVACY_MODE_TH.md](updates/PRIVACY_MODE_TH.md)
-- [PRODUCT_UI_POLISH_TH.md](updates/PRODUCT_UI_POLISH_TH.md)
-- [SAFE_PREVIEW_TH.md](updates/SAFE_PREVIEW_TH.md)
-- [SCORE_BREAKDOWN_TH.md](updates/SCORE_BREAKDOWN_TH.md)
-- [VISUAL_PHISHING_TH.md](updates/VISUAL_PHISHING_TH.md)
-
-เมื่อเพิ่มเอกสารใหม่ ให้เลือกไว้ใน docs/ หรือ docs/updates/ และอัปเดตดัชนีนี้
+เมื่อเพิ่มเอกสารเกี่ยวกับ Runtime ให้เก็บใน `docs/` ส่วน Presentation และ Progress
+ให้เก็บในโฟลเดอร์ `presentation-progress/` ภายนอกโปรเจกต์

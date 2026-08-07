@@ -11,9 +11,10 @@ function reportText(item) {
     'Phish Radar AI Report',
     `URL: ${item.privacy ? item.displayUrl : item.url}`,
     `RuleScore: ${item.ruleScore}/100`,
-    `MLScore: ${Number.isFinite(item.mlScore) ? item.mlScore : (item.privacy ? 'local-only' : 'offline')}`,
+    `FuzzyScore: ${Number.isFinite(item.fuzzyScore) ? item.fuzzyScore : (item.privacy ? 'local-only' : 'offline')}`,
+    `RandomForestScore: ${Number.isFinite(item.randomForestScore) ? item.randomForestScore : (item.privacy ? 'local-only' : 'offline')}`,
     `FinalScore: ${item.finalScore}/100`,
-    `Formula: ${item.riskFormula || 'FinalScore = 0.40(RuleScore) + 0.60(MLScore)'}`,
+    `Formula: ${item.riskFormula || 'FinalScore = 100 × LearnedFusion(FuzzyScore, RandomForestScore)'}`,
     `Risk probability: ${Number.isFinite(item.riskProbability) ? item.riskProbability : '-'}`,
     `Decision: ${item.decision || '-'}`,
     `Warning threshold: ${Number.isFinite(item.warningThreshold) ? item.warningThreshold : '-'}`,
@@ -95,16 +96,19 @@ function AnalysisResult({ result, phase }) {
         </div>
       </div>
 
-      <div className="score-grid">
-        <div><span>RuleScore · 40%</span><strong>{result.ruleScore}</strong></div>
-        <div><span>MLScore · 60%</span><strong>{Number.isFinite(result.mlScore) ? result.mlScore : (result.privacy ? 'local' : 'offline')}</strong></div>
+      <div className="scores score-grid">
+        <div><span>RuleScore</span><strong>{result.ruleScore}</strong></div>
+        <div><span>FuzzyScore</span><strong>{Number.isFinite(result.fuzzyScore) ? result.fuzzyScore : (result.privacy ? 'local' : 'offline')}</strong></div>
+        <div><span>Random Forest</span><strong>{Number.isFinite(result.randomForestScore) ? result.randomForestScore : (result.privacy ? 'local' : 'offline')}</strong></div>
         <div><span>FinalScore</span><strong>{result.finalScore}</strong></div>
       </div>
 
       <p className="score-formula">
-        {Number.isFinite(result.mlScore)
-          ? 'FinalScore = 0.40(RuleScore) + 0.60(MLScore)'
-          : 'ML ยังไม่พร้อม จึงใช้ RuleScore เป็นคะแนนสำรองชั่วคราว'}
+        {result.fusionApplied
+          ? 'FinalScore = 100 × LearnedFusion(FuzzyScore, RandomForestScore)'
+          : result.privacy
+            ? 'Privacy Mode ใช้ RuleScore ในเครื่อง โดยไม่เรียกโมเดลหรือ learned fusion'
+            : 'โมเดลยังไม่พร้อม จึงใช้คะแนนหลักฐานที่มีเป็นค่าชั่วคราว'}
       </p>
 
       <section className="block">

@@ -21,6 +21,9 @@ LLM_CACHE: dict[str, dict[str, object]] = {}
 class ExplainRequest(BaseModel):
     url: str
     rule_score: int | None = Field(default=None, ge=0, le=100)
+    fuzzy_score: int | None = Field(default=None, ge=0, le=100)
+    random_forest_score: int | None = Field(default=None, ge=0, le=100)
+    fusion_method: str | None = Field(default=None, max_length=100)
     risk_probability: float | None = Field(default=None, ge=0, le=1)
     risk_score: int | None = Field(default=None, ge=0, le=100)
     decision: Literal["allow", "warn", "block"] | None = None
@@ -228,10 +231,10 @@ def build_llm_input(payload: ExplainRequest) -> dict[str, object]:
             "warning_threshold": warning_threshold,
             "blocking_threshold": blocking_threshold,
             "rule_evidence_score": payload.rule_score,
-            "ml_score": payload.ml_score,
-            "formula": "FinalScore = 0.40 * RuleScore + 0.60 * MLScore",
-            "rule_weight": 0.40,
-            "ml_weight": 0.60,
+            "fuzzy_score": payload.fuzzy_score,
+            "random_forest_score": payload.random_forest_score if payload.random_forest_score is not None else payload.ml_score,
+            "fusion_method": payload.fusion_method,
+            "formula": "FinalScore = 100 * LearnedFusion(FuzzyScore, RandomForestScore)",
             "model_version": payload.model_version,
             "policy_version": payload.policy_version,
         },

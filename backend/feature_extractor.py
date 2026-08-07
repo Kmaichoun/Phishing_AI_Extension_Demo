@@ -44,7 +44,7 @@ SUSPICIOUS_FILE_EXTENSIONS = {
 
 ARCHIVE_FILE_EXTENSIONS = {".zip", ".rar", ".7z", ".tar", ".gz"}
 
-FEATURE_SCHEMA_VERSION = "url-v2"
+FEATURE_SCHEMA_VERSION = "url-v3-www-canonical"
 
 FEATURE_NAMES = [
     "url_length", "hostname_length", "path_length", "query_length",
@@ -90,16 +90,21 @@ def extract_features(raw_url: str) -> dict[str, float]:
     url = normalize_url(raw_url)
     parsed = urlparse(url)
     hostname = (parsed.hostname or "").lower()
+    # A leading www label is a presentation alias, not meaningful phishing
+    # evidence. Canonicalizing it prevents dataset-source formatting from
+    # becoming a shortcut learned by the model.
+    feature_hostname = hostname.removeprefix("www.")
+    www_prefix_length = len(hostname) - len(feature_hostname)
     path = parsed.path or ""
     query = parsed.query or ""
     decoded_url = unquote(url).lower()
-    host_parts = [part for part in hostname.split(".") if part]
+    host_parts = [part for part in feature_hostname.split(".") if part]
     tld = host_parts[-1] if host_parts else ""
     domain_label = host_parts[-2] if len(host_parts) >= 2 else (host_parts[0] if host_parts else "")
     params = parse_qs(query)
     parameter_names = {name.casefold() for name in params}
 
-    has_ip_host = bool(re.fullmatch(r"\d{1,3}(\.\d{1,3}){3}", hostname))
+    has_ip_host = bool(re.fullmatch(r"\d{1,3}(\.\d{1,3}){3}", feature_hostname))
     body_without_scheme = re.sub(r"^https?://", "", decoded_url)
     has_nested_url = "http://" in body_without_scheme or "https://" in body_without_scheme
     has_encoded_url = "%2f" in url.lower() or "%3a" in url.lower()
@@ -113,7 +118,9 @@ def extract_features(raw_url: str) -> dict[str, float]:
         1 for name in parameter_names if name in CREDENTIAL_PARAMETER_NAMES
     )
     hostname_digit_ratio = (
-        sum(char.isdigit() for char in hostname) / len(hostname) if hostname else 0.0
+        sum(char.isdigit() for char in feature_hostname) / len(feature_hostname)
+        if feature_hostname
+        else 0.0
     )
     domain_vowel_ratio = (
         sum(char in "aeiou" for char in domain_label) / len(domain_label)
@@ -122,11 +129,11 @@ def extract_features(raw_url: str) -> dict[str, float]:
     )
 
     return {
-        "url_length": float(len(url)),
-        "hostname_length": float(len(hostname)),
+        "url_length": float(len(url) - www_prefix_length),
+        "hostname_length": float(len(feature_hostname)),
         "path_length": float(len(path)),
         "query_length": float(len(query)),
-        "num_dots": float(url.count(".")),
+        "num_dots": float(url.count(".") - (1 if www_prefix_length else 0)),
         "num_hyphens": float(url.count("-")),
         "num_digits": float(sum(char.isdigit() for char in url)),
         "num_slashes": float(url.count("/")),
@@ -137,10 +144,10 @@ def extract_features(raw_url: str) -> dict[str, float]:
         "has_at_symbol": 1.0 if "@" in url else 0.0,
         "has_encoded_url": 1.0 if has_encoded_url else 0.0,
         "has_nested_url": 1.0 if has_nested_url else 0.0,
-        "is_shortener": 1.0 if hostname in SHORTENERS else 0.0,
+        "is_shortener": 1.0 if feature_hostname in SHORTENERS else 0.0,
         "risky_tld": 1.0 if tld in RISKY_TLDS else 0.0,
         "suspicious_word_count": float(suspicious_word_count),
-        "hostname_entropy": float(shannon_entropy(hostname)),
+        "hostname_entropy": float(shannon_entropy(feature_hostname)),
         "path_depth": float(path_depth),
         "max_hostname_label_length": float(max(map(len, host_parts), default=0)),
         "tld_length": float(len(tld)),

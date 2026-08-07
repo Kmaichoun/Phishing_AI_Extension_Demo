@@ -69,13 +69,6 @@ foreach ($cacheDirectoryName in @('__pycache__', '.pytest_cache', '.mypy_cache',
     ForEach-Object { $cleanupTargets.Add($_.FullName) }
 }
 
-$outputDirectory = Join-Path $ProjectRoot 'output'
-if (Test-Path -LiteralPath $outputDirectory -PathType Container) {
-  Get-ChildItem -LiteralPath $outputDirectory -Recurse -File `
-    -Filter '*.inspect.ndjson' -Force -ErrorAction SilentlyContinue |
-    ForEach-Object { $cleanupTargets.Add($_.FullName) }
-}
-
 if ($IncludeVenv) {
   $cleanupTargets.Add((Join-Path $ProjectRoot '.venv'))
 }

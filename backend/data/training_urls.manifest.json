@@ -1,29 +1,55 @@
 {
-  "created_at": "2026-07-17T07:54:53.502052+00:00",
+  "created_at": "2026-08-07T12:04:52.471027+00:00",
   "output": "backend\\data\\training_urls.csv",
   "random_seed": 42,
-  "row_count": 10000,
-  "unique_url_count": 10000,
-  "unique_hostname_count": 7933,
+  "row_count": 20000,
+  "unique_url_count": 20000,
+  "unique_hostname_count": 15578,
   "labels": {
-    "0": 5000,
-    "1": 5000
+    "0": 10000,
+    "1": 10000
   },
   "sources": {
-    "openphish": 23,
-    "phishtank": 4962,
-    "seed": 29,
-    "tranco": 4986
+    "common_crawl_trusted_domain": 332,
+    "common_crawl_trusted_domain_long_query": 17,
+    "common_crawl_trusted_domain_long_query_subdomain": 8,
+    "common_crawl_trusted_domain_subdomain": 126,
+    "curated_deep_link": 23,
+    "curated_deep_link_subdomain": 15,
+    "openphish": 43,
+    "phishtank": 9942,
+    "seed": 15,
+    "seed_deep_link_subdomain": 1,
+    "tranco": 1626,
+    "tranco_deep_link": 2558,
+    "tranco_deep_link_long_query": 216,
+    "tranco_deep_link_long_query_subdomain": 242,
+    "tranco_deep_link_subdomain": 2962,
+    "tranco_subdomain": 1874
+  },
+  "legitimate_url_shapes": {
+    "target_deep_link_ratio": 0.65,
+    "target_query_ratio": 0.18,
+    "target_long_query_ratio": 0.05,
+    "target_subdomain_ratio": 0.65,
+    "deep_link_count": 6500,
+    "query_count": 1800,
+    "long_query_count": 500,
+    "subdomain_count": 6500,
+    "deep_link_ratio": 0.65,
+    "query_ratio": 0.18,
+    "long_query_ratio": 0.05,
+    "subdomain_ratio": 0.65
   },
   "rule_score": {
     "0": {
-      "mean": 6.1556,
-      "median": 0.0,
+      "mean": 15.1629,
+      "median": 6.0,
       "min": 0,
-      "max": 81
+      "max": 100
     },
     "1": {
-      "mean": 18.1978,
+      "mean": 18.503,
       "median": 9.0,
       "min": 0,
       "max": 100
@@ -31,24 +57,25 @@
   },
   "rule_score_engine": {
     "training_profile": "web-app/analyzer.js (URL-only analysis)",
-    "web_analyzer_sha256": "ca8b8caaaaae8f7cf8bbc3b1bcecac0bbceb01981d1d3fab77a598a142e59be",
+    "web_analyzer_sha256": "ca8b8caaaaaae8f7cf8bbc3b1bcecac0bbceb01981d1d3fab77a598a142e59be",
     "extension_analyzer_sha256": "e655cbf8f75def9f287828f829bb9d89eebbc3a8070341b32a89a31738765d6e"
   },
+  "build_mode": "source_feeds",
   "feed_files": {
     "phishtank": {
       "url": "https://data.phishtank.com/data/online-valid.csv",
       "path": "backend\\data\\cache\\phishtank-online-valid.csv",
-      "sha256": "f5f2474b0e067a16290419353c532894ec10f78b9810a0e3e2786709f8395184"
+      "sha256": "f478fea0717a0e4d4d4b150829f376468f34b220103caa3a9503875db0dca9f3"
     },
     "openphish": {
       "url": "https://openphish.com/feed.txt",
       "path": "backend\\data\\cache\\openphish-feed.txt",
-      "sha256": "6501536cd05f12d5bb4302f74ff33928ca939c8f6f5185984c9289771870e259"
+      "sha256": "42b53b76d7ab7b636941230af574cbc3b1347d2d805dde7de8bc4a45e99bd08c"
     },
     "tranco": {
       "url": "https://tranco-list.eu/top-1m.csv.zip",
       "path": "backend\\data\\cache\\tranco-top-1m.csv.zip",
-      "sha256": "c142ddfdaf02a842e125b93db2b45d49ce5e49e2f93d62d3f44d3ffe4a27859e"
+      "sha256": "a115b470bc6487414f36b5c6bb16f1b22dad8fc025be0b36352bfbab6f2a6023"
     }
   },
   "label_definition": {

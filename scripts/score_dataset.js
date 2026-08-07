@@ -7,7 +7,7 @@
  */
 const profile = process.argv.includes('--extension') ? 'extension' : 'web';
 const analyzer = profile === 'extension'
-  ? require('../analyzer.js')
+  ? require('../extension/analyzer.js')
   : require('../web-app/analyzer.js');
 
 let input = '';
