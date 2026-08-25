@@ -4,6 +4,7 @@
 
 ## คู่มือหลัก
 
+- [DEVELOPER_GUIDE_TH.md](DEVELOPER_GUIDE_TH.md) — คู่มือส่งต่อสำหรับ Developer ตั้งแต่ Clone, ติดตั้ง, เปิดทุกระบบ, ทดสอบ และ Git workflow
 - [PROJECT_STRUCTURE_TH.md](PROJECT_STRUCTURE_TH.md) — แผนผัง Frontend, Extension, Backend, Database, ML/LLM และจุดแก้ปัญหา
 - [LLM_SETUP_TH.md](LLM_SETUP_TH.md) — การเปิด backend และตั้งค่า LLM
 - [REACT_WEB_APP_TH.md](REACT_WEB_APP_TH.md) — โครงสร้าง React, Router, Context, Vite และแนวทางพัฒนาต่อ

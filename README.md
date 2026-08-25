@@ -171,6 +171,7 @@ Component, Router, Context และสิ่งที่ต้องรู้�
 
 ## เอกสารเพิ่มเติม
 
+- [คู่มือ Developer สำหรับติดตั้งและรับช่วงโปรเจกต์](docs/DEVELOPER_GUIDE_TH.md)
 - [ดัชนีเอกสาร](docs/README.md)
 - [แผนผังและขอบเขตแต่ละส่วน](docs/PROJECT_STRUCTURE_TH.md)
 - [ฐานข้อมูลสมาชิก MySQL/MariaDB](database/mysql/README_TH.md)
