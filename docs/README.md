@@ -4,6 +4,9 @@
 
 ## คู่มือหลัก
 
+- [MODEL_UPGRADE_WORKFLOW_TH.md](MODEL_UPGRADE_WORKFLOW_TH.md) — Error Analysis, reviewed feedback, ข้อมูลรอบใหม่ และ gated promote/rollback
+- [WORKSPACE_GUIDE_TH.md](WORKSPACE_GUIDE_TH.md) — การใช้ Scanner, Dashboard, Status, Security และ Admin พร้อม migration และการทดสอบ
+- [SIMPLE_RISK_EXPERIMENT_TH.md](SIMPLE_RISK_EXPERIMENT_TH.md) — ตรวจสูตรเดิม แหล่ง Dataset การทดลองสูตรง่าย และเหตุผลที่ยังไม่ promote โมเดลใหม่
 - [DEVELOPER_GUIDE_TH.md](DEVELOPER_GUIDE_TH.md) — คู่มือส่งต่อสำหรับ Developer ตั้งแต่ Clone, ติดตั้ง, เปิดทุกระบบ, ทดสอบ และ Git workflow
 - [PROJECT_STRUCTURE_TH.md](PROJECT_STRUCTURE_TH.md) — แผนผัง Frontend, Extension, Backend, Database, ML/LLM และจุดแก้ปัญหา
 - [LLM_SETUP_TH.md](LLM_SETUP_TH.md) — การเปิด backend และตั้งค่า LLM

@@ -75,17 +75,21 @@ LLM เริ่มต้นคือ `qwen3:4b` ผ่าน Ollama ส่ว�
 
 ## สร้าง Dataset และฝึก Risk Model
 
+รอบใหม่ให้ใช้ [Model Upgrade Workflow](docs/MODEL_UPGRADE_WORKFLOW_TH.md): วิเคราะห์ FP/FN, เก็บข้อมูลมีหลักฐาน, สร้าง candidate และผ่าน gate ก่อน promote คำสั่ง train ไม่ทับ `backend/model.pkl` โดยตรงแล้ว
+
+คำสั่งต่อไปนี้เป็น pipeline เก่าสำหรับงานทดลอง มี benign labels จากความนิยมโดเมนและการเติม path/query/subdomain สังเคราะห์ ไม่ใช้ยืนยันความพร้อมใช้งาน การ refresh เปลี่ยน `training_urls.csv` ซึ่งจำเป็นสำหรับตรวจย้อนกลับโมเดลเดิม ต้องสำรองต้นฉบับไว้ก่อน
+
 ค่าเริ่มต้นจะสร้างข้อมูลสมดุล 10,000 แถวจาก PhishTank, OpenPhish และ Tranco แล้วคำนวณ RuleScore ด้วย analyzer ของ Web App:
 
     ./.venv/Scripts/python.exe ./backend/build_dataset.py --refresh
-    ./.venv/Scripts/python.exe ./backend/train_model.py
+    ./.venv/Scripts/python.exe ./backend/train_model.py --output-dir backend/data/legacy_experiment_01
     ./.venv/Scripts/python.exe ./scripts/test_risk_pipeline.py
 
 โมเดลที่อยู่ในโปรเจกต์ขณะนี้ฝึกด้วย 20,000 URL ให้สร้างรุ่นขนาดเดียวกันด้วย:
 
     ./.venv/Scripts/python.exe ./backend/collect_legitimate_deep_links.py
     ./.venv/Scripts/python.exe ./backend/build_dataset.py --refresh --phishing-limit 10000 --legitimate-limit 10000
-    ./.venv/Scripts/python.exe ./backend/train_model.py
+    ./.venv/Scripts/python.exe ./backend/train_model.py --output-dir backend/data/legacy_experiment_02
 
 หากล้าง source-feed cache เพื่อลดขนาดโปรเจกต์แล้ว แต่ยังมี `training_urls.csv`
 ให้สร้างข้อมูลรุ่นใหม่จากไฟล์เดิมโดยไม่ดาวน์โหลดซ้ำ:

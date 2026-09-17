@@ -1,0 +1,52 @@
+{
+  "description": "Known benign URL-shape regressions; NOT an accuracy benchmark or independent test.",
+  "candidate_sha256": "40db78a931169ecf354ef0af376a4e925887f65f7c42e0f68dfcdf33d44d3449",
+  "code_sha256": {
+    "backend/app.py": "df0246c18587541d62cc93bfe9503c542c45088d2e2c2a3d30811fd7c54c16fc",
+    "backend/feature_extractor.py": "f49bc27b8058523922bc54c10a6f469d750cfbcf3041ecada604835a07327de6",
+    "backend/fuzzy_scoring.py": "026b57355e58f02f07cd5acc9b14cea1a8a48dc9cc984f74ba715b0c9f34579d",
+    "backend/risk_policy.py": "46ea1996116325f0b4a2cd83ffc0e3e1f5eb28442dcfa36cce71a63f41e6b474",
+    "scripts/check_candidate_model.py": "f196f5e5ca49a333f46c877420c2ed8b0a6bcde82a28deea4dbc94e88bfa4837",
+    "scripts/score_dataset.js": "c639717bad7743af92ae1740f32ec1ad37ce3191a4cc1dccaf7932f7f4984f1b",
+    "web-app/analyzer.js": "ca8b8caaaaaae8f7cf8bbc3b1bcecac0bbceb01981d1d3fab77a598a142e59be"
+  },
+  "all_allow": false,
+  "results": [
+    {
+      "url": "https://www.youtube.com/watch?v=AwKnraP_Wno",
+      "rule_score": 0,
+      "final_score": 60,
+      "decision": "warn"
+    },
+    {
+      "url": "https://www.youtube.com/results?search_query=cybersecurity",
+      "rule_score": 0,
+      "final_score": 60,
+      "decision": "warn"
+    },
+    {
+      "url": "https://www.google.com/",
+      "rule_score": 0,
+      "final_score": 1,
+      "decision": "allow"
+    },
+    {
+      "url": "https://www.google.com/search?q=%E0%B9%80%E0%B8%A7%E0%B9%87%E0%B8%9A%E0%B9%84%E0%B8%8B%E0%B8%95%E0%B9%8C%E0%B8%AA%E0%B8%B3%E0%B8%AB%E0%B8%A3%E0%B8%B1%E0%B8%9A%E0%B8%84%E0%B9%89%E0%B8%99%E0%B8%AB%E0%B8%B2%E0%B8%82%E0%B9%89%E0%B8%AD%E0%B8%A1%E0%B8%B9%E0%B8%A5%E0%B8%A0%E0%B8%B2%E0%B8%A9%E0%B8%B2%E0%B9%84%E0%B8%97%E0%B8%A2&sca_esv=588441138e93f763&gs_lp=Egdnd3Mtd2l6IjdQAgEgAMgCQIxjQAhgmEgdnd3Mtd2l6IjdQAgEgAMgCQIxjQAhgmEgdnd3Mtd2l6IjdQAgEgAMgCQIxjQAhgmEgdnd3Mtd2l6IjdQAgEgAMgCQIxjQAhgmEgdnd3Mtd2l6IjdQAgEgAMgCQIxjQAhgmEgdnd3Mtd2l6IjdQAgEgAMgCQIxjQAhgmEgdnd3Mtd2l6IjdQAgEgAMgCQIxjQAhgmEgdnd3Mtd2l6IjdQAgEgAMgCQIxjQAhgm",
+      "rule_score": 7,
+      "final_score": 62,
+      "decision": "warn"
+    },
+    {
+      "url": "https://github.com/openai/openai-python/issues/123",
+      "rule_score": 0,
+      "final_score": 57,
+      "decision": "warn"
+    },
+    {
+      "url": "https://en.wikipedia.org/wiki/Phishing",
+      "rule_score": 0,
+      "final_score": 58,
+      "decision": "warn"
+    }
+  ]
+}

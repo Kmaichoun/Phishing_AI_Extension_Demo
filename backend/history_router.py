@@ -3,7 +3,8 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
+from typing import Literal
 from urllib.parse import urlsplit, urlunsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
@@ -12,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from auth_router import _require_web_client, _session_scope, require_authenticated_user
 from history_models import SearchHistoryCreate, SearchHistoryList, SearchHistoryResponse
+from workspace_router import audit
 
 router = APIRouter(prefix="/history", tags=["search-history"])
 RETENTION_DAYS = max(1, int(os.getenv("SEARCH_HISTORY_RETENTION_DAYS", "90")))
@@ -101,6 +103,10 @@ def create_history(
     _require_web_client(request)
     safe_url, hostname, url_hash = _safe_history_url(payload.url)
     cutoff = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=RETENTION_DAYS)
+    # Shared hosting migrations omit foreign keys, so delete dependent feedback explicitly.
+    database.execute(text("""DELETE f FROM ScanFeedback f JOIN SearchHistory h
+        ON h.HistoryId=f.HistoryId WHERE h.UserId=:user_id AND h.CreatedAt<:cutoff"""),
+        {"user_id": current_user["UserId"], "cutoff": cutoff})
     database.execute(
         text("DELETE FROM SearchHistory WHERE UserId = :user_id AND CreatedAt < :cutoff"),
         {"user_id": current_user["UserId"], "cutoff": cutoff},
@@ -175,13 +181,28 @@ def create_history(
 def list_history(
     request: Request,
     limit: int = Query(default=50, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    q: str = Query(default='', max_length=253),
+    decision: Literal['allow', 'warn', 'block'] | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
+    device_id: int | None = None,
     current_user: dict[str, object] = Depends(require_authenticated_user),
     database: Session = Depends(_session_scope),
 ) -> SearchHistoryList:
     _require_web_client(request)
+    if date_from and date_to and date_from > date_to:
+        raise HTTPException(422, 'วันที่เริ่มต้นต้องไม่เกินวันที่สิ้นสุด')
+    filters = """h.UserId = :user_id AND h.Url LIKE :q
+        AND (:decision IS NULL OR h.Decision=:decision)
+        AND (:date_from IS NULL OR h.CreatedAt>=:date_from)
+        AND (:date_to IS NULL OR h.CreatedAt<DATE_ADD(:date_to, INTERVAL 1 DAY))
+        AND (:device_id IS NULL OR h.UserDeviceId=:device_id)"""
+    params = dict(limit=limit, offset=offset, user_id=current_user['UserId'], q=f'%{q}%',
+                  decision=decision, date_from=date_from, date_to=date_to, device_id=device_id)
     rows = database.execute(
         text(
-            """
+            f"""
             SELECT h.HistoryId, h.Url, h.Hostname, h.RuleScore, h.MlScore,
                    h.FinalScore, h.Alpha, h.DecisionThreshold, h.DetectionLabel,
                    h.ModelStatus, h.Source, h.CreatedAt, d.DeviceName,
@@ -190,15 +211,16 @@ def list_history(
                    h.PolicyVersion, h.FeatureSchemaVersion, h.LayerResults
             FROM SearchHistory AS h
             INNER JOIN UserDevices AS d ON d.UserDeviceId = h.UserDeviceId
-            WHERE h.UserId = :user_id
+            WHERE {filters}
             ORDER BY h.CreatedAt DESC, h.HistoryId DESC
-            LIMIT :limit
+            LIMIT :limit OFFSET :offset
             """
         ),
-        {"limit": limit, "user_id": current_user["UserId"]},
+        params,
     ).mappings().all()
     items = [_history_response(dict(row)) for row in rows]
-    return SearchHistoryList(items=items, count=len(items))
+    total = database.execute(text(f'SELECT COUNT(*) FROM SearchHistory h WHERE {filters}'), params).scalar_one()
+    return SearchHistoryList(items=items, count=len(items), total=total)
 
 
 @router.delete("")
@@ -208,9 +230,14 @@ def clear_history(
     database: Session = Depends(_session_scope),
 ) -> dict[str, int | bool]:
     _require_web_client(request)
+    database.execute(text("DELETE FROM ScanFeedback WHERE UserId=:user_id"),
+                     {"user_id": current_user["UserId"]})
     result = database.execute(
         text("DELETE FROM SearchHistory WHERE UserId = :user_id"),
         {"user_id": current_user["UserId"]},
     )
+    deleted = max(0, int(result.rowcount or 0))
+    audit(database, current_user["UserId"], "history.clear", "user", current_user["UserId"],
+          {"deleted": deleted})
     database.commit()
-    return {"ok": True, "deleted": max(0, int(result.rowcount or 0))}
+    return {"ok": True, "deleted": deleted}

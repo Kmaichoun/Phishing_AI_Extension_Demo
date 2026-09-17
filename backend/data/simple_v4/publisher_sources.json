@@ -1,0 +1,832 @@
+{
+  "created_at": "2026-09-17T08:16:24.232758+00:00",
+  "csv": "publisher-urls.csv",
+  "csv_sha256": "0fa3d247a1924c5d4383b103ac545c48234f967c9176b735457e0fd991c2e059",
+  "counts": {
+    "phreshphish_train_v1_0_1": 498255,
+    "urlphish_v1": 91687
+  },
+  "excluded": {
+    "previously_seen_external_domain_rows": 24913
+  },
+  "previous_datasets": {
+    "backend\\data\\training_urls.csv": "5b0df2ccfeddbb9c0edd15a0b40e291ee74501d5547a3a7becaf25e1087b1bb9",
+    "backend\\data\\simple_v1\\dataset.csv": "93c912cae0af693b1eebf122b085b25c5a7d2d555f58bdcdd82d82e7f667876c",
+    "backend\\data\\simple_v2\\dataset.csv": "3f278795dc824d315ed875d1c6c312c5cee887db39dac800566626c798886d9e",
+    "backend\\data\\simple_v3\\dataset.csv": "7374af3edc548306be61c4c72c27d442f042f17e2e1d3c09c7a918df18445350"
+  },
+  "sources": {
+    "phreshphish_train_v1_0_1": {
+      "url": "https://huggingface.co/datasets/phreshphish/phreshphish",
+      "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+      "license": "CC BY 4.0",
+      "attribution": "Thomas Dalton et al. (2025), arXiv:2507.10854",
+      "label_evidence": "Publisher HTML-URL phishing/benign labels; not independently reverified by this project",
+      "time_semantics": "Publisher date, day precision; timezone not supplied",
+      "publisher_test_used": false,
+      "files": [
+        {
+          "file": "data/train-000.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 1000,
+          "publisher_file_sha256": "9a9c693a95daeddb127c4446df4c5673b3f1a39e457ffe964b9849069bd739fe",
+          "sha256": "a1bab97564a185e9c9a36adf044dbce354d45f7bf52d3b77c58ed29cb59cfe89",
+          "transferred_bytes": 99232,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-001.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 5780,
+          "publisher_file_sha256": "260cb9c93299f6b244d48321fe115523159770f4e73446b382473628c6e81d74",
+          "sha256": "ef10eadf78f00b21df53960924400cedba7989d0dd8c926e9aac30fc3d6082ef",
+          "transferred_bytes": 249796,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-002.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 6506,
+          "publisher_file_sha256": "75d891908c1f921542ea9e4f94578f8442da05333621f1cb3ef386c9698935a7",
+          "sha256": "051ee9f42ab4f67b9a588fc6e1349434cb13176930e26ea42a183a6e1775f907",
+          "transferred_bytes": 273378,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-003.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 7127,
+          "publisher_file_sha256": "0f6bd169f813a9446294597602d1b93457da62c753594d8d1ecb78d20d5dec40",
+          "sha256": "486808b6a5c0ac0732f4df91869b54291bfb31345018c92616176c87c9a716ab",
+          "transferred_bytes": 304048,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-004.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 7425,
+          "publisher_file_sha256": "82fa46160b9d7779994f7f7ec8cb612f942b8410a0a3325e26134bad72c708ab",
+          "sha256": "2b5ea4a5999d2f96e3ceda11aee51f9b3b74a4a70b8754e2df5ff41f4fd85010",
+          "transferred_bytes": 299087,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-005.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 7870,
+          "publisher_file_sha256": "d5dde3895c6a78daf59ef8c3ee3e67a72a30bc7a7e34782a9dfa503d998334fa",
+          "sha256": "f8fb2454de67ab929a169e081148a4b8fdf4cee65068cb6ac7c097ede2c0280c",
+          "transferred_bytes": 312014,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-006.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 8077,
+          "publisher_file_sha256": "a09a5acf3e160c0449ec829c02b9868181e0832895fe096ce50671c9f6b21186",
+          "sha256": "0965e0495c38c0921158706344c9b0ee2e0825ee34789a15076e820924fae99a",
+          "transferred_bytes": 322015,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-007.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 8470,
+          "publisher_file_sha256": "6ea74e3fe2fb8e60aeb1e839b768c63f847a53a4b522eaeb039f646fef7e6d99",
+          "sha256": "a9b5b11da0e589d02425a9255ddb4dda16799d1a87df426734f2d101a24f53de",
+          "transferred_bytes": 334220,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-008.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 8662,
+          "publisher_file_sha256": "744bfac082fcc8f038c69b87a89d5232e8d89eee56f5c5da13507cafc271a3a1",
+          "sha256": "1fdb66eaefb49cd50ab99c33285e593725e39f542130ee98f94ae6205e347fec",
+          "transferred_bytes": 337982,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-009.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 8783,
+          "publisher_file_sha256": "1f2c36eb106e707efad78ad6daa31bb5a9935a1b3c223007a9306768585b794b",
+          "sha256": "ea0c011b555ea188e7899dfc0443c70dbb9de5a706dc8c3bbb727235cba7419a",
+          "transferred_bytes": 349953,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-010.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9031,
+          "publisher_file_sha256": "2248103f6867733767b12abbe7f39d2e0c8f9872be1c2889f7fe12c7ba8fd9ed",
+          "sha256": "8b77122c723ac7e7a541e7ffc9a50ac82ba6a6c03049d21b60fe6eadb7789771",
+          "transferred_bytes": 354797,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-011.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9130,
+          "publisher_file_sha256": "f0444a6a5ac7931141be5853f46ef4c0ca5cffb1e0954c0fac378f5b4901a089",
+          "sha256": "f1926a2a736fbaa6f2f612ee8c391a797e692a42f539a9fe27c2fdc0679a5f10",
+          "transferred_bytes": 358789,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-012.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9260,
+          "publisher_file_sha256": "ac98e35172589cfb4fb3ba0995edd893691b5a56270f5984491c9b1482920e63",
+          "sha256": "f6374dd86bf9b1fdbb7cf45ad01b81a944bf06f41f3abe8ad39e7d90d641acea",
+          "transferred_bytes": 358254,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-013.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9206,
+          "publisher_file_sha256": "c8ffb87097fcda5c3b8ec8e7fda7b23351bd39e6f32aa32e4641ad9b68ba48f7",
+          "sha256": "dbac0d4d5c56bf790d501113e0590af4a81a9607945831775373e5da7861f103",
+          "transferred_bytes": 355597,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-014.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9233,
+          "publisher_file_sha256": "e179724438ea500e2a171b8b8f7b01dc51f312fb7bad94af4657bf199fff65c6",
+          "sha256": "2d1d167311098c1fcb102f868e95306a4775c4e4a6a1a5d0a11b2d6b6f8ad3bd",
+          "transferred_bytes": 359777,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-015.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9219,
+          "publisher_file_sha256": "483887bf4501d7a61d1f816ee01c52c5acb8c7329db91f9e0e788249f24809ff",
+          "sha256": "5836758cb51eb82e739c53f66209a9c88eae8412441d69653a46506ae12dabbd",
+          "transferred_bytes": 363588,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-016.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9342,
+          "publisher_file_sha256": "abb2a14210d0061da98e0efa567f5ea59be5e3fdbc89fdebbd79926582e79344",
+          "sha256": "03f65e43791c1174073c36fd40c3f65a26cb91092b0a6ab72dfd42938eb8f85d",
+          "transferred_bytes": 360979,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-017.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9508,
+          "publisher_file_sha256": "3745a8434d1cc44a29e7925f200d070ec023301224573a87732458d9d69416d1",
+          "sha256": "e5520a28cf04c11c3c61f755845dab510c4d4ff462089b0b1c279a5afeb47a4e",
+          "transferred_bytes": 373034,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-018.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9408,
+          "publisher_file_sha256": "a95f097bd5f90d90520cdbe425832cb60a4772e945ef6a06f02eaf1244eefb3b",
+          "sha256": "febd4052d1aea99c2b5b97a708fc67242216f71d905009e292276487cfe39b36",
+          "transferred_bytes": 365826,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-019.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9450,
+          "publisher_file_sha256": "d0758feaabe72748f7dce8a097dba32ac3380f1325a6a333b48d4062e6899913",
+          "sha256": "dbd880bbb3fbe3f2b6d3a6389408ac4f62d3c5ecffd099d0d84b05a614193e13",
+          "transferred_bytes": 371094,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-020.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9423,
+          "publisher_file_sha256": "2ac1568a8cc7725db7c9ac655d27b7b4425dbef304d0fb2694330bf0087d1015",
+          "sha256": "fb69b31a63ab8f0e01ac1288eca9245df1e6db013778303f50d0733c2bf3e081",
+          "transferred_bytes": 368790,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-021.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9450,
+          "publisher_file_sha256": "86b046714343896da9d33a47b650ddc3fa7dda16c46b613919c9e121e68131c4",
+          "sha256": "50eb7c7a7960a4445223bfe17c93be09661c928c3ef5e4ed9c148c7aded679cb",
+          "transferred_bytes": 364017,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-022.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9388,
+          "publisher_file_sha256": "48bb12db73d2920adf6fab9065aef6458cef4c68a63bdf8d17cef31411ed9dbd",
+          "sha256": "e1d8464306b0732833ccb8720ad79d9350b436c31c1323b3434a9f12c0722f4d",
+          "transferred_bytes": 372239,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-023.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9403,
+          "publisher_file_sha256": "7049741383572bb85be44adae7185f782be808f89bd61ce20814a58a728a507f",
+          "sha256": "cc4bc46eb46344a43cb74443d0ebd6effbe0ef34b99a442c2ade1f859d8b9ef1",
+          "transferred_bytes": 366827,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-024.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9445,
+          "publisher_file_sha256": "159b165bf076df74e3836b0a2735c50f4065cbd1c6db5980bdb6b1798e7fd909",
+          "sha256": "427ecc65ab827effbcfe9d53c75371436f6284fc4b6b0b27f0ee3950f0b92e61",
+          "transferred_bytes": 365170,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-025.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9575,
+          "publisher_file_sha256": "1eebce31468381626456360527a1ef6d4b1e22322f0f58e027e9e5ed5e21415a",
+          "sha256": "6541605272fdfa4e64490dd98bf4f44d4c928ba270f24242623df3bc6c79ea50",
+          "transferred_bytes": 388510,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-026.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9583,
+          "publisher_file_sha256": "c34b1dcb379bf1cd1140cd5f0a58eaaa97970a99d389daca63a2e2895855aba3",
+          "sha256": "d5dbfad90c902ec6695ff360b098dc4b1f1d24141cc5e106641d2029ae2574c7",
+          "transferred_bytes": 370771,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-027.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9646,
+          "publisher_file_sha256": "4ce97aa143903066c1de3e0c6031970b24f182f83a10288b6f2d6e51bc83422d",
+          "sha256": "573a3ce0fd0a815b60901496a3b0637d6ec0ae49919a3eb3b49d270128ce4b1f",
+          "transferred_bytes": 369067,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-028.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9666,
+          "publisher_file_sha256": "30b2b5f3dbcaeae4da5a2d08d1021e5bb365404592994d0c824b34477284f4af",
+          "sha256": "b8793286286fb3f01a657aec3f404e9a2035aa6b720c657c5ef791349bbbf8ef",
+          "transferred_bytes": 372576,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-029.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9682,
+          "publisher_file_sha256": "789e323570701fec1af3f5476d7bfbdf9eab9f874239d0368bc9ae88ae89e20b",
+          "sha256": "f3f52599e5131d8b24a7637d8d3754ff72541007eb1a62ef9a8cf5d6ee5b8618",
+          "transferred_bytes": 376473,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-030.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9692,
+          "publisher_file_sha256": "b75045291d54c0854929d284733ceeeccbfda149964a852f5a7d0f90fef1ea22",
+          "sha256": "880935bd86cb9f893205894db52334a7f74b299c11131bcc0cd73f81ed11ebcf",
+          "transferred_bytes": 371424,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-031.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9718,
+          "publisher_file_sha256": "83498eba336260a39c55d10db06fbd8c04424aee0835d59bc0fcafb12aef2c1a",
+          "sha256": "7eb93b45de036232da351891adc895d69eba2bff46800b7a359b700f6d28bef4",
+          "transferred_bytes": 371903,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-032.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9637,
+          "publisher_file_sha256": "5b066986fff36d56ef9fa9f0de918504db4b9bf4774c0feed07d4ec34ed48f2d",
+          "sha256": "2b2fdd8e34a0b7bef3fcc648638973b01708887cded69ada6176eb76f5e77a9b",
+          "transferred_bytes": 380595,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-033.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9664,
+          "publisher_file_sha256": "367c3645a0a467f9deec17ca293d136c8967928c01ed0a1ac6b1b64cf5e1d9ff",
+          "sha256": "5c63e8e1d8fed2724738d9497658924055ae5b0d9f715976670ddc3efdf0a881",
+          "transferred_bytes": 374152,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-034.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9685,
+          "publisher_file_sha256": "e3a28dbca782859e274d977206607cc5cb13407ce1a533e2649a291854d858e3",
+          "sha256": "13166c38ca56fa051df5afd7bd4b14e951bf03282fedb7155d6e62c6855aac23",
+          "transferred_bytes": 376183,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-035.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9686,
+          "publisher_file_sha256": "7a416d88e6788a27433844dfce0dacaaf24c7e239ae15ef175444e0dd5eb6232",
+          "sha256": "003a9e1bdae0d0008647558c35a2a665b56c65538af20310b1f05e7f94a05023",
+          "transferred_bytes": 372315,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-036.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9630,
+          "publisher_file_sha256": "f48e5a561233bd48911af175030d2538eb306c1d01150c93046298ac13f594cd",
+          "sha256": "6a5903c592d526eeeeeda2462079e754b656feadc478f4b8aeb6988ef9ed4f2f",
+          "transferred_bytes": 375391,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-037.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9622,
+          "publisher_file_sha256": "276b68b7cb60892c5da21df662d9c4dcfef481767ca1c81fc4bddc22e26664c1",
+          "sha256": "8cd929f495f19fb1be74112c9543f31cffb1957d4e25abfe934228656a9b609d",
+          "transferred_bytes": 371587,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-038.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9605,
+          "publisher_file_sha256": "0c26f10b73c0d9485198e404d1f96d53e1a04accf3229334176ff768baa3ee35",
+          "sha256": "0b686032f6965ef490d806dea79bcee5591690d7cf9acb53db5cba34664e6b67",
+          "transferred_bytes": 373576,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-039.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9547,
+          "publisher_file_sha256": "1d0af9e0f725d9347310299299f7f30c95613274bcee6dbd2300215709d67aa5",
+          "sha256": "3ab456d539e00a44be33ddf9b794d496894aa47298c64f7e867180dfaea687a7",
+          "transferred_bytes": 371584,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-040.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9563,
+          "publisher_file_sha256": "86226915ddb5487b0eec6922f93b5e677226b6bff73d42e4a761a80e2edd6513",
+          "sha256": "04575bc6372992cee14174cdf21ae1b3b8cfee079d212d5f72608ab6d44dc2e3",
+          "transferred_bytes": 370079,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-041.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9592,
+          "publisher_file_sha256": "84b5bc3b32c5aad110928e19d19db4cae72f5f33987ae481b43edcea8194144e",
+          "sha256": "8f063ab09d63711b3bebd3edef3a0fbd7b4e6e835b2c7591fc619941e491579d",
+          "transferred_bytes": 370980,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-042.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9602,
+          "publisher_file_sha256": "efc332a8f4e84acd524e34e4b862f3a9f6d415ca2227c4fe5f12cad2e2d0033b",
+          "sha256": "82cb793809fb8bf9a2df909b0d5603d0bda30169eadda65118a7b86a68467de8",
+          "transferred_bytes": 373247,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-043.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9492,
+          "publisher_file_sha256": "3e483aea9ee38c0ba8c67dad8c7fac25600735aa359ad91de118539549fa80b7",
+          "sha256": "1fd67c9d395854837f0c3041d974c4cf51258bf5be5b0657dca8ee1de738d8c2",
+          "transferred_bytes": 369535,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-044.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9518,
+          "publisher_file_sha256": "ba619d9ac74ffe4e9b90887c7c91c2c47dbd91dfee2db4fde9009fca91ac042d",
+          "sha256": "036f751517b4d84f3bd43b02535991941b9b776b086e497a8e493785f2839712",
+          "transferred_bytes": 370077,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-045.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9561,
+          "publisher_file_sha256": "54469b16320ca7587ee5f691f5401b7d31021695d9021c0f98dd1d4c31288460",
+          "sha256": "49e5edd531d42972e74d3a62c8e37bf9b78f14860b5d7ac9ca0fc5871762bd29",
+          "transferred_bytes": 371852,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-046.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9606,
+          "publisher_file_sha256": "08e2335e64e63edf16f0d42ea176586b0aec2730ab9bef79b99e3b53b8ab901b",
+          "sha256": "2549d00bc5d656110fce8ebb206d16daff84d11423ad239c7f3f57531c4381b3",
+          "transferred_bytes": 369990,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-047.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9647,
+          "publisher_file_sha256": "e6a32db1be3425639ee51c1766ad4ed5a1466158e7086b7d7652da22a85ee2df",
+          "sha256": "f4d2d655e36e7efb622465cc1248320f4227604137dad0172150a65c633a3368",
+          "transferred_bytes": 373337,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-048.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9513,
+          "publisher_file_sha256": "aa0c9a46debda13fca2f774ec17d19f5aedc7b4c0bf4bf52592b25c21dde2bf9",
+          "sha256": "80a819525ca767559899edc7970578639da29c7f0e95b1c87c37ecd49f175881",
+          "transferred_bytes": 366497,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-049.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9503,
+          "publisher_file_sha256": "f33cade179e5463c199be6d91697780dee5e9a968719979f679f0948776e87d5",
+          "sha256": "01dec74922796e179802e3a708608d62566d66d0cb62346987c5daf9307db36b",
+          "transferred_bytes": 372044,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-050.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9621,
+          "publisher_file_sha256": "1c3c98c903909617af11206af2c0cbe2c49a8c03f5612c9bab217efbdd704819",
+          "sha256": "6002063adc932f485d58d6600f9d5fe1fd13aac9b131840741ed2c9199b8a59a",
+          "transferred_bytes": 367538,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-051.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9641,
+          "publisher_file_sha256": "d8006a6d88d129a6e320b5607632c23cb2bd78b67de387917ec0339f9d53a845",
+          "sha256": "51b8fe714c031a7b61375e2eb9829e644b5cc0b1539517d5c7566315ba084647",
+          "transferred_bytes": 374154,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-052.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9634,
+          "publisher_file_sha256": "0ed7dd02d05e3308b0ee92032e70c056f6dd72f38e23d04be432697da30cffcd",
+          "sha256": "d39b8ee419cab6bf9b904f94eb66d32fb9d231207eef0d6dc01e7fdf331fc73d",
+          "transferred_bytes": 373473,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-053.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9684,
+          "publisher_file_sha256": "c5b45165e8b54894b0268f8a0a39fed8e5e598e9bf30211dac18ba06db8796c2",
+          "sha256": "562d0e3b7f530afe69bcf00e44daa1c87af5777710fcf869537f56fb208eb9e5",
+          "transferred_bytes": 374587,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-054.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 9483,
+          "publisher_file_sha256": "f862faba880c17573779cdfd4e93b4152edcaa12fb0ac237deae0a2adfa7674c",
+          "sha256": "07807f8044451c2f148ac73a65a66316eeab906971e32f89c31096b2f5957534",
+          "transferred_bytes": 375364,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        },
+        {
+          "file": "data/train-055.parquet",
+          "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+          "rows": 361,
+          "publisher_file_sha256": "205a7e1cf4fb11032683e90fdbd1c13ddc9d9dd86109658d13e69929b53b31d0",
+          "sha256": "a9dc32d89ef557e08fd2975fc3261f92e0cafc45e8df6b6bbdd8c1155bb63d61",
+          "transferred_bytes": 78181,
+          "columns": [
+            "url",
+            "label",
+            "date"
+          ],
+          "whole_parquet_hash_verified": false
+        }
+      ]
+    },
+    "urlphish_v1": {
+      "url": "https://data.mendeley.com/datasets/65z9twcx3r/1",
+      "license": "CC BY 4.0",
+      "attribution": "Linh Dam Minh and Hung Tran Cong (2025), DOI:10.17632/65z9twcx3r.1",
+      "label_evidence": "Publisher labels: ROR-sourced benign and PhishTank phishing; not a current security verdict",
+      "limitations": "ROR provenance is not independent verification of current URL safety; historical/source-shift test only",
+      "time_semantics": "Per-URL observation time unavailable; never substitute retrieval date",
+      "download_url": "https://data.mendeley.com/public-files/datasets/65z9twcx3r/files/0e9c55e4-9adb-43f5-8403-1bbd143ebdb6/file_downloaded",
+      "sha256": "d68b3cd0648dcf9c775347416ad1a8995e8a025921fbe3871ca6158d4db3c3a1"
+    }
+  },
+  "dataset_destinations_visited": false,
+  "html_downloaded": false,
+  "transformations": [
+    "URL/label/date projection only",
+    "0 benign / 1 phishing mapping",
+    "Exclude previously exposed external domains before any scoring"
+  ]
+}

@@ -1,16 +1,12 @@
 import { useEffect, useState } from 'react';
-import brandIcon from '../../assets/icon128.png';
 import { Icon } from '../components/Icon';
-import { MotionFrame } from '../components/MotionFrame';
 import { PasswordField } from '../components/PasswordField';
-import { ThemeToggle } from '../components/ThemeToggle';
 import { useAuth } from '../contexts/AuthContext';
-import { Link, useRouter } from '../contexts/RouterContext';
+import { Link } from '../contexts/RouterContext';
 import { api } from '../services/api';
 
 export function SettingsPage() {
-  const { navigate } = useRouter();
-  const { user, setUser, logout } = useAuth();
+  const { user, setUser } = useAuth();
   const [profile, setProfile] = useState({
     username: user?.username || '',
     email: user?.email || ''
@@ -32,7 +28,8 @@ export function SettingsPage() {
 
   async function updateProfile(event) {
     event.preventDefault();
-    const data = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const data = new FormData(form);
     setProfileLoading(true);
     setProfileMessage({ text: '', tone: '' });
     try {
@@ -42,7 +39,7 @@ export function SettingsPage() {
         current_password: String(data.get('current_password') || '')
       });
       setUser(updated);
-      event.currentTarget.elements.current_password.value = '';
+      form.elements.current_password.value = '';
       setProfileMessage({ text: 'บันทึกชื่อผู้ใช้และอีเมลแล้ว', tone: 'success' });
     } catch (error) {
       setProfileMessage({ text: error.message || 'บันทึกข้อมูลไม่สำเร็จ', tone: 'error' });
@@ -86,41 +83,16 @@ export function SettingsPage() {
     }
   }
 
-  async function handleLogout() {
-    try {
-      await logout();
-      navigate('/login', { replace: true });
-    } catch {
-      setProfileMessage({ text: 'ออกจากระบบไม่สำเร็จ กรุณาลองอีกครั้ง', tone: 'error' });
-    }
-  }
-
   const initial = (user?.username || 'U').slice(0, 1).toUpperCase();
   const role = user?.role === 'admin' ? 'Admin' : 'User';
 
   return (
-    <MotionFrame className="shell">
-      <header className="topbar settings-topbar" data-reveal>
-        <Link className="brand" to="/scan" aria-label="กลับหน้า Phish Radar AI">
-          <img src={brandIcon} alt="" width="38" height="38" />
-          <span><strong>Phish Radar AI</strong><small>React Account Settings</small></span>
-        </Link>
-        <div className="settings-header-actions">
-          <Link className="back-button" to="/scan"><Icon name="back" /> กลับหน้าหลัก</Link>
-          <ThemeToggle />
-          <div className="account-summary">
-            <span className="account-avatar" aria-hidden="true">{initial}</span>
-            <span className="account-copy"><strong>{user?.username}</strong><small>{role}</small></span>
-            <button className="logout-button" type="button" onClick={handleLogout}>ออกจากระบบ</button>
-          </div>
-        </div>
-      </header>
-
-      <main id="settingsMain" className="settings-main">
+      <section id="settingsMain" className="workspace-page workspace-settings">
         <header className="settings-heading" data-reveal>
           <p className="eyebrow">บัญชีและความปลอดภัย</p>
           <h1>ตั้งค่าบัญชี</h1>
           <p>แก้ไขข้อมูลที่ใช้เข้าสู่ระบบ โดยไม่มีสิทธิ์เปลี่ยน Role ของตัวเองจากหน้านี้</p>
+          <Link to="/security">จัดการอุปกรณ์และ Session</Link>
         </header>
 
         <section className="identity-strip" aria-labelledby="identityTitle" data-reveal>
@@ -198,7 +170,6 @@ export function SettingsPage() {
             ก่อนเก็บใน MySQL/MariaDB และการแก้ข้อมูลทุกครั้งต้องยืนยันรหัสผ่านปัจจุบัน
           </p>
         </aside>
-      </main>
-    </MotionFrame>
+      </section>
   );
 }

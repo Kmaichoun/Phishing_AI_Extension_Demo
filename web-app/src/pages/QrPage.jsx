@@ -16,6 +16,7 @@ export function QrPage() {
   const streamRef = useRef(null);
   const timerRef = useRef(null);
   const [cameraActive, setCameraActive] = useState(false);
+  const [decodedUrl, setDecodedUrl] = useState('');
   const [status, setStatus] = useState('พร้อมอ่าน QR ที่เป็น URL');
 
   useEffect(() => {
@@ -47,14 +48,17 @@ export function QrPage() {
   }
 
   async function openResult(value) {
-    setStatus('อ่าน QR สำเร็จ กำลังตรวจลิงก์');
     stopCamera();
-    navigate('/scan');
-    const result = await analyzeUrl(value);
-    if (!result) setStatus('ข้อมูลใน QR ไม่ใช่ URL ที่ตรวจสอบได้');
+    try {
+      const parsed = new URL(value);
+      if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error();
+      setDecodedUrl(parsed.href);
+      setStatus('อ่าน QR สำเร็จ ตรวจสอบ URL ด้านล่างก่อนส่งวิเคราะห์');
+    } catch { setDecodedUrl(''); setStatus('ข้อมูลใน QR ไม่ใช่ลิงก์ http หรือ https'); }
   }
 
   async function decodeImageFile(file) {
+    setDecodedUrl('');
     setStatus(`กำลังอ่าน QR จากรูปด้วย ${readerName()}`);
     try {
       const image = await createImageBitmap(file);
@@ -68,6 +72,7 @@ export function QrPage() {
   }
 
   async function startCamera() {
+    setDecodedUrl('');
     if (!navigator.mediaDevices?.getUserMedia) {
       setStatus('เบราว์เซอร์นี้ยังเปิดกล้องจากหน้าเว็บไม่ได้');
       return;
@@ -151,6 +156,7 @@ export function QrPage() {
                 />
               </label>
               <p aria-live="polite">{status}</p>
+              {decodedUrl && <div className="qr-decoded"><h2>URL ที่อ่านได้</h2><p className="url-text">{decodedUrl}</p><button className="primary" onClick={() => { navigate('/scan'); analyzeUrl(decodedUrl, 'qr-scanner'); }}>ตรวจสอบ URL นี้</button><p>ยังไม่ได้เปิดเว็บไซต์ปลายทาง</p></div>}
             </div>
           </div>
         </section>

@@ -21,6 +21,7 @@ from feature_extractor import (
 )
 from fuzzy_scoring import FUZZY_SCHEMA_VERSION, fuzzy_audit, fuzzy_score
 from history_router import router as history_router
+from workspace_router import router as workspace_router
 from llm_explainer import ExplainRequest, explain_with_llm, llm_status
 from risk_policy import apply_consensus_guardrail
 
@@ -43,6 +44,7 @@ app.add_middleware(
 )
 app.include_router(auth_router)
 app.include_router(history_router)
+app.include_router(workspace_router)
 
 
 class PredictRequest(BaseModel):
@@ -122,6 +124,7 @@ def model_policy(bundle: dict[str, object] | None) -> dict[str, object]:
             "metrics": bundle.get("metrics"),
             "trained_at": bundle.get("trained_at"),
             "dataset_row_count": bundle.get("dataset_row_count"),
+            "evaluation_design": bundle.get("evaluation_design"),
         }
 
     # Compatibility for a model bundle produced before Risk Model v2.
@@ -253,7 +256,17 @@ def predict(payload: PredictRequest):
             probability_calibrated = False
         ml_score_value = phishing_probability * 100.0
         ml_score: int | None = int(round(ml_score_value))
-        if fusion_model is not None:
+        if fusion_method in {"ml_only", "weighted_40_60"}:
+            learned_fusion_probability = None
+            consensus_trigger = None
+            if fusion_method == "ml_only":
+                risk_score_value = ml_score_value
+            else:
+                risk_score_value = 0.40 * rule_score_value + 0.60 * ml_score_value
+            risk_probability_value = risk_score_value / 100.0
+            risk_source = "calibrated_random_forest" if fusion_method == "ml_only" else "simple_rule_ml_blend"
+            fusion_applied = False
+        elif fusion_model is not None:
             fusion_probabilities = fusion_model.predict_proba(
                 [[fuzzy_score_value / 100.0, phishing_probability]]
             )[0]
@@ -361,7 +374,9 @@ def predict(payload: PredictRequest):
                 "family": bundle.get("model_family") if bundle else None,
             },
             "local_rule_evidence": {
-                "status": "fuzzy_input" if model is not None else "fallback",
+                "status": ("explanation_only" if fusion_method == "ml_only" else
+                           "weighted_input" if fusion_method == "weighted_40_60" else
+                           "fuzzy_input" if model is not None else "fallback"),
                 "score": rule_score,
             },
             "fuzzy_rule_evidence": {
@@ -375,7 +390,8 @@ def predict(payload: PredictRequest):
                 "score": risk_score if fusion_applied else None,
             },
             "consensus_guardrail": {
-                "status": "triggered" if consensus_trigger else "not_triggered",
+                "status": ("not_used" if fusion_method in {"ml_only", "weighted_40_60"}
+                           else "triggered" if consensus_trigger else "not_triggered"),
                 "trigger": consensus_trigger,
             },
             "external_reputation": {"status": "not_configured"},

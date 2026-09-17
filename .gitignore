@@ -22,6 +22,12 @@ build/
 backend/data/feedback.csv
 backend/data/cache/
 backend/data/training_urls.csv
+backend/data/simple_*/dataset.csv
+backend/data/simple_*/candidate.pkl
+backend/data/model_registry/
+backend/data/feedback-review-*.json
+backend/data/reviewed/
+backend/data/simple_*/provenance.json
 
 # Logs and temporary files
 *.log

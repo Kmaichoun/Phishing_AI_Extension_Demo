@@ -28,6 +28,7 @@ def main() -> None:
         and result.get("auth_schema_ready")
         and result.get("history_schema_ready")
         and result.get("risk_audit_schema_ready")
+        and result.get("workspace_schema_ready")
     ):
         raise RuntimeError(f"Migration verification failed: {result}")
     print(

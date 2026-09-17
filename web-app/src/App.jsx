@@ -1,6 +1,5 @@
 import { lazy, Suspense } from 'react';
 import { AppHeader } from './components/AppHeader';
-import { MotionPreloader } from './components/MotionFrame';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Redirect, useRouter } from './contexts/RouterContext';
 
@@ -29,11 +28,15 @@ function PageFallback() {
   );
 }
 
+const MethodologyPage = lazy(() => import('./pages/MethodologyPage').then(m => ({ default: m.MethodologyPage })));
+const StatusPage = lazy(() => import('./pages/StatusPage').then(m => ({ default: m.StatusPage })));
+const SecurityPage = lazy(() => import('./pages/SecurityPage').then(m => ({ default: m.SecurityPage })));
+const AdminPage = lazy(() => import('./pages/AdminPage').then(m => ({ default: m.AdminPage })));
+
 function AppShell({ children }) {
   return (
     <>
-      <MotionPreloader />
-      <div className="shell">
+      <div className="shell workspace-shell">
         <AppHeader />
         <main className="app-main overflow-x-hidden w-full max-w-full">
           {children}
@@ -57,7 +60,7 @@ export default function App() {
   let page;
   if (path === '/login') page = <LoginPage />;
   if (path === '/settings') {
-    page = <ProtectedRoute><SettingsPage /></ProtectedRoute>;
+    page = <ProtectedAppPage><SettingsPage /></ProtectedAppPage>;
   }
   if (path === '/scan') {
     page = <ProtectedAppPage><ScannerPage /></ProtectedAppPage>;
@@ -68,6 +71,10 @@ export default function App() {
   if (path === '/dashboard') {
     page = <ProtectedAppPage><DashboardPage /></ProtectedAppPage>;
   }
+  if (path === '/methodology') page = <ProtectedAppPage><MethodologyPage /></ProtectedAppPage>;
+  if (path === '/status') page = <ProtectedAppPage><StatusPage /></ProtectedAppPage>;
+  if (path === '/security') page = <ProtectedAppPage><SecurityPage /></ProtectedAppPage>;
+  if (path === '/admin') page = <ProtectedAppPage><AdminPage /></ProtectedAppPage>;
   if (!page) page = <Redirect to="/scan" />;
   return <Suspense fallback={<PageFallback />}>{page}</Suspense>;
 }

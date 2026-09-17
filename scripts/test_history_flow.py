@@ -57,6 +57,8 @@ def cleanup_users(usernames: list[str]) -> None:
             ).scalar_one_or_none()
             if user_id is None:
                 continue
+            database.execute(text('DELETE FROM AuditEvents WHERE ActorUserId=:user_id'), {'user_id': user_id})
+            database.execute(text('DELETE FROM ScanFeedback WHERE UserId=:user_id'), {'user_id': user_id})
             database.execute(
                 text("DELETE FROM SearchHistory WHERE UserId = :user_id"),
                 {"user_id": user_id},

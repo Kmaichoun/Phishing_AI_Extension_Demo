@@ -1,0 +1,248 @@
+{
+  "created_at": "2026-09-17T08:31:18.027145+00:00",
+  "selected": "ml_only",
+  "selection_rule": "Max warning recall on validation under Wilson FPR bounds; ties prefer ML-only",
+  "risk_formula": "FinalScore = MLScore",
+  "dataset_rows": 836508,
+  "uci_archive_rows": 235795,
+  "sources": {
+    "uci_phiusiil": 233233,
+    "published_phreshphish_train_v1_0_1": 491979,
+    "mendeley_webpage_v3": 11230,
+    "published_urlphish_v1": 90082,
+    "legacy_phishtank": 9941,
+    "legacy_openphish": 43
+  },
+  "invalid_rows": 4196,
+  "conflicting_urls_removed": 5,
+  "uci_url": "https://archive.ics.uci.edu/dataset/967/phiusiil+phishing+url+dataset",
+  "license": "UCI PhiUSIIL: CC BY 4.0; legacy feeds retain original source terms",
+  "attribution": "Arvind Prasad and Shalini Chandra (2024), PhiUSIIL, DOI:10.1016/j.cose.2023.103545",
+  "archive_sha256": "0a639fd03aea6308c5b1c10c92aa23c2ce1505447a9137271865cd0badc9a59a",
+  "dataset_sha256": "023612f9a8e7d954a2a4aba26bd12d877dc936ef715951cccfbe31606a1646c2",
+  "mendeley_source": "https://data.mendeley.com/datasets/c2gw7fy2j4/3",
+  "mendeley_sha256": "21093e2902e5441c86a6daf95e86e7c332046e477fdf109a579d7bd81e586d6c",
+  "shape_reweighting": true,
+  "publisher_sources_sha256": "c13644fa315fab9bfe528c1516aa349c5099514a3884b1e5729a07d1d5af27ea",
+  "publisher_label_limitations": "Publisher labels are not independent project verification or a current-world safety guarantee.",
+  "prior_experiment_domains_excluded_from_evaluation": null,
+  "external_holdout_source": null,
+  "external_source_key": "published_urlphish_v1",
+  "evaluation_design": {
+    "train_rows": 641032,
+    "calibration_rows": 22938,
+    "validation_rows": 23314,
+    "holdout_rows": 149224,
+    "development_rows": 687284,
+    "split_counts": {
+      "train": {
+        "rows": 641032,
+        "labels": {
+          "1": 300148,
+          "0": 340884
+        },
+        "domains": 257223
+      },
+      "calibration": {
+        "rows": 22938,
+        "labels": {
+          "1": 8354,
+          "0": 14584
+        },
+        "domains": 12246
+      },
+      "validation": {
+        "rows": 23314,
+        "labels": {
+          "1": 8288,
+          "0": 15026
+        },
+        "domains": 12251
+      },
+      "holdout": {
+        "rows": 149224,
+        "labels": {
+          "1": 22509,
+          "0": 126715
+        },
+        "domains": 107539
+      }
+    },
+    "group_overlap": 0,
+    "refit_on_holdout": false
+  },
+  "validation": {
+    "ml_only": {
+      "warning": {
+        "threshold": 0.926,
+        "precision": 0.974884,
+        "recall": 0.608832,
+        "f1": 0.749554,
+        "roc_auc": 0.923699,
+        "pr_auc": 0.914414,
+        "false_positive_rate": 0.008652,
+        "false_positive_rate_upper_95": 0.009986,
+        "true_negative": 14896,
+        "false_positive": 130,
+        "false_negative": 3242,
+        "true_positive": 5046,
+        "meets_fpr_constraint": true
+      },
+      "blocking": {
+        "threshold": 0.956,
+        "precision": 0.995357,
+        "recall": 0.206926,
+        "f1": 0.342623,
+        "roc_auc": 0.923699,
+        "pr_auc": 0.914414,
+        "false_positive_rate": 0.000532,
+        "false_positive_rate_upper_95": 0.000945,
+        "true_negative": 15018,
+        "false_positive": 8,
+        "false_negative": 6573,
+        "true_positive": 1715,
+        "meets_fpr_constraint": true
+      }
+    },
+    "weighted_40_60": {
+      "warning": {
+        "threshold": 0.624,
+        "precision": 0.966735,
+        "recall": 0.45584,
+        "f1": 0.619547,
+        "roc_auc": 0.916124,
+        "pr_auc": 0.900469,
+        "false_positive_rate": 0.008652,
+        "false_positive_rate_upper_95": 0.009986,
+        "true_negative": 14896,
+        "false_positive": 130,
+        "false_negative": 4510,
+        "true_positive": 3778,
+        "meets_fpr_constraint": true
+      },
+      "blocking": {
+        "threshold": 0.795,
+        "precision": 0.990488,
+        "recall": 0.100507,
+        "f1": 0.182495,
+        "roc_auc": 0.916124,
+        "pr_auc": 0.900469,
+        "false_positive_rate": 0.000532,
+        "false_positive_rate_upper_95": 0.000945,
+        "true_negative": 15018,
+        "false_positive": 8,
+        "false_negative": 7455,
+        "true_positive": 833,
+        "meets_fpr_constraint": true
+      }
+    }
+  },
+  "holdout": {
+    "ml_only": {
+      "warning": {
+        "threshold": 0.926,
+        "precision": 0.239913,
+        "recall": 0.482607,
+        "f1": 0.320499,
+        "roc_auc": 0.730285,
+        "pr_auc": 0.48567,
+        "false_positive_rate": 0.271602,
+        "false_positive_rate_upper_95": 0.273662,
+        "true_negative": 92299,
+        "false_positive": 34416,
+        "false_negative": 11646,
+        "true_positive": 10863
+      },
+      "blocking": {
+        "threshold": 0.956,
+        "precision": 0.957198,
+        "recall": 0.163934,
+        "f1": 0.279927,
+        "roc_auc": 0.730285,
+        "pr_auc": 0.48567,
+        "false_positive_rate": 0.001302,
+        "false_positive_rate_upper_95": 0.00148,
+        "true_negative": 126550,
+        "false_positive": 165,
+        "false_negative": 18819,
+        "true_positive": 3690
+      }
+    },
+    "weighted_40_60": {
+      "warning": {
+        "threshold": 0.624,
+        "precision": 0.166382,
+        "recall": 0.415878,
+        "f1": 0.237676,
+        "roc_auc": 0.664824,
+        "pr_auc": 0.300736,
+        "false_positive_rate": 0.37013,
+        "false_positive_rate_upper_95": 0.372364,
+        "true_negative": 79814,
+        "false_positive": 46901,
+        "false_negative": 13148,
+        "true_positive": 9361
+      },
+      "blocking": {
+        "threshold": 0.795,
+        "precision": 0.48063,
+        "recall": 0.10307,
+        "f1": 0.16974,
+        "roc_auc": 0.664824,
+        "pr_auc": 0.300736,
+        "false_positive_rate": 0.019785,
+        "false_positive_rate_upper_95": 0.020438,
+        "true_negative": 124208,
+        "false_positive": 2507,
+        "false_negative": 20189,
+        "true_positive": 2320
+      }
+    }
+  },
+  "previous_model_fresh_domain_holdout": {
+    "warning": {
+      "threshold": 0.96,
+      "precision": 0.207005,
+      "recall": 0.433515,
+      "f1": 0.280209,
+      "roc_auc": 0.608251,
+      "pr_auc": 0.255112,
+      "false_positive_rate": 0.295001,
+      "false_positive_rate_upper_95": 0.297112,
+      "true_negative": 89334,
+      "false_positive": 37381,
+      "false_negative": 12751,
+      "true_positive": 9758
+    },
+    "blocking": {
+      "threshold": 1.0,
+      "precision": 0.933028,
+      "recall": 0.045182,
+      "f1": 0.08619,
+      "roc_auc": 0.608251,
+      "pr_auc": 0.255112,
+      "false_positive_rate": 0.000576,
+      "false_positive_rate_upper_95": 0.000698,
+      "true_negative": 126642,
+      "false_positive": 73,
+      "false_negative": 21492,
+      "true_positive": 1017
+    }
+  },
+  "promotion_gate_passed": false,
+  "promotion_ready": false,
+  "promotion_check": "Run analyze_model_errors.py, then manage_model.py check",
+  "previous_experiments": {
+    "simple_v1": "93c912cae0af693b1eebf122b085b25c5a7d2d555f58bdcdd82d82e7f667876c",
+    "simple_v2": "3f278795dc824d315ed875d1c6c312c5cee887db39dac800566626c798886d9e",
+    "simple_v3": "7374af3edc548306be61c4c72c27d442f042f17e2e1d3c09c7a918df18445350"
+  },
+  "limitations": [
+    "URL-only labels may be stale; downloaded today does not mean collected today.",
+    "Not a temporal split: publisher dates are preserved when available but are incomplete across sources.",
+    "Grouped mixed-source validation is not fully held-out external-source validation.",
+    "No guarantee on arbitrary websites; public-domain popularity is not a benign label.",
+    "Rules remain explanations, not independent measurements of risk."
+  ],
+  "regression_gate_passed": false
+}

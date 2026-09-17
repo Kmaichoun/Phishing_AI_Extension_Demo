@@ -1,238 +1,108 @@
 import { useEffect, useRef, useState } from 'react';
-import brandIcon from '../../assets/icon128.png';
-import { Icon } from '../components/Icon';
-import { MotionFrame } from '../components/MotionFrame';
 import { useApp } from '../contexts/AppContext';
-import { flattenReason, riskLevel } from '../services/risk';
+import { flattenReason, safeHistoryUrl } from '../services/risk';
+import { PageTitle, SystemStrip, DecisionBadge, decisionOf, decisionLabel } from '../components/WorkspaceUi';
 
-function reportText(item) {
-  if (!item) return '';
-  return [
-    'Phish Radar AI Report',
-    `URL: ${item.privacy ? item.displayUrl : item.url}`,
-    `RuleScore: ${item.ruleScore}/100`,
-    `FuzzyScore: ${Number.isFinite(item.fuzzyScore) ? item.fuzzyScore : (item.privacy ? 'local-only' : 'offline')}`,
-    `RandomForestScore: ${Number.isFinite(item.randomForestScore) ? item.randomForestScore : (item.privacy ? 'local-only' : 'offline')}`,
-    `FinalScore: ${item.finalScore}/100`,
-    `Formula: ${item.riskFormula || 'FinalScore = 100 × LearnedFusion(FuzzyScore, RandomForestScore)'}`,
-    `Risk probability: ${Number.isFinite(item.riskProbability) ? item.riskProbability : '-'}`,
-    `Decision: ${item.decision || '-'}`,
-    `Warning threshold: ${Number.isFinite(item.warningThreshold) ? item.warningThreshold : '-'}`,
-    `Blocking threshold: ${Number.isFinite(item.blockingThreshold) ? item.blockingThreshold : '-'}`,
-    `Model version: ${item.modelVersion || '-'}`,
-    `Policy version: ${item.policyVersion || '-'}`,
-    `Privacy mode: ${item.privacy ? 'on' : 'off'}`,
-    `Reasons: ${(item.reasons || []).slice(0, 5).map(flattenReason).join(' | ')}`,
-    `Brand/Visual clues: ${(item.insights || []).join(' | ')}`
-  ].join('\n');
-}
-
-function SafePreview({ result }) {
-  let parsed;
-  try {
-    parsed = result?.url ? new URL(result.url) : null;
-  } catch {
-    parsed = null;
-  }
-  const level = result ? riskLevel(result.finalScore, result.warningThreshold, result.blockingThreshold) : null;
-  return (
-    <section className="preview">
-      <div className="row-title">
-        <h2>Safe Preview</h2>
-        <span>{level?.label || 'รอการตรวจ'}</span>
-      </div>
-      <dl>
-        <div><dt>โดเมน</dt><dd>{parsed?.hostname || '-'}</dd></div>
-        <div><dt>โปรโตคอล</dt><dd>{parsed?.protocol ? parsed.protocol.replace(':', '').toUpperCase() : '-'}</dd></div>
-        <div><dt>ปลายทาง</dt><dd>{result?.displayUrl || 'ยังไม่มีลิงก์'}</dd></div>
-      </dl>
-    </section>
-  );
-}
-
-function AnalysisResult({ result, phase }) {
+export function AnalysisResult({ result, phase = 'done', historical = false }) {
   const { submitFeedback } = useApp();
-  const [feedbackStatus, setFeedbackStatus] = useState('');
-  const [copyStatus, setCopyStatus] = useState('');
-  if (!result) {
-    return (
-      <div className="empty">
-        <div className="mark" />
-        <h2>พร้อมตรวจสอบ</h2>
-        <p>ผลวิเคราะห์จะแสดง RiskScore, การตัดสิน allow / warn / block, หลักฐานจากแต่ละชั้น และคำอธิบายจาก LLM</p>
-      </div>
-    );
+  const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [tab, setTab] = useState('evidence');
+  useEffect(() => { setMessage(''); setSent(false); setTab('evidence'); }, [result?.time]);
+  if (!result) return <div className="workspace-empty"><h2>เริ่มจากลิงก์ที่ต้องการตรวจสอบ</h2><p>วาง URL ด้านบน แล้วอ่านผลตัดสินพร้อมเหตุผลก่อนเปิดเว็บไซต์</p></div>;
+  const decision = decisionOf(result);
+  let parsed;
+  try { parsed = new URL(result.url); } catch { parsed = null; }
+  const loading = phase === 'analyzing';
+  const waiting = loading || phase === 'explaining';
+  const modelReady = result.modelStatus === 'ready' || result.fusionApplied;
+  const report = [
+    'Phish Radar AI Report',
+    'URL: ' + (result.privacy ? result.displayUrl : safeHistoryUrl(result.url)),
+    'Decision: ' + decision, 'FinalScore: ' + result.finalScore,
+    'RuleScore: ' + result.ruleScore, 'FuzzyScore: ' + (result.fuzzyScore ?? '-'),
+    'Random Forest: ' + (result.randomForestScore ?? '-'),
+    'Formula: ' + (result.riskFormula || 'Not recorded'),
+    'Warning / Blocking: ' + result.warningThreshold + ' / ' + result.blockingThreshold,
+    'Model: ' + (result.modelVersion || '-'), 'Policy: ' + (result.policyVersion || '-'),
+    'Reasons: ' + (result.reasons || []).map(flattenReason).join(' | '),
+    'LLM: ' + (result.llm?.explanation || 'ไม่มีคำอธิบาย'),
+    'Advice: ' + (result.llm?.advice || '-')
+  ].join('\n');
+  async function copy() {
+    try {
+      if (!navigator.clipboard) throw new Error();
+      await navigator.clipboard.writeText(report); setMessage('คัดลอกสรุปแล้ว โดยตัด query และข้อมูลรับรองออก');
+    } catch { setMessage('คัดลอกไม่ได้ กรุณาใช้พิมพ์รายงานแทน'); }
   }
-
-  const level = riskLevel(result.finalScore, result.warningThreshold, result.blockingThreshold);
-  const reasons = (result.reasons || []).slice(0, 7);
-  const policyText = Number.isFinite(result.warningThreshold)
-    ? ` · warn ${result.warningThreshold} / block ${result.blockingThreshold}`
-    : '';
-
   async function feedback(label) {
-    setFeedbackStatus('กำลังบันทึก feedback...');
-    setFeedbackStatus(await submitFeedback(label));
+    setSending(true);
+    try { const text = await submitFeedback(label); setMessage(text); setSent(text?.includes('บันทึก feedback แล้ว') || text?.includes('บันทึก feedback ไว้')); }
+    finally { setSending(false); }
   }
-
-  async function copyReport() {
-    await navigator.clipboard?.writeText(reportText(result));
-    setCopyStatus('คัดลอกสรุปแล้ว');
-  }
-
-  return (
-    <div id="resultContent">
-      <div className="result-head">
-        <div>
-          <p className={level.tone}>
-            {phase === 'analyzing'
-              ? 'กำลังตรวจหลักฐานหลายชั้นและคำนวณ RiskScore'
-              : `ระดับความเสี่ยง: ${level.label}${policyText}`}
-          </p>
-          <h2>{result.url}</h2>
-        </div>
-        <div className={`score-ring risk-${level.key}`} style={{ '--score': result.finalScore }}>
-          <span>{result.finalScore}</span><small>/100</small>
-        </div>
+  return <article className="scan-result" aria-label="ผลการตรวจสอบ">
+    <div className="result-overview">
+      <div className="result-verdict">
+        <p className="workspace-muted">{historical ? 'ผลตรวจที่บันทึกไว้' : loading ? 'กำลังวิเคราะห์ URL' : 'ผลการตรวจสอบ'}</p>
+        {loading ? <p role="status">กำลังตรวจหลักฐานและขอคำอธิบาย…</p> : <DecisionBadge decision={decision} />}
+        <h2>{parsed?.hostname || 'อ่านโดเมนไม่ได้'}</h2>
+        <p className="url-text">{result.privacy ? result.displayUrl : safeHistoryUrl(result.url)}</p>
+        <p>{decision === 'block' ? 'หลีกเลี่ยงการกรอกข้อมูลหรือดาวน์โหลดไฟล์ จนกว่าจะตรวจสอบแหล่งที่มา' : decision === 'warn' ? 'ตรวจสอบโดเมนและแหล่งที่มาเพิ่มเติมก่อนกรอกข้อมูลสำคัญ' : 'ไม่พบคะแนนเกินเกณฑ์เตือนจากการตรวจครั้งนี้ ควรตรวจแหล่งที่มาก่อนกรอกข้อมูลสำคัญ'}</p>
+        {!modelReady && <p className="workspace-notice">{result.privacy ? 'Privacy Mode: ใช้กฎในเครื่อง' : 'ผลเบื้องต้น: โมเดลยังไม่พร้อม คะแนนนี้มาจากหลักฐานที่มี'}</p>}
       </div>
-
-      <div className="scores score-grid">
-        <div><span>RuleScore</span><strong>{result.ruleScore}</strong></div>
-        <div><span>FuzzyScore</span><strong>{Number.isFinite(result.fuzzyScore) ? result.fuzzyScore : (result.privacy ? 'local' : 'offline')}</strong></div>
-        <div><span>Random Forest</span><strong>{Number.isFinite(result.randomForestScore) ? result.randomForestScore : (result.privacy ? 'local' : 'offline')}</strong></div>
-        <div><span>FinalScore</span><strong>{result.finalScore}</strong></div>
+      <div className="score-breakdown">
+        <div className={'final-score decision-' + (loading ? 'unknown' : decision)}><span>{loading ? 'คะแนนกฎเบื้องต้น' : 'FinalScore'}</span><strong>{result.finalScore}<small>/100</small></strong></div>
+        <dl><div><dt>RuleScore</dt><dd>{result.ruleScore}</dd></div><div><dt>FuzzyScore</dt><dd>{result.fuzzyScore ?? 'ไม่ได้ใช้'}</dd></div><div><dt>Random Forest</dt><dd>{result.randomForestScore ?? 'ไม่ได้ใช้'}</dd></div></dl>
+        <small>คะแนนแต่ละส่วนไม่จำเป็นต้องบวกกันตรง ๆ ดูสูตรในรายละเอียดโมเดล</small>
       </div>
-
-      <p className="score-formula">
-        {result.fusionApplied
-          ? 'FinalScore = 100 × LearnedFusion(FuzzyScore, RandomForestScore)'
-          : result.privacy
-            ? 'Privacy Mode ใช้ RuleScore ในเครื่อง โดยไม่เรียกโมเดลหรือ learned fusion'
-            : 'โมเดลยังไม่พร้อม จึงใช้คะแนนหลักฐานที่มีเป็นค่าชั่วคราว'}
-      </p>
-
-      <section className="block">
-        <div className="row-title">
-          <h3>เหตุผลสำคัญ</h3>
-          <span>{(result.threatTypes || []).slice(0, 3).join(' / ') || 'URL pattern'}</span>
-        </div>
-        <ul>
-          {(reasons.length ? reasons : ['ยังไม่พบเหตุผลเสี่ยงสำคัญจากกฎที่ตรวจในขณะนี้'])
-            .map((reason, index) => <li key={`${flattenReason(reason)}-${index}`}>{flattenReason(reason)}</li>)}
-        </ul>
-      </section>
-
-      <section className="insight block">
-        <div className="row-title">
-          <h3>Brand / Visual clues beta</h3>
-          <span>{result.finalScore >= (result.warningThreshold ?? 61) ? 'ควรตรวจสอบ' : 'ตรวจแล้ว'}</span>
-        </div>
-        <ul>{(result.insights || []).map(insight => <li key={insight}>{insight}</li>)}</ul>
-      </section>
-
-      <section className="llm block">
-        <div className="row-title">
-          <h3>คำอธิบายจาก LLM</h3><span>{result.llm?.state || 'รอผล'}</span>
-        </div>
-        <dl>
-          <div><dt>ประเภทความเสี่ยง</dt><dd>{result.llm?.riskType || '-'}</dd></div>
-          <div><dt>อธิบายแบบเข้าใจง่าย</dt><dd>{result.llm?.explanation || '-'}</dd></div>
-          <div><dt>คำแนะนำ</dt><dd>{result.llm?.advice || '-'}</dd></div>
-        </dl>
-      </section>
-
-      <section className="feedback block">
-        <div className="row-title"><h3>ผลตรวจนี้ถูกต้องหรือไม่</h3><span>Feedback</span></div>
-        <div className="feedback-actions">
-          <button type="button" onClick={() => feedback('dangerous')}>อันตรายจริง</button>
-          <button type="button" onClick={() => feedback('safe')}>แจ้งเตือนผิด</button>
-          <button type="button" onClick={() => feedback('unsure')}>ไม่แน่ใจ</button>
-        </div>
-        <p aria-live="polite">{feedbackStatus}</p>
-      </section>
-
-      <div className="actions">
-        <button className="secondary" type="button" onClick={copyReport}>คัดลอกสรุป</button>
-        <a className="open-link" href={result.url} target="_blank" rel="noreferrer">เปิดลิงก์นี้</a>
-      </div>
-      <p className="message" aria-live="polite">{copyStatus}</p>
     </div>
-  );
+    <div className="workspace-tabs" aria-label="รายละเอียดผลตรวจ">
+      {[['evidence','เหตุผลสำคัญ'],['model','รายละเอียดโมเดล'],['llm','คำอธิบายจาก LLM'],['feedback','Feedback']].map(([id, label]) => <button key={id} aria-pressed={tab === id} onClick={() => setTab(id)}>{label}</button>)}
+    </div>
+    <div className="result-detail">
+      {tab === 'evidence' && <section><h3>หลักฐานจาก URL</h3>
+        <ul className="evidence-list">{(result.reasons?.length ? result.reasons : [historical ? 'ประวัตินี้ไม่ได้บันทึกข้อความเหตุผลไว้' : 'ยังไม่พบสัญญาณเสี่ยงสำคัญจากกฎที่ตรวจ']).map((r, i) => <li key={i}>{flattenReason(r)}</li>)}</ul>
+        <h3>บริบทของโดเมนและแบรนด์</h3><ul className="evidence-list">{(result.insights?.length ? result.insights : ['ไม่มีข้อมูลส่วนนี้ในผลตรวจ']).map((text, i) => <li key={i}>{text}</li>)}</ul>
+        <small>ส่วนนี้วิเคราะห์ชื่อและโครงสร้าง URL ไม่ใช่การยืนยันภาพหรือเนื้อหาทั้งหน้าเว็บไซต์</small>
+      </section>}
+      {tab === 'model' && <section><h3>Policy ของผลตรวจนี้</h3><p className="formula-display">{result.riskFormula || 'ไม่ได้บันทึกสูตรของผลตรวจนี้'}</p><dl className="detail-list">
+        <div><dt>Model version</dt><dd>{result.modelVersion || 'ไม่มีข้อมูล'}</dd></div><div><dt>Policy version</dt><dd>{result.policyVersion || 'ไม่มีข้อมูล'}</dd></div>
+        <div><dt>Warning / Blocking</dt><dd>{result.warningThreshold ?? '-'} / {result.blockingThreshold ?? '-'}</dd></div><div><dt>ผลตัดสิน</dt><dd>{decisionLabel[decision]}</dd></div>
+      </dl><details><summary>ดูหลักฐานที่ Backend ส่งกลับ</summary><pre className="json-detail">{JSON.stringify(result.layerResults || {}, null, 2)}</pre></details></section>}
+      {tab === 'llm' && <section><h3>คำอธิบายจาก LLM</h3><p className="workspace-muted">{result.llm?.state || 'ไม่มีคำอธิบายในประวัตินี้'} / ไม่มีผลต่อคะแนนตัดสิน</p><dl className="detail-list">
+        <div><dt>ประเภทความเสี่ยง</dt><dd>{result.llm?.riskType || '-'}</dd></div><div><dt>อธิบาย</dt><dd>{result.llm?.explanation || 'ตรวจ URL ใหม่เพื่อขอคำอธิบายล่าสุด'}</dd></div><div><dt>คำแนะนำ</dt><dd>{result.llm?.advice || '-'}</dd></div>
+      </dl></section>}
+      {tab === 'feedback' && <section><h3>ผลตรวจตรงกับที่พบหรือไม่</h3><p>รายงานนี้จะส่งให้ผู้ดูแลตรวจทาน และไม่เปลี่ยนคะแนนหรือฝึกโมเดลทันที</p>{historical ? <p>ส่ง Feedback ได้จากผลตรวจล่าสุดในหน้าตรวจลิงก์</p> :
+        <div className="workspace-actions">{[['dangerous','อันตรายจริง'],['safe','เป็นเว็บปกติ'],['unsure','ไม่แน่ใจ']].map(([value,label]) => <button key={value} disabled={waiting || sending || sent} onClick={() => feedback(value)}>{label}</button>)}</div>}</section>}
+    </div>
+    <div className="workspace-actions result-actions">
+      <button onClick={copy}>คัดลอกสรุป</button><button onClick={() => window.print()}>พิมพ์ / บันทึก PDF</button>
+      {!historical && parsed && ['http:', 'https:'].includes(parsed.protocol) && !loading && <details className="open-url-confirm"><summary>เปิดเว็บไซต์</summary><p>ผลตรวจไม่รับประกันความปลอดภัย โปรดตรวจโดเมนก่อนเปิด</p><a href={result.url} target="_blank" rel="noopener noreferrer">เปิด {parsed.hostname}</a></details>}
+    </div>
+    <p className="workspace-message" role="status">{message}</p>
+    <pre className="print-report">{report}</pre>
+  </article>;
 }
 
 export function ScannerPage() {
-  const { current, analysisPhase, formMessage, formError, analyzeUrl } = useApp();
+  const { current, analysisPhase, formMessage, formError, analyzeUrl, privacyMode, setPrivacyMode } = useApp();
   const [url, setUrl] = useState(current?.url || '');
-  const formRef = useRef(null);
-
-  useEffect(() => {
-    document.title = 'ตรวจลิงก์ | Phish Radar AI';
-    if (current?.url) setUrl(current.url);
-  }, [current?.url]);
-
-  async function handleSubmit(event) {
-    event.preventDefault();
-    const result = await analyzeUrl(url);
-    if (result?.url) setUrl(result.url);
-  }
-
-  function focusScanner() {
-    formRef.current?.scrollIntoView({
-      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
-      block: 'center'
-    });
-    formRef.current?.querySelector('input')?.focus({ preventScroll: true });
-  }
-
-  return (
-    <MotionFrame>
-      <section id="scan" className="page active">
-        <header className="app-hero" aria-labelledby="scanHeroTitle">
-          <div className="hero-radar" aria-hidden="true" data-reveal>
-            <span className="hero-radar-core"><img src={brandIcon} alt="" /></span>
-          </div>
-          <p className="hero-context" data-reveal>พื้นที่วิเคราะห์ความเสี่ยงสำหรับทุกลิงก์</p>
-          <h1 id="scanHeroTitle" className="app-hero-title" data-reveal>
-            <span className="hero-title-line">ท่องเว็บไซต์อย่างปลอดภัยด้วย</span>
-            <span className="hero-title-line hero-title-accent">Phis radar AI</span>
-          </h1>
-          <p className="hero-lede" data-reveal>
-            ตรวจสอบ URL ด้วยหลักฐานจาก Rule-based, Machine Learning และคำอธิบายที่อ่านเข้าใจง่าย
-            โดยยังให้คุณควบคุมข้อมูลที่ส่งออกจากเครื่องได้เสมอ
-          </p>
-          <div className="hero-actions" data-reveal>
-            <button className="primary hero-primary" type="button" onClick={focusScanner}>
-              เริ่มตรวจลิงก์ <Icon name="arrow" />
-            </button>
-          </div>
-          <form ref={formRef} className="scan-form hero-scan-form" onSubmit={handleSubmit} data-reveal>
-            <label htmlFor="urlInput">ลิงก์ที่ต้องการตรวจสอบ</label>
-            <div className="input-row scan-input-row">
-              <input
-                id="urlInput"
-                type="text"
-                inputMode="url"
-                autoComplete="url"
-                placeholder="วาง URL ที่ต้องการตรวจสอบ"
-                value={url}
-                onChange={event => setUrl(event.target.value)}
-                required
-              />
-              <button className="primary" type="submit" disabled={analysisPhase === 'analyzing'}>
-                {analysisPhase === 'analyzing' ? 'กำลังตรวจ' : 'ตรวจสอบ'}
-              </button>
-            </div>
-            <p className={`message ${formError ? 'error' : ''}`} aria-live="polite">{formMessage}</p>
-          </form>
-        </header>
-
-        <div className="grid scanner-workbench" data-reveal>
-          <section className="panel result-panel">
-            <SafePreview result={current} />
-            <AnalysisResult result={current} phase={analysisPhase} />
-          </section>
-        </div>
-      </section>
-    </MotionFrame>
-  );
+  const input = useRef(null);
+  const busy = ['analyzing', 'explaining'].includes(analysisPhase);
+  useEffect(() => { if (current?.url) setUrl(current.url); }, [current?.url]);
+  async function submit(event) { event.preventDefault(); await analyzeUrl(url); }
+  return <section id="scan" className="workspace-page">
+    <PageTitle title="ตรวจสอบลิงก์" description="วาง URL เพื่อดูความเสี่ยง หลักฐาน และคำแนะนำก่อนเปิดเว็บไซต์" />
+    <form className="workspace-scan-form" onSubmit={submit}>
+      <label htmlFor="urlInput">ลิงก์ที่ต้องการตรวจสอบ</label>
+      <div className="input-row scan-input-row"><input ref={input} id="urlInput" type="text" inputMode="url" autoComplete="off" placeholder="วาง URL ที่ต้องการตรวจสอบ" required value={url} onChange={e => setUrl(e.target.value)} aria-describedby="scan-message" />
+        <button className="primary" disabled={analysisPhase === 'analyzing'}>{analysisPhase === 'analyzing' ? 'กำลังตรวจ…' : 'ตรวจสอบ'}</button></div>
+      <div className="scan-options"><label><input type="checkbox" checked={privacyMode} onChange={e => setPrivacyMode(e.target.checked)} disabled={busy} />Privacy Mode: ตรวจด้วยกฎในเครื่อง</label>
+        {current && <button type="button" disabled={analysisPhase === 'analyzing'} onClick={() => { setUrl(''); input.current?.focus(); }}>ล้างช่อง URL</button>}</div>
+      <p id="scan-message" className={'workspace-message ' + (formError ? 'error' : '')} role="status">{formMessage}</p>
+    </form>
+    <SystemStrip />
+    <AnalysisResult result={current} phase={analysisPhase} />
+  </section>;
 }

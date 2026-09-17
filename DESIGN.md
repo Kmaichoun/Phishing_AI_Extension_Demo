@@ -2,7 +2,7 @@
 
 ## Direction
 
-The Web App combines calm security tooling with a cinematic editorial entry point. The scanner hero is large and direct, while the functional workbench remains dense, gapless, and evidence-led. Near-black application chrome, quiet charcoal surfaces, thin dividers, and a restrained rose action accent keep the product serious without leaning into neon or hacker imagery. Security states retain their own semantic colors so danger, warning, and safe results remain immediately recognizable.
+The authenticated Web App is a compact, evidence-led security workspace. The URL field is the first primary action, without a large promotional hero. Near-black chrome, quiet charcoal surfaces, thin dividers, and a restrained rose accent retain the identity. Login retains its separate editorial composition. Security states pair semantic colors with explicit labels.
 
 The Dockit source remains a historical visual reference and is licensed under MIT with credit to Astro contributors and Themefisher. Phish Radar AI now uses its own editorial layout, icon system, motion language, and product identity.
 
@@ -24,14 +24,14 @@ The Dockit source remains a historical visual reference and is licensed under MI
 ## Component rules
 
 - Satoshi is the display and Latin UI font. Thai falls back to Leelawadee UI, Noto Sans Thai, and Segoe UI in that order.
-- The scanner hero is capped at `72rem`, balanced to two lines on desktop, and uses fluid `clamp()` sizing.
-- The scanner follows a single vertical task flow: hero action, URL field, URL preview, then the full analysis. Dashboard uses a dense 12-column grid with 7+5 followed by 4+8.
+- The authenticated workspace uses IBM Plex Sans Thai and Outfit with a shared responsive header and a 1320px maximum shell.
+- Scanner follows URL field, system status, verdict, then evidence/model/LLM/feedback tabs. Dashboard follows counts, a 14-day UTC graph, filters, paginated history and selected detail.
 - Product panels favor thin divider borders; floating overlays may add one short shadow for separation from the host page.
 - Cards and panels use 10–14px radii; inputs and buttons use 8–10px.
 - Accent is reserved for primary actions, active tabs, focus, and selected state.
 - Icons are inline SVG with a shared 24px stroke system. Character and emoji icons are not used.
 - The product mark combines a fishing rod and hook with a radar target at the rod tip. `web-app/assets/brand-mark.svg` is the editable source for Web App and Extension PNG icons.
-- The Scanner hero presents the mark without decorative radar rings, using one broad rose-violet background fade for separation.
+- The workspace presents the mark in the header; decorative radar imagery stays on Login.
 - Risk colors always include labels or icons; color never carries meaning alone.
 - Micro-interactions are 150–220ms. Longer scroll-linked motion must explain hierarchy and is removed when `prefers-reduced-motion` is enabled.
 - Web theme preference uses local storage only. Passwords and session secrets never use browser storage.
@@ -40,6 +40,7 @@ The Dockit source remains a historical visual reference and is licensed under MI
 
 - `web-app/dockit-theme.css` is the Web App/Login theme layer.
 - `web-app/professional-ui.css` is the final Web App, Login, and Settings composition layer.
+- `web-app/src/workspace.css` follows legacy layers and owns authenticated layout, responsive tables, service states and print styles.
 - `extension/popup.css` owns the compact Popup treatment and its light/dark theme tokens.
 - `extension/dockit-extension.css` is the shared theme layer for Warning and QR pages.
 - `extension/content.css` and `extension/safe-preview.css` contain scoped Dockit overrides for UI injected into third-party pages; they must never style the host page globally.
@@ -50,6 +51,6 @@ The Dockit source remains a historical visual reference and is licensed under MI
 - Header controls remain on one line on wide screens and move into a dedicated action row at narrower breakpoints.
 - Theme changes use a short View Transition when supported; scanning uses a bounded sheen only while analysis is running.
 - Page and result transitions explain a state change. Warning content never waits for decorative entrance choreography.
-- The Web App uses a sliding active-tab indicator, animated score ring, count-up metrics, staggered result/dashboard content, and a camera scan line tied to live QR state.
-- The Web App adds a continuous capability marquee while keeping scanning, navigation, themes, forms, and evidence content available without external motion libraries.
+- Authenticated pages display information immediately without reveal animations hiding results. QR retains camera-state indication. There is no command palette or Ctrl+K shortcut.
+- Status, Security and Settings live in the account menu. Admin is visible only to administrators; Backend independently enforces permissions.
 - The Login signature radar communicates layered Rule-based, ML, and LLM protection; it becomes static when reduced motion is requested.

@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState
 } from 'react';
 import { api } from '../services/api';
@@ -35,10 +36,11 @@ function loadArray(key) {
 
 function safeHistoryItem(item) {
   const url = safeHistoryUrl(item?.displayUrl || item?.url, Boolean(item?.privacy));
-  return { ...item, url, displayUrl: url };
+  // Keep browser history to the same bounded metadata as server history.
+  return { ...item, url, displayUrl: url, llm: undefined };
 }
 
-function mapServerHistory(item) {
+export function mapServerHistory(item) {
   const layers = item.layer_results || {};
   const fusion = layers.learned_fusion || {};
   return {
@@ -63,9 +65,7 @@ function mapServerHistory(item) {
     finalScore: item.risk_score ?? item.final_score,
     ruleWeight: item.alpha ?? null,
     mlWeight: item.alpha == null ? null : 1 - item.alpha,
-    riskFormula: fusion.method
-      ? 'FinalScore = 100 × LearnedFusion(FuzzyScore, RandomForestScore)'
-      : null,
+    riskFormula: layers.audit?.risk_formula || null,
     decisionThreshold: item.warning_threshold ?? item.decision_threshold,
     detectionLabel: item.detection_label,
     modelStatus: item.model_status,
@@ -75,7 +75,7 @@ function mapServerHistory(item) {
     privacy: false,
     source: item.source,
     deviceName: item.device_name,
-    time: item.created_at
+    time: /(?:Z|[+-]\d\d:\d\d)$/.test(item.created_at) ? item.created_at : `${item.created_at}Z`
   };
 }
 
@@ -112,6 +112,8 @@ function mapLlm(response) {
 
 export function AppProvider({ children }) {
   const { user } = useAuth();
+  const scanGeneration = useRef(0);
+  const healthGeneration = useRef(0);
   const [current, setCurrent] = useState(null);
   const [analysisPhase, setAnalysisPhase] = useState('idle');
   const [history, setHistory] = useState([]);
@@ -137,10 +139,11 @@ export function AppProvider({ children }) {
   );
 
   const persistHistory = useCallback(items => {
-    localStorage.setItem(
-      userHistoryKey(),
-      JSON.stringify(items.slice(0, 50).map(safeHistoryItem))
-    );
+    try {
+      localStorage.setItem(userHistoryKey(), JSON.stringify(items.slice(0, 50).map(safeHistoryItem)));
+    } catch {
+      setReportStatus('พื้นที่เก็บข้อมูลในเบราว์เซอร์ไม่พร้อม ยังดูผลตรวจในหน้านี้ได้');
+    }
   }, [userHistoryKey]);
 
   const updateHistory = useCallback(updater => {
@@ -152,6 +155,7 @@ export function AppProvider({ children }) {
   }, [persistHistory]);
 
   const checkHealth = useCallback(async () => {
+    const generation = ++healthGeneration.current;
     if (privacyMode) {
       const localHealth = {
         privacy: true,
@@ -168,6 +172,7 @@ export function AppProvider({ children }) {
     setBackendStatus({ online: null, label: 'กำลังเช็คระบบ' });
     try {
       const response = await api.health();
+      if (generation !== healthGeneration.current) return null;
       const databaseReady = response.database?.connected && response.database?.auth_schema_ready;
       const policy = response.model_policy;
       const llmModel = response.llm?.provider === 'ollama'
@@ -175,6 +180,7 @@ export function AppProvider({ children }) {
         : response.llm?.openai_model;
       const mapped = {
         ...response,
+        checkedAt: new Date().toISOString(),
         backendText: response.ok
           ? `Online · Database ${databaseReady ? 'พร้อม' : 'ยังไม่พร้อม'}`
           : 'ไม่พร้อม',
@@ -190,7 +196,9 @@ export function AppProvider({ children }) {
       setBackendStatus({ online: true, label: 'Backend พร้อมใช้งาน' });
       return mapped;
     } catch {
+      if (generation !== healthGeneration.current) return null;
       setHealth({
+        checkedAt: new Date().toISOString(),
         backendText: 'Offline',
         modelText: '-',
         llmText: '-',
@@ -200,6 +208,15 @@ export function AppProvider({ children }) {
       return null;
     }
   }, [privacyMode]);
+
+  useEffect(() => {
+    scanGeneration.current += 1;
+    setCurrent(null);
+    setHistory([]);
+    setAnalysisPhase('idle');
+    setFormMessage('');
+    setFormError(false);
+  }, [user?.user_id]);
 
   const loadHistory = useCallback(async () => {
     if (!user) return;
@@ -241,10 +258,13 @@ export function AppProvider({ children }) {
   }, [checkHealth, loadHistory, privacyMode, user]);
 
   const setPrivacyMode = useCallback(enabled => {
+    healthGeneration.current += 1;
     setPrivacyModeState(Boolean(enabled));
   }, []);
 
-  const analyzeUrl = useCallback(async rawValue => {
+  const analyzeUrl = useCallback(async (rawValue, source = 'web-app') => {
+    const generation = ++scanGeneration.current;
+    const active = () => generation === scanGeneration.current;
     const normalized = normalizeInputUrl(rawValue);
     if (!normalized) {
       setFormMessage('กรุณาใส่ URL ที่ต้องการตรวจสอบ');
@@ -262,6 +282,11 @@ export function AppProvider({ children }) {
     }
 
     const url = parsed.href;
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      setFormMessage('รองรับเฉพาะลิงก์ http และ https');
+      setFormError(true);
+      return null;
+    }
     const ruleResult = analyzer.analyzeUrl(url);
     const insights = brandVisualInsights(url, ruleResult);
     setFormMessage('กำลังวิเคราะห์ URL นี้');
@@ -298,11 +323,15 @@ export function AppProvider({ children }) {
     if (!privacyMode) {
       try {
         prediction = await api.predict({ url, rule_score: ruleResult.score });
+        if (!active()) return null;
         checkHealth();
       } catch {
+        if (!active()) return null;
         setBackendStatus({ online: false, label: 'Backend ยังไม่เปิด' });
       }
     }
+
+    if (!active()) return null;
 
     const result = {
       url,
@@ -314,7 +343,7 @@ export function AppProvider({ children }) {
       riskScore: Number.isFinite(prediction.risk_score)
         ? prediction.risk_score
         : ruleResult.score,
-      decision: prediction.decision || null,
+      decision: prediction.decision || (ruleResult.score >= 81 ? 'block' : ruleResult.score >= 61 ? 'warn' : 'allow'),
       warningThreshold: Number.isFinite(prediction.warning_threshold)
         ? prediction.warning_threshold
         : 61,
@@ -324,7 +353,7 @@ export function AppProvider({ children }) {
       modelVersion: prediction.model_version || null,
       policyVersion: prediction.policy_version || null,
       featureSchemaVersion: prediction.feature_schema_version || null,
-      layerResults: prediction.layer_results || {},
+      layerResults: { ...(prediction.layer_results || {}), audit: { risk_formula: prediction.risk_formula || null } },
       fuzzyScore: Number.isFinite(prediction.fuzzy_score) ? prediction.fuzzy_score : null,
       randomForestScore: Number.isFinite(prediction.random_forest_score)
         ? prediction.random_forest_score
@@ -339,13 +368,13 @@ export function AppProvider({ children }) {
         : ruleResult.score,
       ruleWeight: Number.isFinite(prediction.rule_weight) ? prediction.rule_weight : null,
       mlWeight: Number.isFinite(prediction.ml_weight) ? prediction.ml_weight : null,
-      riskFormula: prediction.risk_formula || 'FinalScore = 100 × LearnedFusion(FuzzyScore, RandomForestScore)',
+      riskFormula: prediction.risk_formula || null,
       decisionThreshold: Number.isFinite(prediction.warning_threshold)
         ? prediction.warning_threshold
         : null,
       detectionLabel: prediction.label || null,
       modelStatus: prediction.model_status || null,
-      source: 'web-app-react',
+      source,
       reasons: ruleResult.reasons,
       threatTypes: ruleResult.threatTypes,
       insights,
@@ -360,11 +389,13 @@ export function AppProvider({ children }) {
     };
 
     setCurrent(result);
+    setAnalysisPhase(privacyMode ? 'done' : 'explaining');
+    setFormMessage(privacyMode ? 'ตรวจด้วยกฎในเครื่องแล้ว' : 'ได้ผลคะแนนแล้ว กำลังขอคำอธิบายจาก LLM');
     updateHistory(previous => [safeHistoryItem(result), ...previous].slice(0, 50));
 
     if (!privacyMode) {
       try {
-        await api.createHistory({
+        const saved = await api.createHistory({
           url: result.url,
           rule_score: result.ruleScore,
           risk_probability: result.riskProbability,
@@ -384,11 +415,19 @@ export function AppProvider({ children }) {
           model_status: result.modelStatus,
           source: result.source
         });
+        if (!active()) return null;
+        result.historyId = saved.history_id;
+        result.deviceName = saved.device_name;
+        updateHistory(previous => previous.map(item => item.time === result.time ? safeHistoryItem(result) : item));
+        setCurrent({ ...result });
         setReportState('Account history');
       } catch {
+        if (!active()) return null;
         setReportStatus('ผลตรวจแสดงได้ แต่ยังบันทึกประวัติลงฐานข้อมูลไม่ได้');
       }
     }
+
+    if (!active()) return null;
 
     let llm = privateExplanation();
     if (!privacyMode) {
@@ -421,6 +460,7 @@ export function AppProvider({ children }) {
     }
 
     const completed = { ...result, llm };
+    if (!active()) return null;
     setCurrent(completed);
     setAnalysisPhase('done');
     setFormMessage('วิเคราะห์เสร็จแล้ว');
@@ -449,20 +489,17 @@ export function AppProvider({ children }) {
     }
 
     try {
-      await api.feedback({
-        url: current.url,
+      if (!current.historyId) return 'ยังบันทึกผลตรวจไม่สำเร็จ กรุณาตรวจฐานข้อมูลและตรวจลิงก์ใหม่ก่อนส่ง Feedback';
+      await api.accountFeedback({
+        history_id: current.historyId,
         user_label: label,
-        rule_score: current.ruleScore,
-        ml_score: Number.isFinite(current.mlScore) ? current.mlScore : null,
-        final_score: current.finalScore,
-        source: 'web-app-react'
       });
       const nextCount = feedbackCount + 1;
       setFeedbackCount(nextCount);
       localStorage.setItem(FEEDBACK_KEY, String(nextCount));
       return 'บันทึก feedback แล้ว';
-    } catch {
-      return 'ยังบันทึกไม่ได้ ตรวจสอบว่า Backend เปิดอยู่หรือไม่';
+    } catch (error) {
+      return error.message || 'ยังบันทึกไม่ได้ ตรวจสอบว่า Backend เปิดอยู่หรือไม่';
     }
   }, [current, feedbackCount]);
 
@@ -470,14 +507,16 @@ export function AppProvider({ children }) {
     if (privacyMode) {
       updateHistory(previous => previous.filter(item => !item.privacy));
       setReportStatus('Privacy Mode: ล้างเฉพาะประวัติ local แล้ว โดยไม่เรียก Backend');
-      return;
+      return true;
     }
     try {
-      if (history.some(item => !item.privacy)) await api.clearHistory();
-      updateHistory([]);
+      await api.clearHistory();
+      updateHistory(previous => previous.filter(item => item.privacy));
       setReportStatus('ล้างประวัติของบัญชีนี้แล้ว');
+      return true;
     } catch {
       setReportStatus('ยังล้างประวัติจากฐานข้อมูลไม่ได้ กรุณาตรวจสอบ Backend');
+      return false;
     }
   }, [history, privacyMode, updateHistory]);
 

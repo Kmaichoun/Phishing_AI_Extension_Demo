@@ -71,7 +71,8 @@ export function brandVisualInsights(url, ruleResult) {
   }
 
   const hostname = parsed.hostname.toLowerCase();
-  const decoded = decodeURIComponent(url).toLowerCase();
+  let decoded = url.toLowerCase();
+  try { decoded = decodeURIComponent(url).toLowerCase(); } catch { /* Keep malformed percent escapes as literal evidence. */ }
   const profiles = analyzer.BRAND_PROFILES || [];
   const official = profiles.filter(profile =>
     (profile.officialDomains || []).some(domain => sameOrSubdomain(hostname, domain))

@@ -48,6 +48,14 @@ EXPECTED_TABLES = {
         "ModelVersion",
         "LayerResults",
     },
+    "005_create_scan_feedback.sql": {
+        "ScanFeedback", "FeedbackId", "HistoryId", "UserId", "UserLabel",
+        "ReviewStatus", "ReviewNote", "ReviewedBy", "ReviewedAt", "CreatedAt",
+    },
+    "006_create_audit_events.sql": {
+        "AuditEvents", "AuditId", "ActorUserId", "Action", "TargetType",
+        "TargetId", "Details", "CreatedAt",
+    },
 }
 
 
@@ -84,6 +92,7 @@ def main() -> None:
         BACKEND_DIR / "database.py",
         BACKEND_DIR / "auth_router.py",
         BACKEND_DIR / "history_router.py",
+        BACKEND_DIR / "workspace_router.py",
     ]
     source = "\n".join(path.read_text(encoding="utf-8-sig") for path in source_paths)
     for legacy_token in (

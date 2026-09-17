@@ -68,6 +68,8 @@ def parse_args() -> argparse.Namespace:
         )
     )
     parser.add_argument("--dataset", type=Path, default=default_dataset)
+    parser.add_argument("--output-dir", type=Path, required=True,
+                        help="New experiment directory; this legacy trainer never writes production model.pkl.")
     parser.add_argument("--cv-folds", type=int, default=5)
     parser.add_argument("--holdout-folds", type=int, default=5)
     parser.add_argument("--seed", type=int, default=42)
@@ -607,6 +609,12 @@ def sha256(path: Path) -> str:
 
 
 def train(args: argparse.Namespace) -> None:
+    output = args.output_dir.resolve()
+    if output == BASE_DIR.resolve():
+        raise ValueError('Training cannot overwrite the production directory')
+    output.mkdir(parents=True, exist_ok=False)
+    model_path = output / 'candidate.pkl'
+    report_path = output / 'evaluation.json'
     if not 0 <= args.block_max_fpr <= args.warn_max_fpr < 1:
         raise ValueError(
             "FPR constraints must satisfy 0 <= block_max_fpr <= warn_max_fpr < 1."
@@ -985,16 +993,15 @@ def train(args: argparse.Namespace) -> None:
         "dataset_row_count": len(y),
     }
 
-    REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
-    report_temporary = REPORT_PATH.with_suffix(REPORT_PATH.suffix + ".tmp")
+    report_temporary = report_path.with_suffix(report_path.suffix + ".tmp")
     report_temporary.write_text(
         json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
-    report_temporary.replace(REPORT_PATH)
+    report_temporary.replace(report_path)
 
-    model_temporary = MODEL_PATH.with_suffix(MODEL_PATH.suffix + ".tmp")
+    model_temporary = model_path.with_suffix(model_path.suffix + ".tmp")
     joblib.dump(model_bundle, model_temporary, compress=MODEL_COMPRESSION)
-    model_temporary.replace(MODEL_PATH)
+    model_temporary.replace(model_path)
 
     print("Selected warning policy:")
     print(json.dumps(warning, ensure_ascii=False, indent=2))
@@ -1002,8 +1009,8 @@ def train(args: argparse.Namespace) -> None:
     print(json.dumps(blocking, ensure_ascii=False, indent=2))
     print("Independent holdout:")
     print(json.dumps(holdout_evaluation, ensure_ascii=False, indent=2))
-    print(f"Saved model to {MODEL_PATH}")
-    print(f"Saved evaluation report to {REPORT_PATH}")
+    print(f"Saved research-only candidate to {model_path}; production unchanged")
+    print(f"Saved evaluation report to {report_path}")
 
 
 if __name__ == "__main__":

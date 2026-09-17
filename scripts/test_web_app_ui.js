@@ -49,7 +49,7 @@ assert(main.includes('<RouterProvider>'), 'React hash RouterProvider is missing.
 assert(main.includes('<AuthProvider>') && main.includes('<AppProvider>'), 'React Context providers are missing.');
 assert(main.includes('getRegistrations()') && main.includes('phish-radar-web-'), 'Legacy service-worker cache cleanup is missing.');
 
-for (const route of ['/login', '/scan', '/qr', '/dashboard', '/settings']) {
+for (const route of ['/login', '/scan', '/qr', '/dashboard', '/settings', '/methodology', '/status', '/security', '/admin']) {
   assert(app.includes(`path === '${route}'`), `React route ${route} is missing.`);
 }
 assert(app.includes('<ProtectedRoute>'), 'Protected routes must require an authenticated session.');
@@ -78,12 +78,11 @@ assert(appContext.includes('createContext(') && appContext.includes('analyzeUrl'
 assert(appContext.includes('Privacy Mode') && appContext.includes('safeHistoryItem'), 'Privacy-safe history behavior is missing.');
 
 assert(login.includes('เข้าสู่ระบบ') && login.includes('สมัครสมาชิก'), 'Login/Register React UI is incomplete.');
-assert(scanner.includes('ท่องเว็บไซต์อย่างปลอดภัยด้วย'), 'Requested scanner hero is missing.');
-assert(scanner.includes('Phis radar AI'), 'Requested hero brand line is missing.');
+assert(scanner.includes('ตรวจสอบลิงก์') && !scanner.includes('hero-primary'), 'Scanner must open directly into the URL task.');
 assert(scanner.includes('className="input-row scan-input-row"'), 'Scanner URL field must use the responsive input-row layout.');
 assert(!scanner.includes('https://example.com/login'), 'Scanner URL field must not show the retired example URL.');
 assert(scanner.includes('FuzzyScore') && scanner.includes('Random Forest'), 'Fuzzy and Random Forest score breakdown is missing.');
-assert(scanner.includes('FinalScore = 100 × LearnedFusion(FuzzyScore, RandomForestScore)'), 'Learned fusion formula is missing.');
+assert(scanner.includes('result.riskFormula') && !scanner.includes('FinalScore = 100 × LearnedFusion'), 'Formula must come from the result policy, not hardcoded copy.');
 assert(scanner.includes('คำอธิบายจาก LLM'), 'LLM explanation panel is missing.');
 assert(qr.includes("from 'jsqr'") && qr.includes('BarcodeDetector'), 'QR fallback and native reader support are missing.');
 assert(dashboard.includes('Export CSV') && dashboard.includes('Export JSON'), 'Dashboard exports are missing.');

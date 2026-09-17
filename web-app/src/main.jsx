@@ -12,6 +12,7 @@ import '../auth.css';
 import '../settings.css';
 import '../professional-ui.css';
 import './react.css';
+import './workspace.css';
 
 function LegacyCacheCleanup() {
   useEffect(() => {

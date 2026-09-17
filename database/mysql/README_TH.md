@@ -6,6 +6,8 @@
 2. `UserDevices` — อุปกรณ์และ SHA-256 DeviceKeyHash
 3. `Sessions` — Session ฝั่งเซิร์ฟเวอร์และ SHA-256 TokenHash
 4. `SearchHistory` — URL ที่ตัดข้อมูลลับแล้ว พร้อม Risk Model audit
+5. `ScanFeedback` — ความเห็นต่อผลตรวจและการทบทวนโดย Admin
+6. `AuditEvents` — บันทึกการเปลี่ยนสิทธิ์ การยกเลิกอุปกรณ์/Session และการทบทวน Feedback
 
 ไม่เก็บรหัสผ่านจริง, session token หรือ device token ลงฐานข้อมูล
 
@@ -30,6 +32,8 @@ database/mysql/migrations/001_create_users.sql
 database/mysql/migrations/002_create_user_devices.sql
 database/mysql/migrations/003_create_sessions.sql
 database/mysql/migrations/004_create_search_history.sql
+database/mysql/migrations/005_create_scan_feedback.sql
+database/mysql/migrations/006_create_audit_events.sql
 ```
 
 ถ้าบัญชี MySQL มีสิทธิ์ `CREATE DATABASE` และยังไม่มีฐานข้อมูลจริง ๆ จึงค่อยรัน

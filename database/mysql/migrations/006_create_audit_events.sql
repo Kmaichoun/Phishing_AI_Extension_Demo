@@ -1,0 +1,11 @@
+CREATE TABLE IF NOT EXISTS `AuditEvents` (
+    `AuditId` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    `ActorUserId` BIGINT UNSIGNED NOT NULL,
+    `Action` VARCHAR(80) NOT NULL,
+    `TargetType` VARCHAR(30) NOT NULL,
+    `TargetId` VARCHAR(64) NOT NULL,
+    `Details` TEXT NOT NULL,
+    `CreatedAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    INDEX `IX_Audit_Created` (`CreatedAt`),
+    INDEX `IX_Audit_Actor` (`ActorUserId`)
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

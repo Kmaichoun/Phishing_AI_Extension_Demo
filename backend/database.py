@@ -42,6 +42,8 @@ engine = create_engine(
         "connect_timeout": 5,
         "read_timeout": 10,
         "write_timeout": 10,
+        # DATETIME values are serialized as UTC by the API, including defaults.
+        "init_command": "SET time_zone = '+00:00'",
     },
 )
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
@@ -78,7 +80,12 @@ def database_status() -> dict[str, object]:
                             WHERE table_schema = DATABASE()
                               AND table_name = 'SearchHistory'
                               AND column_name IN ('RiskScore', 'Decision', 'ModelVersion')
-                        ) = 3 THEN 1 ELSE 0 END AS RiskAuditSchemaReady
+                        ) = 3 THEN 1 ELSE 0 END AS RiskAuditSchemaReady,
+                        CASE WHEN (
+                            SELECT COUNT(*) FROM information_schema.tables
+                            WHERE table_schema = DATABASE()
+                              AND table_name IN ('ScanFeedback', 'AuditEvents')
+                        ) = 2 THEN 1 ELSE 0 END AS WorkspaceSchemaReady
                     """
                 )
             ).mappings().one()
@@ -88,6 +95,7 @@ def database_status() -> dict[str, object]:
             "auth_schema_ready": bool(row["AuthSchemaReady"]),
             "history_schema_ready": bool(row["HistorySchemaReady"]),
             "risk_audit_schema_ready": bool(row["RiskAuditSchemaReady"]),
+            "workspace_schema_ready": bool(row["WorkspaceSchemaReady"]),
         }
     except Exception as error:
         return {
@@ -96,5 +104,6 @@ def database_status() -> dict[str, object]:
             "auth_schema_ready": False,
             "history_schema_ready": False,
             "risk_audit_schema_ready": False,
+            "workspace_schema_ready": False,
             "error": error.__class__.__name__,
         }

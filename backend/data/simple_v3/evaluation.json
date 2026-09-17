@@ -1,0 +1,246 @@
+{
+  "created_at": "2026-09-16T12:49:00.075272+00:00",
+  "selected": "weighted_40_60",
+  "selection_rule": "Max warning recall on validation under Wilson FPR bounds; ties prefer ML-only",
+  "risk_formula": "FinalScore = 0.40 * RuleScore + 0.60 * MLScore",
+  "dataset_rows": 256297,
+  "uci_archive_rows": 235795,
+  "sources": {
+    "uci_phiusiil": 234374,
+    "mendeley_webpage_v3": 11248,
+    "legacy_phishtank": 9941,
+    "legacy_openphish": 43,
+    "legacy_common_crawl_trusted_domain_subdomain": 126,
+    "legacy_curated_deep_link_subdomain": 15,
+    "legacy_common_crawl_trusted_domain_long_query_subdomain": 8,
+    "legacy_common_crawl_trusted_domain": 332,
+    "audited_common_crawl_trusted_domain": 153,
+    "audited_curated_deep_link": 17,
+    "legacy_curated_deep_link": 23,
+    "legacy_common_crawl_trusted_domain_long_query": 17
+  },
+  "invalid_rows": 4,
+  "conflicting_urls_removed": 2,
+  "uci_url": "https://archive.ics.uci.edu/dataset/967/phiusiil+phishing+url+dataset",
+  "license": "UCI PhiUSIIL: CC BY 4.0; legacy feeds retain original source terms",
+  "attribution": "Arvind Prasad and Shalini Chandra (2024), PhiUSIIL, DOI:10.1016/j.cose.2023.103545",
+  "archive_sha256": "0a639fd03aea6308c5b1c10c92aa23c2ce1505447a9137271865cd0badc9a59a",
+  "dataset_sha256": "7374af3edc548306be61c4c72c27d442f042f17e2e1d3c09c7a918df18445350",
+  "mendeley_source": "https://data.mendeley.com/datasets/c2gw7fy2j4/3",
+  "mendeley_sha256": "21093e2902e5441c86a6daf95e86e7c332046e477fdf109a579d7bd81e586d6c",
+  "shape_reweighting": true,
+  "prior_experiment_domains_excluded_from_evaluation": "backend\\data\\simple_v1",
+  "external_holdout_source": "Mendeley Web page phishing detection v3",
+  "evaluation_design": {
+    "train_rows": 178134,
+    "calibration_rows": 10102,
+    "validation_rows": 9965,
+    "holdout_rows": 58096,
+    "development_rows": 198201,
+    "split_counts": {
+      "train": {
+        "rows": 178134,
+        "labels": {
+          "1": 74233,
+          "0": 103901
+        },
+        "domains": 137521
+      },
+      "calibration": {
+        "rows": 10102,
+        "labels": {
+          "1": 2536,
+          "0": 7566
+        },
+        "domains": 9940
+      },
+      "validation": {
+        "rows": 9965,
+        "labels": {
+          "1": 2490,
+          "0": 7475
+        },
+        "domains": 9794
+      },
+      "holdout": {
+        "rows": 58096,
+        "labels": {
+          "1": 35908,
+          "0": 22188
+        },
+        "domains": 26159
+      }
+    },
+    "group_overlap": 0,
+    "refit_on_holdout": false
+  },
+  "validation": {
+    "ml_only": {
+      "warning": {
+        "threshold": 0.268,
+        "precision": 0.975329,
+        "recall": 0.95261,
+        "f1": 0.963836,
+        "roc_auc": 0.987404,
+        "pr_auc": 0.983092,
+        "false_positive_rate": 0.008027,
+        "false_positive_rate_upper_95": 0.009911,
+        "true_negative": 7415,
+        "false_positive": 60,
+        "false_negative": 118,
+        "true_positive": 2372,
+        "meets_fpr_constraint": true
+      },
+      "blocking": {
+        "threshold": 0.977,
+        "precision": 0.999134,
+        "recall": 0.926506,
+        "f1": 0.96145,
+        "roc_auc": 0.987404,
+        "pr_auc": 0.983092,
+        "false_positive_rate": 0.000268,
+        "false_positive_rate_upper_95": 0.000808,
+        "true_negative": 7473,
+        "false_positive": 2,
+        "false_negative": 183,
+        "true_positive": 2307,
+        "meets_fpr_constraint": true
+      }
+    },
+    "weighted_40_60": {
+      "warning": {
+        "threshold": 0.225,
+        "precision": 0.975359,
+        "recall": 0.953815,
+        "f1": 0.964467,
+        "roc_auc": 0.982854,
+        "pr_auc": 0.977922,
+        "false_positive_rate": 0.008027,
+        "false_positive_rate_upper_95": 0.009911,
+        "true_negative": 7415,
+        "false_positive": 60,
+        "false_negative": 115,
+        "true_positive": 2375,
+        "meets_fpr_constraint": true
+      },
+      "blocking": {
+        "threshold": 0.633,
+        "precision": 0.999074,
+        "recall": 0.866265,
+        "f1": 0.927941,
+        "roc_auc": 0.982854,
+        "pr_auc": 0.977922,
+        "false_positive_rate": 0.000268,
+        "false_positive_rate_upper_95": 0.000808,
+        "true_negative": 7473,
+        "false_positive": 2,
+        "false_negative": 333,
+        "true_positive": 2157,
+        "meets_fpr_constraint": true
+      }
+    }
+  },
+  "holdout": {
+    "ml_only": {
+      "warning": {
+        "threshold": 0.268,
+        "precision": 0.871122,
+        "recall": 0.98524,
+        "f1": 0.924673,
+        "roc_auc": 0.898387,
+        "pr_auc": 0.895684,
+        "false_positive_rate": 0.235893,
+        "false_positive_rate_upper_95": 0.240613,
+        "true_negative": 16954,
+        "false_positive": 5234,
+        "false_negative": 530,
+        "true_positive": 35378
+      },
+      "blocking": {
+        "threshold": 0.977,
+        "precision": 0.87344,
+        "recall": 0.824524,
+        "f1": 0.848277,
+        "roc_auc": 0.898387,
+        "pr_auc": 0.895684,
+        "false_positive_rate": 0.193348,
+        "false_positive_rate_upper_95": 0.197746,
+        "true_negative": 17898,
+        "false_positive": 4290,
+        "false_negative": 6301,
+        "true_positive": 29607
+      }
+    },
+    "weighted_40_60": {
+      "warning": {
+        "threshold": 0.225,
+        "precision": 0.870193,
+        "recall": 0.983124,
+        "f1": 0.923218,
+        "roc_auc": 0.904409,
+        "pr_auc": 0.914506,
+        "false_positive_rate": 0.237335,
+        "false_positive_rate_upper_95": 0.242065,
+        "true_negative": 16922,
+        "false_positive": 5266,
+        "false_negative": 606,
+        "true_positive": 35302
+      },
+      "blocking": {
+        "threshold": 0.633,
+        "precision": 0.878234,
+        "recall": 0.705219,
+        "f1": 0.782274,
+        "roc_auc": 0.904409,
+        "pr_auc": 0.914506,
+        "false_positive_rate": 0.158239,
+        "false_positive_rate_upper_95": 0.16231,
+        "true_negative": 18677,
+        "false_positive": 3511,
+        "false_negative": 10585,
+        "true_positive": 25323
+      }
+    }
+  },
+  "previous_model_fresh_domain_holdout": {
+    "warning": {
+      "threshold": 0.96,
+      "precision": 0.934565,
+      "recall": 0.797093,
+      "f1": 0.860372,
+      "roc_auc": 0.936519,
+      "pr_auc": 0.940939,
+      "false_positive_rate": 0.090319,
+      "false_positive_rate_upper_95": 0.093534,
+      "true_negative": 20184,
+      "false_positive": 2004,
+      "false_negative": 7286,
+      "true_positive": 28622
+    },
+    "blocking": {
+      "threshold": 1.0,
+      "precision": 0.99002,
+      "recall": 0.041439,
+      "f1": 0.079549,
+      "roc_auc": 0.936519,
+      "pr_auc": 0.940939,
+      "false_positive_rate": 0.000676,
+      "false_positive_rate_upper_95": 0.00103,
+      "true_negative": 22173,
+      "false_positive": 15,
+      "false_negative": 34420,
+      "true_positive": 1488
+    }
+  },
+  "promotion_gate_passed": false,
+  "limitations": [
+    "URL-only labels may be stale; downloaded today does not mean collected today.",
+    "No temporal split: per-URL observation times unavailable.",
+    "Grouped mixed-source validation is not fully held-out external-source validation.",
+    "No guarantee on arbitrary websites; public-domain popularity is not a benign label.",
+    "Rules remain explanations, not independent measurements of risk."
+  ],
+  "regression_gate_passed": false,
+  "promotion_ready": false,
+  "promotion_check": "Run analyze_model_errors.py, then manage_model.py check"
+}

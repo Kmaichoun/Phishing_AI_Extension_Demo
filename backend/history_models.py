@@ -25,7 +25,7 @@ class SearchHistoryCreate(BaseModel):
     decision_threshold: float | None = Field(default=None, ge=0, le=100)
     detection_label: Literal["safe", "phishing"] | None = None
     model_status: str | None = Field(default=None, max_length=50)
-    source: Literal["web-app", "qr-scanner"] = "web-app"
+    source: Literal["web-app", "qr-scanner", "web-app-react"] = "web-app"
 
 
 class SearchHistoryResponse(BaseModel):
@@ -56,3 +56,4 @@ class SearchHistoryResponse(BaseModel):
 class SearchHistoryList(BaseModel):
     items: list[SearchHistoryResponse]
     count: int
+    total: int = 0

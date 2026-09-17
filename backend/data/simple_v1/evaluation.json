@@ -1,0 +1,235 @@
+{
+  "created_at": "2026-09-10T13:09:34.584645+00:00",
+  "selected": "ml_only",
+  "selection_rule": "Max warning recall on validation under Wilson FPR bounds; ties prefer ML-only",
+  "risk_formula": "FinalScore = MLScore",
+  "dataset_rows": 109921,
+  "uci_archive_rows": 235795,
+  "sources": {
+    "uci_phiusiil": 99564,
+    "legacy_phishtank": 9942,
+    "legacy_openphish": 43,
+    "legacy_common_crawl_trusted_domain": 332,
+    "legacy_curated_deep_link": 23,
+    "legacy_common_crawl_trusted_domain_long_query": 17
+  },
+  "invalid_rows": 2,
+  "conflicting_urls_removed": 0,
+  "uci_url": "https://archive.ics.uci.edu/dataset/967/phiusiil+phishing+url+dataset",
+  "license": "UCI PhiUSIIL: CC BY 4.0; legacy feeds retain original source terms",
+  "attribution": "Arvind Prasad and Shalini Chandra (2024), PhiUSIIL, DOI:10.1016/j.cose.2023.103545",
+  "archive_sha256": "0a639fd03aea6308c5b1c10c92aa23c2ce1505447a9137271865cd0badc9a59a",
+  "dataset_sha256": "93c912cae0af693b1eebf122b085b25c5a7d2d555f58bdcdd82d82e7f667876c",
+  "evaluation_design": {
+    "train_rows": 75776,
+    "calibration_rows": 8334,
+    "validation_rows": 8836,
+    "holdout_rows": 16975,
+    "development_rows": 92946,
+    "split_counts": {
+      "train": {
+        "rows": 75776,
+        "labels": {
+          "1": 40977,
+          "0": 34799
+        },
+        "domains": 48335
+      },
+      "calibration": {
+        "rows": 8334,
+        "labels": {
+          "1": 2706,
+          "0": 5628
+        },
+        "domains": 7582
+      },
+      "validation": {
+        "rows": 8836,
+        "labels": {
+          "1": 3154,
+          "0": 5682
+        },
+        "domains": 7559
+      },
+      "holdout": {
+        "rows": 16975,
+        "labels": {
+          "1": 5381,
+          "0": 11594
+        },
+        "domains": 15227
+      }
+    },
+    "group_overlap": 0,
+    "refit_on_holdout": false
+  },
+  "validation": {
+    "ml_only": {
+      "warning": {
+        "threshold": 0.655,
+        "precision": 0.985733,
+        "recall": 0.963855,
+        "f1": 0.974671,
+        "roc_auc": 0.989228,
+        "pr_auc": 0.989251,
+        "false_positive_rate": 0.007744,
+        "false_positive_rate_upper_95": 0.009905,
+        "true_negative": 5638,
+        "false_positive": 44,
+        "false_negative": 114,
+        "true_positive": 3040,
+        "meets_fpr_constraint": true
+      },
+      "blocking": {
+        "threshold": 0.98,
+        "precision": 0.999659,
+        "recall": 0.930564,
+        "f1": 0.963875,
+        "roc_auc": 0.989228,
+        "pr_auc": 0.989251,
+        "false_positive_rate": 0.000176,
+        "false_positive_rate_upper_95": 0.000788,
+        "true_negative": 5681,
+        "false_positive": 1,
+        "false_negative": 219,
+        "true_positive": 2935,
+        "meets_fpr_constraint": true
+      }
+    },
+    "weighted_40_60": {
+      "warning": {
+        "threshold": 0.518,
+        "precision": 0.985705,
+        "recall": 0.961953,
+        "f1": 0.973684,
+        "roc_auc": 0.985997,
+        "pr_auc": 0.983343,
+        "false_positive_rate": 0.007744,
+        "false_positive_rate_upper_95": 0.009905,
+        "true_negative": 5638,
+        "false_positive": 44,
+        "false_negative": 120,
+        "true_positive": 3034,
+        "meets_fpr_constraint": true
+      },
+      "blocking": {
+        "threshold": 0.744,
+        "precision": 0.998783,
+        "recall": 0.260304,
+        "f1": 0.412978,
+        "roc_auc": 0.985997,
+        "pr_auc": 0.983343,
+        "false_positive_rate": 0.000176,
+        "false_positive_rate_upper_95": 0.000788,
+        "true_negative": 5681,
+        "false_positive": 1,
+        "false_negative": 2333,
+        "true_positive": 821,
+        "meets_fpr_constraint": true
+      }
+    }
+  },
+  "holdout": {
+    "ml_only": {
+      "warning": {
+        "threshold": 0.655,
+        "precision": 0.986391,
+        "recall": 0.956328,
+        "f1": 0.971127,
+        "roc_auc": 0.988002,
+        "pr_auc": 0.986515,
+        "false_positive_rate": 0.006124,
+        "false_positive_rate_upper_95": 0.007436,
+        "true_negative": 11523,
+        "false_positive": 71,
+        "false_negative": 235,
+        "true_positive": 5146
+      },
+      "blocking": {
+        "threshold": 0.98,
+        "precision": 0.998587,
+        "recall": 0.919532,
+        "f1": 0.95743,
+        "roc_auc": 0.988002,
+        "pr_auc": 0.986515,
+        "false_positive_rate": 0.000604,
+        "false_positive_rate_upper_95": 0.001113,
+        "true_negative": 11587,
+        "false_positive": 7,
+        "false_negative": 433,
+        "true_positive": 4948
+      }
+    },
+    "weighted_40_60": {
+      "warning": {
+        "threshold": 0.518,
+        "precision": 0.989417,
+        "recall": 0.955584,
+        "f1": 0.972206,
+        "roc_auc": 0.985566,
+        "pr_auc": 0.982582,
+        "false_positive_rate": 0.004744,
+        "false_positive_rate_upper_95": 0.005915,
+        "true_negative": 11539,
+        "false_positive": 55,
+        "false_negative": 239,
+        "true_positive": 5142
+      },
+      "blocking": {
+        "threshold": 0.744,
+        "precision": 0.995757,
+        "recall": 0.261661,
+        "f1": 0.414422,
+        "roc_auc": 0.985566,
+        "pr_auc": 0.982582,
+        "false_positive_rate": 0.000518,
+        "false_positive_rate_upper_95": 0.001,
+        "true_negative": 11588,
+        "false_positive": 6,
+        "false_negative": 3973,
+        "true_positive": 1408
+      }
+    }
+  },
+  "previous_model_fresh_domain_holdout": {
+    "warning": {
+      "threshold": 0.96,
+      "precision": 0.993182,
+      "recall": 0.568482,
+      "f1": 0.723082,
+      "roc_auc": 0.973126,
+      "pr_auc": 0.962855,
+      "false_positive_rate": 0.001811,
+      "false_positive_rate_upper_95": 0.002587,
+      "true_negative": 11573,
+      "false_positive": 21,
+      "false_negative": 2322,
+      "true_positive": 3059
+    },
+    "blocking": {
+      "threshold": 1.0,
+      "precision": 1.0,
+      "recall": 0.055194,
+      "f1": 0.104614,
+      "roc_auc": 0.973126,
+      "pr_auc": 0.962855,
+      "false_positive_rate": 0.0,
+      "false_positive_rate_upper_95": 0.000233,
+      "true_negative": 11594,
+      "false_positive": 0,
+      "false_negative": 5084,
+      "true_positive": 297
+    }
+  },
+  "promotion_gate_passed": true,
+  "limitations": [
+    "URL-only labels may be stale; downloaded today does not mean collected today.",
+    "No temporal split: per-URL observation times unavailable.",
+    "UCI is the only new source; mixed-source historical training is not external-source validation.",
+    "No guarantee on arbitrary websites; public-domain popularity is not a benign label.",
+    "Rules remain explanations, not independent measurements of risk."
+  ],
+  "regression_gate_passed": false,
+  "promotion_ready": false,
+  "promotion_check": "Run analyze_model_errors.py, then manage_model.py check"
+}
