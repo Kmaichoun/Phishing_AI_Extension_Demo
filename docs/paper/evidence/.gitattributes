@@ -1,0 +1,2 @@
+# Preserve evidence bytes so published files keep the recorded SHA256 values.
+*.json -text whitespace=cr-at-eol
