@@ -1,5 +1,11 @@
 # Phish Radar AI Extension Demo v2.0
 
+## สำหรับ AI ที่รับช่วงโครงงาน
+
+เริ่มที่ [AGENTS.md](AGENTS.md) และ [คู่มือ AI](docs/ai/README.md) เพื่ออ่าน architecture, request flow, model/dataset provenance, source snapshot และวิธีตรวจงาน ใช้ branch `docs/article-handoff-20261017` เมื่อ clone ชุดส่งต่อ ตัวอย่าง clone และ prompt สำหรับ AI อยู่ในคู่มือ
+
+source ที่ root ของ branch เอกสารยังเป็นฐาน Git เดิม ส่วน snapshot โค้ดรุ่นใหม่อยู่ใน `docs/ai/current-source.zip` พร้อม manifest อย่านำ model หรือสูตรของคนละรุ่นมารวมกัน เนื้อหาเดิมด้านล่างมีประวัติหลายรุ่น ให้ตรวจข้อเท็จจริงล่าสุดใน [ชุดเอกสารโครงงาน](docs/paper/README.md) ก่อนนำไปอ้าง
+
 โปรเจกต์สาธิต Chrome Extension สำหรับตรวจจับความเสี่ยงจาก phishing ก่อนผู้ใช้เปิดลิงก์หรือกรอกข้อมูลสำคัญ โดยรวม rule-based scoring, โมเดล ML แบบ local, คำอธิบายจาก LLM, QR scanner, privacy mode และ web dashboard
 
 > โปรเจกต์นี้ใช้เพื่อการศึกษาและการสาธิต ไม่ควรใช้แทนระบบ threat intelligence ระดับ production
@@ -131,7 +137,7 @@ Component, Router, Context และสิ่งที่ต้องรู้�
 
 บัญชีใหม่มี Role เป็น `user` เสมอ ทั้ง User และ Admin เข้าสู่ระบบจากหน้าเดียวกัน หากต้องการตั้งบัญชีแรกเป็น Admin ให้สมัครผ่านหน้า Register ก่อน แล้วใช้คำสั่งเลื่อนสิทธิ์ใน [คู่มือฐานข้อมูล](database/mysql/README_TH.md) ห้ามเก็บหรือ INSERT รหัสผ่านจริงลง MySQL/MariaDB
 
-ระบบเก็บรหัสผ่านด้วย Argon2, เก็บ session/device token เฉพาะค่า hash ใน MySQL/MariaDB และส่ง session ให้เบราว์เซอร์ด้วยคุกกี้ HttpOnly โดยไม่เก็บ password หรือ session secret ใน localStorage
+ระบบเก็บรหัสผ่านด้วย Argon2, เก็บ session token เฉพาะค่า hash ใน MySQL/MariaDB และส่ง session ให้เบราว์เซอร์ด้วยคุกกี้ HttpOnly โดยไม่เก็บ password หรือ session secret ใน localStorage
 
 ทดสอบวงจรระบบบัญชีด้วยบัญชีชั่วคราว (สคริปต์ล้างข้อมูลทดสอบให้อัตโนมัติ):
 
@@ -172,6 +178,9 @@ Component, Router, Context และสิ่งที่ต้องรู้�
 - Web App เป็น React/Vite ส่วน Chrome Extension ยังเป็น Manifest V3 + JavaScript แยกกัน
 - แก้ React source ใน web-app/src/ และให้ `npm run build` สร้าง dist/
 - รัน validation ทุกครั้งก่อน package หรือส่งต่อโปรเจกต์
+
+สำหรับการเปิดเว็บบนโฮสต์ฟรี ดู [คู่มือเปิดเว็บฟรี](docs/FREE_HOSTING_TH.md)
+สำหรับลิงก์สาธารณะชั่วคราวที่ยังใช้ Ollama ในเครื่อง ดู [คู่มือสาธิตผ่าน Cloudflare Quick Tunnel](docs/PUBLIC_OLLAMA_DEMO_TH.md)
 
 ## เอกสารเพิ่มเติม
 

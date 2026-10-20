@@ -13,6 +13,7 @@ __pycache__/
 .ruff_cache/
 
 # Node and test output
+.ai-context/
 node_modules/
 coverage/
 dist/
