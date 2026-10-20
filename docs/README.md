@@ -4,6 +4,8 @@
 
 ## คู่มือหลัก
 
+- [ชุดโครงบทความและคู่มือให้เพื่อนเขียน](paper/README.md) — ครบหัวข้อส่งอาจารย์ พร้อมข้อเท็จจริง แหล่งอ้างอิง และหลักฐานของรุ่นที่ตรวจวันที่ 17 ตุลาคม 2026
+
 - [MODEL_UPGRADE_WORKFLOW_TH.md](MODEL_UPGRADE_WORKFLOW_TH.md) — Error Analysis, reviewed feedback, ข้อมูลรอบใหม่ และ gated promote/rollback
 - [WORKSPACE_GUIDE_TH.md](WORKSPACE_GUIDE_TH.md) — การใช้ Scanner, Dashboard, Status, Security และ Admin พร้อม migration และการทดสอบ
 - [SIMPLE_RISK_EXPERIMENT_TH.md](SIMPLE_RISK_EXPERIMENT_TH.md) — ตรวจสูตรเดิม แหล่ง Dataset การทดลองสูตรง่าย และเหตุผลที่ยังไม่ promote โมเดลใหม่
