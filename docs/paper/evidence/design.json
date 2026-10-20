@@ -1,0 +1,70 @@
+{
+  "created_at": "2026-10-08T15:01:29.758178+00:00",
+  "baseline_sha256": "0cd125d28fa5a184968e4c780d7db7e8f29e542ad1dcf758d6ebc8ba8d30ee05",
+  "development_sha256": "c02bb2adf07c71ddc391403f3d190fb9ab289d058f62ba3177318612428b0df0",
+  "schema": "url-v10-reference-root-context",
+  "thresholds": {
+    "warning": 60,
+    "blocking": 80
+  },
+  "new_source_manifest_sha256": "f5b8772dc30dcd8062a9624e752219e7a6219841bdc644d0d02783f61f1d7dd0",
+  "confirmation_sha256": "8573490ca801a0a7fccf3bb1aa5e2bb2409bea6732972cfef2080fbd196424b9",
+  "configs": [
+    {
+      "support": 1
+    },
+    {
+      "support": 2
+    },
+    {
+      "support": 4
+    }
+  ],
+  "calibration_methods": [
+    "platt_combined",
+    "platt_historical",
+    "beta_combined"
+  ],
+  "forest_variants": [
+    "new_64",
+    "pooled_32",
+    "pooled_64"
+  ],
+  "train_weight_policy": "UCI x2, official references x4; baseline training errors x2; all classes",
+  "validation_used_for_selection": true,
+  "test_used_for_selection": false,
+  "prior_exposure_audit_complete": false,
+  "forward_temporal_test": false,
+  "source_licenses": {
+    "UCI PhiUSIIL": "CC BY 4.0",
+    "DeepURLBench": "CC BY-NC 4.0"
+  },
+  "selection": "No validation warning/block FP/FN increase per source; at least one reported benign case fixed and all probes allow; choose fewer changed leaves.",
+  "method": "One-feature supervised leaf refinement on reference root context, guarded by phishing observations.",
+  "feature_code_sha256": "5ee75242e8e6b7ca8fca5c0a13424a2fbe277dd57c18ca89dcb1679ec697c8d3",
+  "refinement_code_sha256": "bbe6a09aabbe976a9809f1c359fe708097551b1020358b7ae217a9f867af0e9e",
+  "probability_methods": [
+    "platt",
+    "validation_constrained_sigmoid"
+  ],
+  "calibration_split": "registered-domain SHA256 parity: even=positive guard; odd=probability calibration",
+  "region_fit": {
+    "max_depth": 4,
+    "min_samples_leaf": 4,
+    "class_weight": "balanced",
+    "minimum_old_leaf_probability": 0.35,
+    "minimum_train_observations": 16,
+    "minimum_training_false_positives": 2
+  },
+  "leaf_probability": "Laplace (phishing_count+1)/(observations+2), only pure benign leaves; remaining descendants original probability",
+  "cached_prefix_feature_code_sha256": "80350e6b426f16192a7879d7b79ca7be7a51b2a685e73c35b4fec07b276b9cf6",
+  "reference_origin_registry_sha256": "118e8734190109e64bd45a839dd78d75be94503ce33e75a9a8524195b05bd9b4",
+  "reference_origin_meaning": "Exact publisher-reference origin presence is a model feature, not a benign label or decision override.",
+  "hypothesis": "Targeted correction of named and reference-entry false positives; not a global generalization claim.",
+  "sparse_case_repair": true,
+  "sparse_case_limitation": "As few as one observed reference URL supports a learned branch; not evidence of broad Internet accuracy or calibrated phishing probability.",
+  "calibration_method": "Transported original Platt mapping; no new calibration fit; reassess reliability on confirmation.",
+  "unchanged_outside_context": true,
+  "confirmation_gate": "No warning/block FP/FN increase on each fresh and regression dataset; all named benign probes allow. FPR need not strictly fall on unrelated domains whose predictions are preserved.",
+  "gate_change_reason": "Different, narrowly scoped hypothesis declared before reading any confirmation score. Earlier general-FPR experiments remain failed."
+}

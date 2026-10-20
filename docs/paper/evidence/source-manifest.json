@@ -1,0 +1,114 @@
+{
+  "inspection_date": "2026-10-17",
+  "timezone": "Asia/Bangkok",
+  "source_path_base": "Original root project, before entering the nested Phishing_AI_Extension_Demo Git repository",
+  "source_files": [
+    {
+      "path": "backend/model.pkl",
+      "sha256": "bc4e024e32aaf0ad695ea4a4dff552ece09d606c4963a49e8bf6aa8a447575bb",
+      "bytes": 22724993
+    },
+    {
+      "path": "backend/model-demo-authorization.json",
+      "sha256": "58bda52db10fad5c1f92384e90bfe0f483037a3fda8ca990d7db8cb5b5e4d1cd",
+      "bytes": 801
+    },
+    {
+      "path": "backend/app.py",
+      "sha256": "cdb597ef6e8775ebf2ffbf92d461def6c5bb815e3d089b1ffc4ba0ba8b22fb11",
+      "bytes": 19415
+    },
+    {
+      "path": "backend/feature_extractor.py",
+      "sha256": "5ee75242e8e6b7ca8fca5c0a13424a2fbe277dd57c18ca89dcb1679ec697c8d3",
+      "bytes": 17138
+    },
+    {
+      "path": "backend/reference_origin_features.py",
+      "sha256": "f436f5a42a4db58b36b41c3faa5f3924b89ffa684f2883d7e840bd7876312e95",
+      "bytes": 924
+    },
+    {
+      "path": "backend/reference-origin-v1.json",
+      "sha256": "118e8734190109e64bd45a839dd78d75be94503ce33e75a9a8524195b05bd9b4",
+      "bytes": 30501
+    },
+    {
+      "path": "backend/forest_leaf_refinement.py",
+      "sha256": "bbe6a09aabbe976a9809f1c359fe708097551b1020358b7ae217a9f867af0e9e",
+      "bytes": 6351
+    },
+    {
+      "path": "backend/forest_feature_adapter.py",
+      "sha256": "3135ee66fe67de340a357e1e6ff02cca075867a61b634f9225c5ff3ab4c54790",
+      "bytes": 1048
+    },
+    {
+      "path": "backend/llm_explainer.py",
+      "sha256": "6ee7da9c9e29ae1909cc283bfc18eb2303f840aff225b16a999a43ee916e2b78",
+      "bytes": 46878
+    },
+    {
+      "path": "scripts/train_reference_root_repair.py",
+      "sha256": "50d3d81cfafd4e8737b3c29b72f275e55e5739a060d7409830501660458457e3",
+      "bytes": 10442
+    },
+    {
+      "path": "scripts/verify_reference_root_repair.py",
+      "sha256": "0c6fe777390a7205629dfc575671f4422a644e2943a5234e04dbda291c7ae621",
+      "bytes": 5049
+    },
+    {
+      "path": "backend/data/simple_reference_root_sparse_repair_20261008/candidate.pkl",
+      "sha256": "bc4e024e32aaf0ad695ea4a4dff552ece09d606c4963a49e8bf6aa8a447575bb",
+      "bytes": 22724993
+    },
+    {
+      "path": "backend/data/simple_reference_root_sparse_repair_20261008/evaluation.json",
+      "sha256": "c5379ca47feffb32f91699acf348b5143f2238ab6ec523b7c2a4de4ef761ef05",
+      "bytes": 41273
+    },
+    {
+      "path": "backend/data/simple_reference_root_sparse_repair_20261008/selection.json",
+      "sha256": "99e44336dcf99331b8a652ea18c9d6925b11645b76c11b22a49b34f6d1b708da",
+      "bytes": 144344
+    },
+    {
+      "path": "backend/data/simple_reference_root_sparse_repair_20261008/design.json",
+      "sha256": "4b05b30f0beca9f8a6dd9d1c3343cfa3bedf01ae988f3c3c99352f01ef4a9753",
+      "bytes": 3464
+    }
+  ],
+  "copied_evidence": [
+    {
+      "path": "evaluation.json",
+      "sha256": "c5379ca47feffb32f91699acf348b5143f2238ab6ec523b7c2a4de4ef761ef05",
+      "exact_byte_copy": true
+    },
+    {
+      "path": "selection.json",
+      "sha256": "99e44336dcf99331b8a652ea18c9d6925b11645b76c11b22a49b34f6d1b708da",
+      "exact_byte_copy": true
+    },
+    {
+      "path": "design.json",
+      "sha256": "4b05b30f0beca9f8a6dd9d1c3343cfa3bedf01ae988f3c3c99352f01ef4a9753",
+      "exact_byte_copy": true
+    }
+  ],
+  "generated_snapshot": {
+    "path": "active-model.json",
+    "sha256": "c351a68c7169ce23add1eac24a28d67dcec430f06931659267d97b672ba4f359"
+  },
+  "nested_repository_model_comparison": {
+    "path": "Phishing_AI_Extension_Demo/backend/model.pkl",
+    "sha256": "6ee0160c17b45123afc6221535aa5241ebd3b9c947d012a3e518a10b816b4014",
+    "matches_root_artifact": false
+  },
+  "notes": [
+    "Source paths are provenance relative to the original root; files may not be available at these paths in the documentation transport branch.",
+    "Hash verification links recorded experiment outputs to the current local artifact; performance metrics were not recomputed in this inspection.",
+    "No live API, public deployment, user study, latency benchmark, or end-to-end browser test was run.",
+    "Raw model binaries, raw datasets, secrets, local absolute paths, and operational demo URLs are not copied into this evidence bundle."
+  ]
+}
