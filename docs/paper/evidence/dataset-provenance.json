@@ -1,0 +1,560 @@
+{
+  "inspection_date": "2026-10-20",
+  "timezone": "Asia/Bangkok",
+  "scope": "Portable provenance summary of original root project files; not the nested repository runtime.",
+  "inspection_method": {
+    "combined_csv_count": "One streaming DictReader pass over the combined CSV; accumulated source/split/label counts without exporting URL rows.",
+    "hash_checks": "SHA256 of current active model, combined dataset and all six evaluation input files checked against recorded active design/evaluation.",
+    "publisher_web_pages_reverified_now": true,
+    "model_training_or_evaluation_rerun": false,
+    "raw_url_rows_exported": false
+  },
+  "active_lineage": {
+    "model": {
+      "path": "backend/model.pkl",
+      "sha256": "bc4e024e32aaf0ad695ea4a4dff552ece09d606c4963a49e8bf6aa8a447575bb",
+      "bytes": 22724993
+    },
+    "model_version": "url-risk-rf-reference-root-repair-support2-20261008",
+    "design": {
+      "path": "backend/data/simple_reference_root_sparse_repair_20261008/design.json",
+      "sha256": "4b05b30f0beca9f8a6dd9d1c3343cfa3bedf01ae988f3c3c99352f01ef4a9753",
+      "bytes": 3464
+    },
+    "evaluation": {
+      "path": "backend/data/simple_reference_root_sparse_repair_20261008/evaluation.json",
+      "sha256": "c5379ca47feffb32f91699acf348b5143f2238ab6ec523b7c2a4de4ef761ef05",
+      "bytes": 41273
+    },
+    "combined_development_dataset": {
+      "path": "backend/data/simple_quality_rf_20261008/dataset.csv",
+      "sha256": "c02bb2adf07c71ddc391403f3d190fb9ab289d058f62ba3177318612428b0df0",
+      "bytes": 124581714
+    },
+    "development_hash_matches_active_design": true,
+    "new_source_manifest_hash_matches_active_design": true,
+    "training_script": {
+      "path": "scripts/train_reference_root_repair.py",
+      "sha256": "50d3d81cfafd4e8737b3c29b72f275e55e5739a060d7409830501660458457e3",
+      "bytes": 10442
+    },
+    "evaluation_script": {
+      "path": "scripts/evaluate_quality_rf_candidate.py",
+      "sha256": "987139b3b4d446815a817c45ff1c29b88129877e07a7ad8f437217fb03090633",
+      "bytes": 6992
+    }
+  },
+  "combined_dataset": {
+    "path": "backend/data/simple_quality_rf_20261008/dataset.csv",
+    "sha256": "c02bb2adf07c71ddc391403f3d190fb9ab289d058f62ba3177318612428b0df0",
+    "rows": 925602,
+    "source_count": 7,
+    "label_definition": {
+      "0": "legitimate/benign according to retained publisher or project reference label",
+      "1": "phishing according to retained publisher label"
+    },
+    "split_totals": {
+      "train": 634745,
+      "calibration": 94176,
+      "validation": 196681
+    },
+    "label_totals": {
+      "0": 545032,
+      "1": 380570
+    },
+    "counts_verified_by_streaming_csv": true,
+    "role_note": "These are the rows made available to the targeted leaf-repair pipeline; do not describe all 925602 rows as a fresh full-forest fit.",
+    "split_roles": {
+      "train": "Learn targeted leaf-refinement regions from existing forest and labeled data.",
+      "calibration": "Registered-domain parity splits observations into positive guards and a reserved probability-calibration portion. Current support2 repair transported the original Platt map and did not fit a new calibrator.",
+      "validation": "Select support2 and apply recorded no-regression checks; not an independent test."
+    },
+    "guard_partition_as_recorded": {
+      "counts": {
+        "train": 634745,
+        "calibration": 94176,
+        "validation": 196681
+      },
+      "guard_rows": 44286,
+      "probability_calibration_rows": 49890,
+      "target_domain_counts": {
+        "google.com": {
+          "validation|label=1": 14002,
+          "validation|label=0": 966
+        },
+        "facebook.com": {
+          "train|label=0": 3124,
+          "train|label=1": 25
+        }
+      },
+      "registered_domain_disjoint": true,
+      "all_target_examples_are_development_probes": true
+    },
+    "direct_phishtank_source_rows": 0
+  },
+  "development_sources": [
+    {
+      "name": "PhreshPhish",
+      "publisher_url": "https://huggingface.co/datasets/phreshphish/phreshphish",
+      "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+      "license_as_recorded": "CC BY 4.0",
+      "manifest_path": "backend/data/recovered-20261004/development-publisher-manifest.json",
+      "role": "Publisher train split used as development data; URL/label/date projected; not downloaded HTML.",
+      "label_evidence": "Publisher HTML-URL phishing/benign labels; not independently reverified by this project",
+      "time_semantics": "Publisher date, day precision; timezone not supplied",
+      "source_column": "phreshphish_train_v1_0_1",
+      "counts_in_combined_dataset": {
+        "train": 330944,
+        "calibration": 39204,
+        "validation": 123698,
+        "total": 493846,
+        "labels": {
+          "0": 272540,
+          "1": 221306
+        }
+      }
+    },
+    {
+      "name": "URL-Phish v1",
+      "publisher_url": "https://data.mendeley.com/datasets/65z9twcx3r/1",
+      "revision": "v1 / DOI 10.17632/65z9twcx3r.1",
+      "license_as_recorded": "CC BY 4.0",
+      "manifest_path": "backend/data/recovered-20261004/development-publisher-manifest.json",
+      "role": "Publisher URL/label data used for development.",
+      "label_evidence": "Publisher labels: ROR-sourced benign and PhishTank phishing; not a current security verdict",
+      "time_semantics": "Per-URL observation time unavailable; never substitute retrieval date",
+      "source_column": "urlphish_v1",
+      "counts_in_combined_dataset": {
+        "train": 77692,
+        "calibration": 10880,
+        "validation": 22258,
+        "total": 110830,
+        "labels": {
+          "0": 98341,
+          "1": 12489
+        }
+      }
+    },
+    {
+      "name": "Web page phishing detection v3",
+      "publisher_url": "https://data.mendeley.com/datasets/c2gw7fy2j4/3",
+      "revision": "v3 / DOI 10.17632/c2gw7fy2j4.3",
+      "license_as_recorded": "CC BY 4.0",
+      "publisher_link_metadata_evidence": "output/deep-learning-datasets-20261015/Dataset_sources_and_files_TH.md",
+      "raw_local_projection": {
+        "path": "backend/data/recovered-20261004/publisher-columns/mendeley-webpage-v3.csv",
+        "sha256": "21093e2902e5441c86a6daf95e86e7c332046e477fdf109a579d7bd81e586d6c",
+        "bytes": 3661166
+      },
+      "role": "URL and status labels retained; project extracts its own features.",
+      "limitation": "Dedicated publisher provenance manifest for this source was not found; link/license metadata comes from the existing source inventory, not a new publisher-page verification.",
+      "source_column": "mendeley_webpage_v3",
+      "counts_in_combined_dataset": {
+        "train": 8276,
+        "calibration": 981,
+        "validation": 2003,
+        "total": 11260,
+        "labels": {
+          "0": 5587,
+          "1": 5673
+        }
+      }
+    },
+    {
+      "name": "DeepURLBench",
+      "publisher_url": "https://github.com/deepinstinct-algo/DeepURLBench",
+      "revision": "bf17c3fef854ff0ea40bcf93e373fc2c6dc30081",
+      "license_as_recorded": "CC BY-NC 4.0",
+      "manifest_path": "backend/data/host-context-20261008/manifest.json",
+      "role": "Selected historical benign/phishing subset for development; malware class excluded.",
+      "time_semantics": "first_seen is a publisher observation timestamp, not the 2026 retrieval date.",
+      "source_column": "deepurlbench-bf17c3fef854",
+      "counts_in_combined_dataset": {
+        "train": 56781,
+        "calibration": 20072,
+        "validation": 21526,
+        "total": 98379,
+        "labels": {
+          "0": 49523,
+          "1": 48856
+        }
+      }
+    },
+    {
+      "name": "PhiUSIIL / UCI",
+      "publisher_url": "https://archive.ics.uci.edu/dataset/967/phiusiil+phishing+url+dataset",
+      "download_url": "https://archive.ics.uci.edu/static/public/967/phiusiil%2Bphishing%2Burl%2Bdataset.zip",
+      "revision": "UCI dataset 967 / published 2024",
+      "license_as_recorded": "CC BY 4.0",
+      "manifest_path": "backend/data/quality-augmentation-20261008/manifest.json",
+      "publisher_rows_as_recorded": 235795,
+      "label_mapping": {
+        "0": "phishing/project 1",
+        "1": "legitimate/project 0"
+      },
+      "role": "New publisher source added to development; separate 15463-row confirmation excluded from development.",
+      "time_semantics": "Per-URL observation dates unknown; 2024 is publication/donation year.",
+      "source_column": "uci_phiusiil_2024",
+      "counts_in_combined_dataset": {
+        "train": 160190,
+        "calibration": 22917,
+        "validation": 27077,
+        "total": 210184,
+        "labels": {
+          "0": 117938,
+          "1": 92246
+        }
+      }
+    },
+    {
+      "name": "Project-curated official reference links",
+      "publisher_urls": [
+        "https://accounts.google.com",
+        "https://learn.microsoft.com",
+        "https://support.google.com",
+        "https://www.chula.ac.th",
+        "https://www.facebook.com",
+        "https://www.ku.ac.th",
+        "https://www.microsoft.com",
+        "https://www.youtube.com"
+      ],
+      "manifest_path": "backend/data/host-context-20261008/official-references.manifest.json",
+      "role": "Targeted development references, assigned project label 0; not an independent benign population or domain allowlist.",
+      "original_reference_rows_as_recorded": 217,
+      "time_semantics": "retrieved_at records project retrieval time; not website safety date.",
+      "source_column": "official_reference_20261008",
+      "counts_in_combined_dataset": {
+        "train": 95,
+        "calibration": 86,
+        "validation": 29,
+        "total": 210,
+        "labels": {
+          "0": 210,
+          "1": 0
+        }
+      }
+    },
+    {
+      "name": "Project-curated quality reference links",
+      "publisher_urls": [
+        "https://account.apple.com",
+        "https://account.microsoft.com",
+        "https://accounts.google.com",
+        "https://docs.github.com",
+        "https://en.wikipedia.org",
+        "https://github.com",
+        "https://learn.microsoft.com",
+        "https://login.microsoftonline.com",
+        "https://login.yahoo.com",
+        "https://m.facebook.com",
+        "https://support.apple.com",
+        "https://support.google.com",
+        "https://web.facebook.com",
+        "https://www.bangkokbank.com",
+        "https://www.bot.or.th",
+        "https://www.buu.ac.th",
+        "https://www.chula.ac.th",
+        "https://www.cmu.ac.th",
+        "https://www.facebook.com",
+        "https://www.kasikornbank.com",
+        "https://www.kmitl.ac.th",
+        "https://www.ku.ac.th",
+        "https://www.mahidol.ac.th",
+        "https://www.rd.go.th",
+        "https://www.scb.co.th",
+        "https://www.thaipbs.or.th",
+        "https://www.wikipedia.org"
+      ],
+      "manifest_path": "backend/data/quality-official-references-20261008/manifest.json",
+      "role": "Additional targeted development references, assigned project label 0; not independent test or domain safety labels.",
+      "original_reference_rows_as_recorded": 992,
+      "included_after_duplicate_filter": 893,
+      "duplicate_excluded": 99,
+      "time_semantics": "retrieved_at records project retrieval time; not website safety date.",
+      "source_column": "official_reference_quality_20261008",
+      "counts_in_combined_dataset": {
+        "train": 767,
+        "calibration": 36,
+        "validation": 90,
+        "total": 893,
+        "labels": {
+          "0": 893,
+          "1": 0
+        }
+      }
+    }
+  ],
+  "confirmation_and_regression_sets": [
+    {
+      "evaluation_key": "fresh_uci_confirmation",
+      "source": "UCI PhiUSIIL",
+      "dataset": {
+        "path": "backend/data/quality-augmentation-20261008/confirmation.csv",
+        "sha256": "8573490ca801a0a7fccf3bb1aa5e2bb2409bea6732972cfef2080fbd196424b9",
+        "bytes": 2757927
+      },
+      "provenance_record": {
+        "path": "backend/data/quality-augmentation-20261008/manifest.json",
+        "sha256": "f5b8772dc30dcd8062a9624e752219e7a6219841bdc644d0d02783f61f1d7dd0",
+        "bytes": 22484
+      },
+      "selector": "All rows; candidate confirmation",
+      "rows_recorded_in_active_evaluation": 15463,
+      "domains_recorded_in_active_evaluation": 15463,
+      "labels_derived_from_recorded_confusion_counts": {
+        "0": 11322,
+        "1": 4141
+      },
+      "current_file_hash_matches_active_evaluation": true,
+      "counts_recounted_now": false,
+      "publisher_url": "https://archive.ics.uci.edu/dataset/967/phiusiil+phishing+url+dataset"
+    },
+    {
+      "evaluation_key": "fresh_deepurlbench_confirmation_round2",
+      "source": "DeepURLBench",
+      "dataset": {
+        "path": "backend/data/incremental-confirmation-round2-20261008/dataset.csv",
+        "sha256": "0aee339597c7669ed49130664a1f104c24462a1c13e80829c6c875504fd40214",
+        "bytes": 1244877
+      },
+      "provenance_record": {
+        "path": "backend/data/incremental-confirmation-round2-20261008/manifest.json",
+        "sha256": "f1c135b8f2c1f8eb830245f073fdaf3df591ee3196b1f2ca781326651e3bb52e",
+        "bytes": 21658
+      },
+      "selector": "All rows; candidate confirmation, historical publisher data",
+      "rows_recorded_in_active_evaluation": 10000,
+      "domains_recorded_in_active_evaluation": 10000,
+      "labels_derived_from_recorded_confusion_counts": {
+        "0": 5000,
+        "1": 5000
+      },
+      "current_file_hash_matches_active_evaluation": true,
+      "counts_recounted_now": false,
+      "publisher_url": "https://github.com/deepinstinct-algo/DeepURLBench",
+      "revision": "bf17c3fef854ff0ea40bcf93e373fc2c6dc30081"
+    },
+    {
+      "evaluation_key": "historical_regression",
+      "source": "PhreshPhish publisher test split",
+      "dataset": {
+        "path": "backend/data/simple_recovered_query_structural_rf_20261005/dataset.csv",
+        "sha256": "78b3176d0d7778a79b94218ef7b12fbc7157a29c2ef8952a57b2b05223a13b7f",
+        "bytes": 83994435
+      },
+      "provenance_record": {
+        "path": "backend/data/simple_recovered_query_structural_rf_20261005/evaluation.json",
+        "sha256": "48af811cf20c2cd3a7f2455b673f23af37cc717a6b2af5461df625edaf721837",
+        "bytes": 8415
+      },
+      "selector": "Only split=holdout; historical regression, previously inspected",
+      "rows_recorded_in_active_evaluation": 70085,
+      "domains_recorded_in_active_evaluation": 46703,
+      "labels_derived_from_recorded_confusion_counts": {
+        "0": 27684,
+        "1": 42401
+      },
+      "current_file_hash_matches_active_evaluation": true,
+      "counts_recounted_now": false,
+      "publisher_url": "https://huggingface.co/datasets/phreshphish/phreshphish",
+      "revision": "eabec4b7a66324b79cc8a0ad856d1731dc26fe1a",
+      "source_column": "phreshphish_test_v1_0_1"
+    },
+    {
+      "evaluation_key": "prior_deepurlbench_regression",
+      "source": "DeepURLBench",
+      "dataset": {
+        "path": "backend/data/host-context-20261008/dataset.csv",
+        "sha256": "e213815d02f5587fe7876301a071b3d305c82185984af524eb145b32314bf5d0",
+        "bytes": 18226867
+      },
+      "provenance_record": {
+        "path": "backend/data/host-context-20261008/manifest.json",
+        "sha256": "86c9e8034733ce5c87336b9bce60ed1e70ba4c7eaa53d90841582b49008fc6c9",
+        "bytes": 21750
+      },
+      "selector": "Only split=holdout; historical regression",
+      "rows_recorded_in_active_evaluation": 20000,
+      "domains_recorded_in_active_evaluation": 17420,
+      "labels_derived_from_recorded_confusion_counts": {
+        "0": 10000,
+        "1": 10000
+      },
+      "current_file_hash_matches_active_evaluation": true,
+      "counts_recounted_now": false,
+      "publisher_url": "https://github.com/deepinstinct-algo/DeepURLBench",
+      "revision": "bf17c3fef854ff0ea40bcf93e373fc2c6dc30081"
+    },
+    {
+      "evaluation_key": "prior_confirmation_regression",
+      "source": "DeepURLBench",
+      "dataset": {
+        "path": "backend/data/incremental-confirmation-20261008/dataset.csv",
+        "sha256": "95017fd061b326560fea37e2490d266bc353ccc05afd14b1555e2f44f8f0eb38",
+        "bytes": 1257112
+      },
+      "provenance_record": {
+        "path": "backend/data/incremental-confirmation-20261008/manifest.json",
+        "sha256": "3497855885d773802a2495c6173df8cdc3b235d227b0b802504fe48b9df215cb",
+        "bytes": 21454
+      },
+      "selector": "All rows; prior confirmation reused as regression",
+      "rows_recorded_in_active_evaluation": 10000,
+      "domains_recorded_in_active_evaluation": 10000,
+      "labels_derived_from_recorded_confusion_counts": {
+        "0": 5000,
+        "1": 5000
+      },
+      "current_file_hash_matches_active_evaluation": true,
+      "counts_recounted_now": false,
+      "publisher_url": "https://github.com/deepinstinct-algo/DeepURLBench",
+      "revision": "bf17c3fef854ff0ea40bcf93e373fc2c6dc30081"
+    },
+    {
+      "evaluation_key": "recent_phishing_regression",
+      "source": "PhishTank verified-online snapshot",
+      "dataset": {
+        "path": "backend/data/host-context-20261008/temporal-phishing-test.csv",
+        "sha256": "586e94b6f38fe40a23094ed0c2954fca9cf50ef3dbf2447f861a038e215b4d8f",
+        "bytes": 36531
+      },
+      "provenance_record": {
+        "path": "backend/data/host-context-20261008/temporal-phishing-test.manifest.json",
+        "sha256": "bffd28552cb986755c37992e827218f33e0a915d0e29dd735c29e4b8ceb1cd29",
+        "bytes": 20240
+      },
+      "selector": "All rows; phishing-only temporal diagnostic reused as regression",
+      "rows_recorded_in_active_evaluation": 151,
+      "domains_recorded_in_active_evaluation": 151,
+      "labels_derived_from_recorded_confusion_counts": {
+        "0": 0,
+        "1": 151
+      },
+      "current_file_hash_matches_active_evaluation": true,
+      "counts_recounted_now": false,
+      "publisher_url": "https://phishtank.net/developer_info.php",
+      "download_url": "https://data.phishtank.com/data/online-valid.csv.gz",
+      "source_column": "phishtank_verified_online_20261008",
+      "limitations": [
+        "Phishing-only temporal diagnostic, one URL per available-unseen domain; no benign FPR estimate. Original training file missing; prior exposure incomplete."
+      ]
+    }
+  ],
+  "provenance_records": [
+    {
+      "path": "backend/data/recovered-20261004/development-publisher-manifest.json",
+      "sha256": "ce53ca3f59ded585fcf401576fcbe96f6db0a4469f2404dac7eeed81b8ef869b",
+      "bytes": 32031
+    },
+    {
+      "path": "backend/data/recovered-20261004/recovery-manifest.json",
+      "sha256": "706b270f13ca9acbe3c45b20c4d782cd4e054e98cc0e61cfa1ad0c05a13cc95e",
+      "bytes": 45515
+    },
+    {
+      "path": "backend/data/quality-augmentation-20261008/manifest.json",
+      "sha256": "f5b8772dc30dcd8062a9624e752219e7a6219841bdc644d0d02783f61f1d7dd0",
+      "bytes": 22484
+    },
+    {
+      "path": "backend/data/host-context-20261008/manifest.json",
+      "sha256": "86c9e8034733ce5c87336b9bce60ed1e70ba4c7eaa53d90841582b49008fc6c9",
+      "bytes": 21750
+    },
+    {
+      "path": "backend/data/host-context-20261008/official-references.manifest.json",
+      "sha256": "ad635893547a69f187b1ca39656562c3d1170db5eec359cdea57ecd7748d9a47",
+      "bytes": 2971
+    },
+    {
+      "path": "backend/data/quality-official-references-20261008/manifest.json",
+      "sha256": "bab9c1950fffb60fc38640800f5397f4c5e40401df1ff51ff381ca1b5eec5335",
+      "bytes": 8250
+    },
+    {
+      "path": "backend/data/host-context-20261008/temporal-phishing-test.manifest.json",
+      "sha256": "bffd28552cb986755c37992e827218f33e0a915d0e29dd735c29e4b8ceb1cd29",
+      "bytes": 20240
+    },
+    {
+      "path": "backend/data/incremental-confirmation-20261008/manifest.json",
+      "sha256": "3497855885d773802a2495c6173df8cdc3b235d227b0b802504fe48b9df215cb",
+      "bytes": 21454
+    },
+    {
+      "path": "backend/data/incremental-confirmation-round2-20261008/manifest.json",
+      "sha256": "f1c135b8f2c1f8eb830245f073fdaf3df591ee3196b1f2ca781326651e3bb52e",
+      "bytes": 21658
+    },
+    {
+      "path": "backend/data/simple_recovered_query_structural_rf_20261005/evaluation.json",
+      "sha256": "48af811cf20c2cd3a7f2455b673f23af37cc717a6b2af5461df625edaf721837",
+      "bytes": 8415
+    },
+    {
+      "path": "backend/data/simple_reference_refinement_rf_20261008/partition-audit.json",
+      "sha256": "e4fa90547dc11df29c43c572387443f47e8ac572d0f050d6fbfad88d8ad0b3f5",
+      "bytes": 481
+    },
+    {
+      "path": "backend/data/simple_quality_rf_20261008/reference-audit.json",
+      "sha256": "2bea1aea34d88e7344258cf4bd56b4ab7bdc3f310d75eb1eecabfd1c6cacd8f6",
+      "bytes": 285
+    }
+  ],
+  "legacy_sources_metadata_only": {
+    "manifest": {
+      "path": "backend/data/training_urls.manifest.json",
+      "sha256": "f2237952d5888f5ba5d52aaf3e26544ebdf448526c5235dac499fb5b16a1e77c",
+      "bytes": 2648
+    },
+    "original_training_csv_exists": false,
+    "feeds": [
+      {
+        "name": "phishtank",
+        "url": "https://data.phishtank.com/data/online-valid.csv",
+        "path_as_recorded": "backend/data/cache/phishtank-online-valid.csv",
+        "sha256_as_recorded": "f478fea0717a0e4d4d4b150829f376468f34b220103caa3a9503875db0dca9f3",
+        "local_file_currently_exists": false,
+        "role": "Legacy source manifest only; not a direct source-column in the current combined development dataset."
+      },
+      {
+        "name": "openphish",
+        "url": "https://openphish.com/feed.txt",
+        "path_as_recorded": "backend/data/cache/openphish-feed.txt",
+        "sha256_as_recorded": "42b53b76d7ab7b636941230af574cbc3b1347d2d805dde7de8bc4a45e99bd08c",
+        "local_file_currently_exists": false,
+        "role": "Legacy source manifest only; not a direct source-column in the current combined development dataset."
+      },
+      {
+        "name": "tranco",
+        "url": "https://tranco-list.eu/top-1m.csv.zip",
+        "path_as_recorded": "backend/data/cache/tranco-top-1m.csv.zip",
+        "sha256_as_recorded": "a115b470bc6487414f36b5c6bb16f1b22dad8fc025be0b36352bfbab6f2a6023",
+        "local_file_currently_exists": false,
+        "role": "Legacy source manifest only; not a direct source-column in the current combined development dataset."
+      }
+    ],
+    "common_crawl_record": {
+      "manifest": {
+        "path": "backend/data/legitimate_deep_links.manifest.json",
+        "sha256": "947f4839c354d39cf858e244f0385b0b0ba9556e978e8bb689f0c9567ab156c2",
+        "bytes": 1747
+      },
+      "index": "CC-MAIN-2026-30",
+      "local_reference_csv_exists": true,
+      "role": "Historical reference collection; no direct common_crawl source-column in current combined dataset."
+    }
+  },
+  "limitations": [
+    "Current dataset source counts do not reconstruct original baseline training exposure. Original training_urls.csv is missing.",
+    "Publisher train/test naming and fresh confirmation naming do not prove a forward-temporal test. Prior exposure audit remains incomplete.",
+    "UCI, DeepURLBench, PhreshPhish and other publisher labels were not independently manually reviewed for every URL.",
+    "Official references are curated development examples; official hosts do not guarantee every URL is safe. Raw reference manifests may include transient query values and are intentionally not copied.",
+    "Current support2 artifact reuses the original Platt calibration mapping; calibration split row counts are not evidence of a new calibration fit.",
+    "PhishTank appears directly in the separate 151-positive regression diagnostic, not as a direct source-column in the 925602-row development CSV; upstream publisher use of PhishTank is a different provenance level.",
+    "Recorded licenses are metadata, not a newly verified publisher-page audit or permission to redistribute raw datasets. DeepURLBench is recorded as CC BY-NC 4.0.",
+    "Date fields mix publisher observations, first_seen and retrieval times. Do not call the merged dataset a new 2026 collection.",
+    "Raw datasets, raw reference manifests, model binaries and URL records are not included in this summary."
+  ]
+}
