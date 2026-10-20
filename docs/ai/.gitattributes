@@ -1,0 +1,3 @@
+# Keep source archive and manifest bytes stable across platforms.
+*.json -text whitespace=cr-at-eol
+*.zip binary
