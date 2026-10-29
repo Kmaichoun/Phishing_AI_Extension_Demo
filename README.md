@@ -4,11 +4,61 @@
 
 ชุดส่งอาจารย์ปรับปรุงวันที่ **29 ตุลาคม 2569 (2026-10-29)** บน branch **`submission/latest-project-20261029`**
 
-## สไลด์นำเสนอ
+## สไลด์นำเสนอครบ 12 หน้า
 
-**[▶ เปิดดูสไลด์ครบ 12 หน้า](docs/submission-20261029/slides/README.md)** · [เปิด PDF](docs/submission-20261029/slides/%E0%B9%80%E0%B8%88%E0%B8%B2%E0%B8%B0%E0%B8%A5%E0%B8%B6%E0%B8%81%E0%B8%A3%E0%B8%B0%E0%B8%9A%E0%B8%9A%E0%B9%81%E0%B8%A5%E0%B8%B0%E0%B8%9C%E0%B8%A5%E0%B8%97%E0%B8%94%E0%B8%AA%E0%B8%AD%E0%B8%9A%20Phish%20Radar%20AI.pdf) · [ดาวน์โหลด PDF](docs/submission-20261029/slides/%E0%B9%80%E0%B8%88%E0%B8%B2%E0%B8%B0%E0%B8%A5%E0%B8%B6%E0%B8%81%E0%B8%A3%E0%B8%B0%E0%B8%9A%E0%B8%9A%E0%B9%81%E0%B8%A5%E0%B8%B0%E0%B8%9C%E0%B8%A5%E0%B8%97%E0%B8%94%E0%B8%AA%E0%B8%AD%E0%B8%9A%20Phish%20Radar%20AI.pdf?raw=1)
+**[เปิด PDF](docs/submission-20261029/slides/%E0%B9%80%E0%B8%88%E0%B8%B2%E0%B8%B0%E0%B8%A5%E0%B8%B6%E0%B8%81%E0%B8%A3%E0%B8%B0%E0%B8%9A%E0%B8%9A%E0%B9%81%E0%B8%A5%E0%B8%B0%E0%B8%9C%E0%B8%A5%E0%B8%97%E0%B8%94%E0%B8%AA%E0%B8%AD%E0%B8%9A%20Phish%20Radar%20AI.pdf)** · **[ดาวน์โหลด PDF](docs/submission-20261029/slides/%E0%B9%80%E0%B8%88%E0%B8%B2%E0%B8%B0%E0%B8%A5%E0%B8%B6%E0%B8%81%E0%B8%A3%E0%B8%B0%E0%B8%9A%E0%B8%9A%E0%B9%81%E0%B8%A5%E0%B8%B0%E0%B8%9C%E0%B8%A5%E0%B8%97%E0%B8%94%E0%B8%AA%E0%B8%AD%E0%B8%9A%20Phish%20Radar%20AI.pdf?raw=1)** · [เปิดหน้าสไลด์แยก](docs/submission-20261029/slides/README.md)
 
-[![หน้าปกสไลด์ Phish Radar AI คลิกเพื่อดูครบ 12 หน้า](docs/submission-20261029/slides/previews/slide-01.png)](docs/submission-20261029/slides/README.md)
+เลื่อนดูสไลด์ทั้ง 12 หน้าได้ที่หน้า repo นี้ คลิกแต่ละภาพเพื่อเปิดขนาดเต็ม
+
+### สไลด์ 1 / 12
+
+[![สไลด์หน้า 1 จาก 12](docs/submission-20261029/slides/previews/slide-01.png)](docs/submission-20261029/slides/previews/slide-01.png)
+
+### สไลด์ 2 / 12
+
+[![สไลด์หน้า 2 จาก 12](docs/submission-20261029/slides/previews/slide-02.png)](docs/submission-20261029/slides/previews/slide-02.png)
+
+### สไลด์ 3 / 12
+
+[![สไลด์หน้า 3 จาก 12](docs/submission-20261029/slides/previews/slide-03.png)](docs/submission-20261029/slides/previews/slide-03.png)
+
+### สไลด์ 4 / 12
+
+[![สไลด์หน้า 4 จาก 12](docs/submission-20261029/slides/previews/slide-04.png)](docs/submission-20261029/slides/previews/slide-04.png)
+
+### สไลด์ 5 / 12
+
+[![สไลด์หน้า 5 จาก 12](docs/submission-20261029/slides/previews/slide-05.png)](docs/submission-20261029/slides/previews/slide-05.png)
+
+### สไลด์ 6 / 12
+
+[![สไลด์หน้า 6 จาก 12](docs/submission-20261029/slides/previews/slide-06.png)](docs/submission-20261029/slides/previews/slide-06.png)
+
+### สไลด์ 7 / 12
+
+[![สไลด์หน้า 7 จาก 12](docs/submission-20261029/slides/previews/slide-07.png)](docs/submission-20261029/slides/previews/slide-07.png)
+
+### สไลด์ 8 / 12
+
+[![สไลด์หน้า 8 จาก 12](docs/submission-20261029/slides/previews/slide-08.png)](docs/submission-20261029/slides/previews/slide-08.png)
+
+### สไลด์ 9 / 12
+
+[![สไลด์หน้า 9 จาก 12](docs/submission-20261029/slides/previews/slide-09.png)](docs/submission-20261029/slides/previews/slide-09.png)
+
+### สไลด์ 10 / 12
+
+[![สไลด์หน้า 10 จาก 12](docs/submission-20261029/slides/previews/slide-10.png)](docs/submission-20261029/slides/previews/slide-10.png)
+
+### สไลด์ 11 / 12
+
+[![สไลด์หน้า 11 จาก 12](docs/submission-20261029/slides/previews/slide-11.png)](docs/submission-20261029/slides/previews/slide-11.png)
+
+### สไลด์ 12 / 12
+
+[![สไลด์หน้า 12 จาก 12](docs/submission-20261029/slides/previews/slide-12.png)](docs/submission-20261029/slides/previews/slide-12.png)
+
+---
 
 > เริ่มอ่าน [รายงานภาพรวมสำหรับอาจารย์](docs/submission-20261029/README.md) แล้วอ่าน [การทำงานของระบบ](docs/submission-20261029/SYSTEM_WALKTHROUGH_TH.md), [โมเดลและข้อมูล](docs/submission-20261029/MODEL_AND_DATA_TH.md), [วิธีติดตั้ง/สาธิต](docs/submission-20261029/SETUP_AND_DEMO_TH.md) และ [ผลตรวจสอบชุดส่ง](docs/submission-20261029/VERIFICATION_TH.md)
 
