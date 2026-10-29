@@ -1,5 +1,7 @@
 # เอกสารโปรเจกต์
 
+เริ่มอ่านชุดส่งอาจารย์ล่าสุด 29 ตุลาคม 2026 ที่ [รายงานการส่ง](submission-20261029/README.md), [การทำงานของระบบ](submission-20261029/SYSTEM_WALKTHROUGH_TH.md), [โมเดลและข้อมูล](submission-20261029/MODEL_AND_DATA_TH.md) และ [ผลตรวจ](submission-20261029/VERIFICATION_TH.md) เอกสารเดิมด้านล่างเป็นประวัติหลายรุ่น ให้ตรวจ model/source identity ก่อนอ้างอิง
+
 เอกสารถูกแยกออกจากไฟล์ runtime เพื่อลดโอกาสแก้ผิดส่วน โดย Chrome Extension อยู่ใน `extension/` และ React Web App อยู่ใน `web-app/`
 
 ## คู่มือหลัก

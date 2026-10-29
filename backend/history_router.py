@@ -88,7 +88,6 @@ def _history_response(row: dict[str, object]) -> SearchHistoryResponse:
         detection_label=str(row["DetectionLabel"]) if row["DetectionLabel"] is not None else None,
         model_status=str(row["ModelStatus"]) if row["ModelStatus"] is not None else None,
         source=str(row["Source"]),
-        device_name=str(row["DeviceName"]),
         created_at=row["CreatedAt"],
     )
 
@@ -115,12 +114,12 @@ def create_history(
         text(
             """
             INSERT INTO SearchHistory
-                (UserId, UserDeviceId, Url, UrlHash, Hostname, RuleScore, MlScore,
+                (UserId, Url, UrlHash, Hostname, RuleScore, MlScore,
                  FinalScore, Alpha, DecisionThreshold, DetectionLabel, ModelStatus, Source,
                  RiskProbability, RiskScore, Decision, WarningThreshold, BlockingThreshold,
                  ModelVersion, PolicyVersion, FeatureSchemaVersion, LayerResults)
             VALUES
-                (:user_id, :device_id, :url, :url_hash, :hostname, :rule_score, :ml_score,
+                (:user_id, :url, :url_hash, :hostname, :rule_score, :ml_score,
                  :final_score, :alpha, :decision_threshold, :detection_label, :model_status, :source,
                  :risk_probability, :risk_score, :decision, :warning_threshold, :blocking_threshold,
                  :model_version, :policy_version, :feature_schema_version, :layer_results)
@@ -128,7 +127,6 @@ def create_history(
         ),
         {
             "user_id": current_user["UserId"],
-            "device_id": current_user["UserDeviceId"],
             "url": safe_url,
             "url_hash": url_hash,
             "hostname": hostname,
@@ -162,12 +160,11 @@ def create_history(
             """
             SELECT h.HistoryId, h.Url, h.Hostname, h.RuleScore, h.MlScore,
                    h.FinalScore, h.Alpha, h.DecisionThreshold, h.DetectionLabel,
-                   h.ModelStatus, h.Source, h.CreatedAt, d.DeviceName,
+                   h.ModelStatus, h.Source, h.CreatedAt,
                    h.RiskProbability, h.RiskScore, h.Decision,
                    h.WarningThreshold, h.BlockingThreshold, h.ModelVersion,
                    h.PolicyVersion, h.FeatureSchemaVersion, h.LayerResults
             FROM SearchHistory AS h
-            INNER JOIN UserDevices AS d ON d.UserDeviceId = h.UserDeviceId
             WHERE h.HistoryId = :history_id AND h.UserId = :user_id
             """
         ),
@@ -186,7 +183,6 @@ def list_history(
     decision: Literal['allow', 'warn', 'block'] | None = None,
     date_from: date | None = None,
     date_to: date | None = None,
-    device_id: int | None = None,
     current_user: dict[str, object] = Depends(require_authenticated_user),
     database: Session = Depends(_session_scope),
 ) -> SearchHistoryList:
@@ -196,21 +192,19 @@ def list_history(
     filters = """h.UserId = :user_id AND h.Url LIKE :q
         AND (:decision IS NULL OR h.Decision=:decision)
         AND (:date_from IS NULL OR h.CreatedAt>=:date_from)
-        AND (:date_to IS NULL OR h.CreatedAt<DATE_ADD(:date_to, INTERVAL 1 DAY))
-        AND (:device_id IS NULL OR h.UserDeviceId=:device_id)"""
+        AND (:date_to IS NULL OR h.CreatedAt<DATE_ADD(:date_to, INTERVAL 1 DAY))"""
     params = dict(limit=limit, offset=offset, user_id=current_user['UserId'], q=f'%{q}%',
-                  decision=decision, date_from=date_from, date_to=date_to, device_id=device_id)
+                  decision=decision, date_from=date_from, date_to=date_to)
     rows = database.execute(
         text(
             f"""
             SELECT h.HistoryId, h.Url, h.Hostname, h.RuleScore, h.MlScore,
                    h.FinalScore, h.Alpha, h.DecisionThreshold, h.DetectionLabel,
-                   h.ModelStatus, h.Source, h.CreatedAt, d.DeviceName,
+                   h.ModelStatus, h.Source, h.CreatedAt,
                    h.RiskProbability, h.RiskScore, h.Decision,
                    h.WarningThreshold, h.BlockingThreshold, h.ModelVersion,
                    h.PolicyVersion, h.FeatureSchemaVersion, h.LayerResults
             FROM SearchHistory AS h
-            INNER JOIN UserDevices AS d ON d.UserDeviceId = h.UserDeviceId
             WHERE {filters}
             ORDER BY h.CreatedAt DESC, h.HistoryId DESC
             LIMIT :limit OFFSET :offset

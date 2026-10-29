@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 
@@ -21,6 +22,16 @@ def main() -> None:
             statement = path.read_text(encoding="utf-8-sig").strip()
             print(f"Applying {path.name}")
             connection.exec_driver_sql(statement)
+
+    # Upgrade files contain simple statements only (no routines or semicolons in strings).
+    # All statements of an upgrade share one connection for PREPARE/session variables.
+    for path in sorted((MIGRATIONS_DIR.parent / "upgrades").glob("*.sql")):
+        sql = re.sub(r"(?m)^--[^\n]*", "", path.read_text(encoding="utf-8-sig"))
+        print(f"Applying {path.name}")
+        with engine.begin() as connection:
+            for statement in sql.split(";"):
+                if statement.strip():
+                    connection.exec_driver_sql(statement.strip())
 
     result = database_status()
     if not (

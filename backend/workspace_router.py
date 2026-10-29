@@ -41,19 +41,13 @@ def rows(db: Session, sql: str, params: dict | None = None) -> list[dict]:
 
 @router.get("/security")
 def security(user: dict = Depends(member), db: Session = Depends(_session_scope)):
-    devices = rows(db, """SELECT UserDeviceId AS id, DeviceName AS name,
-        FirstSeenAt AS first_seen, LastSeenAt AS last_seen, IsRevoked AS revoked
-        FROM UserDevices WHERE UserId=:uid ORDER BY LastSeenAt DESC""", {"uid": user["UserId"]})
-    sessions = rows(db, """SELECT s.SessionId AS id, d.DeviceName AS device_name,
-        s.CreatedAt AS created_at, s.LastSeenAt AS last_seen, s.ExpiresAt AS expires_at
-        FROM Sessions s JOIN UserDevices d ON d.UserDeviceId=s.UserDeviceId
-        WHERE s.UserId=:uid AND s.RevokedAt IS NULL AND s.ExpiresAt>UTC_TIMESTAMP(3)
-        AND d.IsRevoked=0 ORDER BY s.LastSeenAt DESC""", {"uid": user["UserId"]})
-    for item in devices:
-        item["current"] = item["id"] == user["UserDeviceId"]
+    sessions = rows(db, """SELECT SessionId AS id, CreatedAt AS created_at,
+        LastSeenAt AS last_seen, ExpiresAt AS expires_at
+        FROM Sessions WHERE UserId=:uid AND RevokedAt IS NULL
+        AND ExpiresAt>UTC_TIMESTAMP(3) ORDER BY LastSeenAt DESC""", {"uid": user["UserId"]})
     for item in sessions:
         item["current"] = item["id"] == user["SessionId"]
-    return {"devices": devices, "sessions": sessions}
+    return {"sessions": sessions}
 
 
 @router.delete("/sessions/{session_id}")
@@ -67,23 +61,6 @@ def revoke_session(session_id: UUID, user: dict = Depends(member), db: Session =
     if not result.rowcount:
         raise HTTPException(404, "ไม่พบ Session ที่ยกเลิกได้")
     audit(db, user["UserId"], "session.revoke", "session", sid, {})
-    db.commit()
-    return {"ok": True}
-
-
-@router.delete("/devices/{device_id}")
-def revoke_device(device_id: int, user: dict = Depends(member), db: Session = Depends(_session_scope)):
-    if device_id == user["UserDeviceId"]:
-        raise HTTPException(400, "ไม่สามารถยกเลิกอุปกรณ์ที่กำลังใช้งาน")
-    result = db.execute(text("""UPDATE UserDevices SET IsRevoked=1, RevokedAt=UTC_TIMESTAMP(3)
-        WHERE UserDeviceId=:did AND UserId=:uid AND IsRevoked=0"""),
-        {"did": device_id, "uid": user["UserId"]})
-    if not result.rowcount:
-        raise HTTPException(404, "ไม่พบอุปกรณ์ที่ยกเลิกได้")
-    db.execute(text("""UPDATE Sessions SET RevokedAt=UTC_TIMESTAMP(3)
-        WHERE UserDeviceId=:did AND UserId=:uid AND RevokedAt IS NULL"""),
-        {"did": device_id, "uid": user["UserId"]})
-    audit(db, user["UserId"], "device.revoke", "device", device_id, {})
     db.commit()
     return {"ok": True}
 

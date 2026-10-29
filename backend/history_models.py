@@ -49,7 +49,6 @@ class SearchHistoryResponse(BaseModel):
     detection_label: str | None
     model_status: str | None
     source: str
-    device_name: str
     created_at: datetime
 
 

@@ -125,7 +125,8 @@ try {
     'database/mysql/README_TH.md',
     'database/mysql/create_database.sql',
     'database/mysql/migrations/001_create_users.sql',
-    'database/mysql/migrations/002_create_user_devices.sql',
+    'database/mysql/phish_radar_phpmyadmin_import.sql',
+    'database/mysql/upgrades/007_remove_user_devices.sql',
     'database/mysql/migrations/003_create_sessions.sql',
     'database/mysql/migrations/004_create_search_history.sql',
     'scripts/test_auth_flow.py',
@@ -297,7 +298,7 @@ try {
   }
 
   $pythonCaches = Get-ChildItem -LiteralPath $ProjectRoot -Recurse -Directory -Filter '__pycache__' |
-    Where-Object { $_.FullName -notlike "$(Join-Path $ProjectRoot '.venv')*" }
+    Where-Object { (Get-ProjectRelativePath $_.FullName) -notmatch '(^|[\\/])(?:\.venv|venv|node_modules)([\\/]|$)' }
   foreach ($pythonCache in $pythonCaches) {
     $relativeCache = Get-ProjectRelativePath $pythonCache.FullName
     Add-ValidationError "Python cache should be removed: $relativeCache"

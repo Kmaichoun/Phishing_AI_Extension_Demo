@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Phish Radar AI",
-  "version": "2.4.1",
+  "version": "2.4.10",
   "description": "Phish Radar AI with rule-based and ML analysis, LLM explanations, feedback, search safety badges, a web dashboard, and explainable on-page evidence.",
   "permissions": [
     "tabs",
@@ -39,6 +39,8 @@
       "js": [
         "app-trust.js",
         "analyzer.js",
+        "ad-filter-policy.js",
+        "ad-filter.js",
         "content.js"
       ],
       "css": [

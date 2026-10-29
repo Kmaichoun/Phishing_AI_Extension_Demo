@@ -1,0 +1,2 @@
+# Keep publication and verification evidence byte-stable.
+*.json -text whitespace=cr-at-eol

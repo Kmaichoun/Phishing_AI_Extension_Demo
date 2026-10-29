@@ -38,7 +38,7 @@ export function AppHeader() {
         <details ref={menu} className="account-menu"><summary>{user?.username || 'บัญชี'} <span aria-hidden="true">⌄</span></summary>
           <div className="account-menu-content">
             <small>{user?.role === 'admin' ? 'ผู้ดูแลระบบ' : 'ผู้ใช้'}</small>
-            <Link to="/settings">ตั้งค่าบัญชี</Link><Link to="/security">อุปกรณ์และ Session</Link><Link to="/status">สถานะระบบ</Link>
+            <Link to="/settings">ตั้งค่าบัญชี</Link><Link to="/security">การเข้าสู่ระบบ</Link><Link to="/status">สถานะระบบ</Link>
             {user?.role === 'admin' && <Link to="/admin">จัดการระบบ</Link>}
             <label><input type="checkbox" checked={privacyMode} disabled={['analyzing', 'explaining'].includes(analysisPhase)} onChange={e => setPrivacyMode(e.target.checked)} />Privacy Mode</label>
             <small>เปิดแล้วตรวจ URL ด้วยกฎในเครื่อง</small>

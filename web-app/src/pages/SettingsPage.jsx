@@ -92,7 +92,7 @@ export function SettingsPage() {
           <p className="eyebrow">บัญชีและความปลอดภัย</p>
           <h1>ตั้งค่าบัญชี</h1>
           <p>แก้ไขข้อมูลที่ใช้เข้าสู่ระบบ โดยไม่มีสิทธิ์เปลี่ยน Role ของตัวเองจากหน้านี้</p>
-          <Link to="/security">จัดการอุปกรณ์และ Session</Link>
+          <Link to="/security">จัดการ Session</Link>
         </header>
 
         <section className="identity-strip" aria-labelledby="identityTitle" data-reveal>
@@ -103,7 +103,6 @@ export function SettingsPage() {
           </div>
           <dl className="identity-meta">
             <div><dt>สิทธิ์</dt><dd>{role}</dd></div>
-            <div><dt>อุปกรณ์นี้</dt><dd>{user?.device_name || '-'}</dd></div>
           </dl>
         </section>
 

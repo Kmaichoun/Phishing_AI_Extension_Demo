@@ -46,7 +46,7 @@ function renderResult(rawValue) {
 
   currentUrl = url;
   currentResult = PhishRadarAnalyzer.analyzeUrl(url);
-  const level = currentResult.score >= 61 ? 'bad' : currentResult.score >= 31 ? 'warn' : 'good';
+  const level = currentResult.score >= 60 ? 'bad' : currentResult.score >= 31 ? 'warn' : 'good';
   $('resultCard').hidden = false;
   $('decodedUrl').textContent = url;
   $('score').textContent = `${currentResult.score}/100`;

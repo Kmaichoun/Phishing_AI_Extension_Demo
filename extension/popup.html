@@ -70,6 +70,38 @@
     </section>
 
     <section class="mode-list" aria-label="โหมดการป้องกัน">
+      <section class="privacy-card ad-filter-card" id="adFilterCard">
+        <span class="mode-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <rect x="3" y="4" width="18" height="16" rx="2" />
+            <path d="M3 9h18M9 12l6 6M15 12l-6 6" />
+          </svg>
+        </span>
+        <label class="privacy-toggle">
+          <input id="riskyAdProtection" type="checkbox" />
+          <span class="privacy-copy">
+            <b>ซ่อนโฆษณาและป๊อปอัป</b>
+            <small>กรองในเครื่อง โดยไม่ส่งข้อมูลไป LLM</small>
+          </span>
+          <span class="switch" aria-hidden="true"><i></i></span>
+        </label>
+        <div class="ad-filter-options">
+          <label class="ad-filter-mode" for="adFilterMode">
+            <span>รายการที่ต้องการซ่อน</span>
+            <select id="adFilterMode">
+              <option value="all">โฆษณาที่ตรวจพบทั้งหมด</option>
+              <option value="risky">เฉพาะโฆษณาที่มีสัญญาณเสี่ยง</option>
+            </select>
+          </label>
+          <label class="ad-filter-exception">
+            <input id="adFilterSiteException" type="checkbox" />
+            <span>ยกเว้นเว็บไซต์นี้</span>
+          </label>
+          <small id="adFilterSiteHost" class="ad-filter-host"></small>
+          <p id="adFilterStatus" role="status">กำลังอ่านสถานะตัวกรอง</p>
+        </div>
+      </section>
+
       <section class="privacy-card page-scan-card" id="pageScanCard">
         <span class="mode-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none">

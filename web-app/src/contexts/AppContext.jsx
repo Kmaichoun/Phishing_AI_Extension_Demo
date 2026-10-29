@@ -11,6 +11,8 @@ import { api } from '../services/api';
 import {
   analyzer,
   brandVisualInsights,
+  explanationEvidenceReasons,
+  explanationReasonItems,
   flattenReason,
   normalizeInputUrl,
   redactUrl,
@@ -36,8 +38,9 @@ function loadArray(key) {
 
 function safeHistoryItem(item) {
   const url = safeHistoryUrl(item?.displayUrl || item?.url, Boolean(item?.privacy));
+  const { deviceName, device_name, ...historyItem } = item || {};
   // Keep browser history to the same bounded metadata as server history.
-  return { ...item, url, displayUrl: url, llm: undefined };
+  return { ...historyItem, url, displayUrl: url, llm: undefined };
 }
 
 export function mapServerHistory(item) {
@@ -72,9 +75,9 @@ export function mapServerHistory(item) {
     reasons: [],
     threatTypes: [],
     insights: [],
+    llm: item.llm ? mapLlm({ llm: item.llm, provider: item.llm_provider, ok: Boolean(item.llm_provider) }) : undefined,
     privacy: false,
     source: item.source,
-    deviceName: item.device_name,
     time: /(?:Z|[+-]\d\d:\d\d)$/.test(item.created_at) ? item.created_at : `${item.created_at}Z`
   };
 }
@@ -106,7 +109,11 @@ function mapLlm(response) {
       : 'คำอธิบายสำรอง',
     riskType: llm.risk_type || '-',
     explanation: llm.simple_explanation || '-',
-    advice: llm.user_advice || '-'
+    advice: llm.user_advice || '-',
+    confidenceNote: llm.confidence_note || '',
+    hasDetailedReasons: Array.isArray(llm.risk_reasons) || Array.isArray(llm.reassuring_reasons),
+    riskReasons: explanationReasonItems(llm.risk_reasons),
+    reassuringReasons: explanationReasonItems(llm.reassuring_reasons)
   };
 }
 
@@ -185,7 +192,7 @@ export function AppProvider({ children }) {
           ? `Online · Database ${databaseReady ? 'พร้อม' : 'ยังไม่พร้อม'}`
           : 'ไม่พร้อม',
         modelText: response.model_ready
-          ? `${policy?.model_version || 'Risk Model'} · Fuzzy + Random Forest + learned fusion · warn ${policy?.warning_threshold ?? '-'} · block ${policy?.blocking_threshold ?? '-'}`
+          ? `${policy?.model_version || 'Risk Model'} · ${policy?.fusion_method === 'ml_only' ? 'Calibrated Random Forest' : policy?.fusion_method || 'Risk model'} · warn ${policy?.warning_threshold ?? '-'} · block ${policy?.blocking_threshold ?? '-'}`
           : 'ยังไม่พบ model.pkl',
         llmText: response.llm?.llm_ready
           ? `พร้อมใช้ ${llmModel || 'LLM'}`
@@ -298,8 +305,8 @@ export function AppProvider({ children }) {
       ruleScore: ruleResult.score,
       riskScore: ruleResult.score,
       finalScore: ruleResult.score,
-      warningThreshold: 61,
-      blockingThreshold: 81,
+      warningThreshold: 60,
+      blockingThreshold: 80,
       reasons: ruleResult.reasons,
       threatTypes: ruleResult.threatTypes,
       insights,
@@ -325,9 +332,11 @@ export function AppProvider({ children }) {
         prediction = await api.predict({ url, rule_score: ruleResult.score });
         if (!active()) return null;
         checkHealth();
-      } catch {
+      } catch (error) {
         if (!active()) return null;
-        setBackendStatus({ online: false, label: 'Backend ยังไม่เปิด' });
+        prediction.error = error.message || 'ไม่ได้รับผลตรวจจากเซิร์ฟเวอร์';
+        // Service availability and success of this particular scan are distinct.
+        checkHealth();
       }
     }
 
@@ -343,14 +352,15 @@ export function AppProvider({ children }) {
       riskScore: Number.isFinite(prediction.risk_score)
         ? prediction.risk_score
         : ruleResult.score,
-      decision: prediction.decision || (ruleResult.score >= 81 ? 'block' : ruleResult.score >= 61 ? 'warn' : 'allow'),
+      decision: prediction.decision || (ruleResult.score >= 80 ? 'block' : ruleResult.score >= 60 ? 'warn' : 'unknown'),
       warningThreshold: Number.isFinite(prediction.warning_threshold)
         ? prediction.warning_threshold
-        : 61,
+        : 60,
       blockingThreshold: Number.isFinite(prediction.blocking_threshold)
         ? prediction.blocking_threshold
-        : 81,
+        : 80,
       modelVersion: prediction.model_version || null,
+      deploymentMode: prediction.deployment_mode || null,
       policyVersion: prediction.policy_version || null,
       featureSchemaVersion: prediction.feature_schema_version || null,
       layerResults: { ...(prediction.layer_results || {}), audit: { risk_formula: prediction.risk_formula || null } },
@@ -374,6 +384,7 @@ export function AppProvider({ children }) {
         : null,
       detectionLabel: prediction.label || null,
       modelStatus: prediction.model_status || null,
+      predictionError: prediction.error || null,
       source,
       reasons: ruleResult.reasons,
       threatTypes: ruleResult.threatTypes,
@@ -417,7 +428,6 @@ export function AppProvider({ children }) {
         });
         if (!active()) return null;
         result.historyId = saved.history_id;
-        result.deviceName = saved.device_name;
         updateHistory(previous => previous.map(item => item.time === result.time ? safeHistoryItem(result) : item));
         setCurrent({ ...result });
         setReportState('Account history');
@@ -448,8 +458,10 @@ export function AppProvider({ children }) {
           blocking_threshold: result.blockingThreshold,
           model_version: result.modelVersion,
           policy_version: result.policyVersion,
+          feature_schema_version: result.featureSchemaVersion,
           layer_results: result.layerResults,
           reasons: (ruleResult.reasons || []).slice(0, 7).map(flattenReason).filter(Boolean),
+          evidence_reasons: explanationEvidenceReasons(ruleResult.reasons),
           threat_types: ruleResult.threatTypes || [],
           language: 'th'
         });

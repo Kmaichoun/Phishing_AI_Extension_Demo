@@ -37,7 +37,6 @@ def register(client: TestClient, username: str) -> None:
                 "username": username,
                 "email": f"{username}@example.com",
                 "password": "Test-only-password-2026!",
-                "device_name": f"{username} test device",
             },
         ),
         201,
@@ -65,10 +64,6 @@ def cleanup_users(usernames: list[str]) -> None:
             )
             database.execute(
                 text("DELETE FROM Sessions WHERE UserId = :user_id"),
-                {"user_id": user_id},
-            )
-            database.execute(
-                text("DELETE FROM UserDevices WHERE UserId = :user_id"),
                 {"user_id": user_id},
             )
             database.execute(

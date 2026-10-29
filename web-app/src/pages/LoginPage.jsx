@@ -7,31 +7,6 @@ import { useAuth } from '../contexts/AuthContext';
 import { useRouter } from '../contexts/RouterContext';
 import { api } from '../services/api';
 
-function suggestedDeviceName() {
-  const agent = navigator.userAgent;
-  const browser = /Edg\//.test(agent)
-    ? 'Edge'
-    : /Firefox\//.test(agent)
-      ? 'Firefox'
-      : /Chrome\//.test(agent)
-        ? 'Chrome'
-        : /Safari\//.test(agent)
-          ? 'Safari'
-          : 'Browser';
-  const platform = /Windows/.test(agent)
-    ? 'Windows'
-    : /Android/.test(agent)
-      ? 'Android'
-      : /iPhone|iPad/.test(agent)
-        ? 'iPhone/iPad'
-        : /Mac OS/.test(agent)
-          ? 'macOS'
-          : /Linux/.test(agent)
-            ? 'Linux'
-            : 'อุปกรณ์นี้';
-  return `${browser} บน ${platform}`;
-}
-
 function safeNext(search) {
   const target = new URLSearchParams(search).get('next') || '/scan';
   if (!target.startsWith('/') || target.startsWith('//') || target.includes('\\')) return '/scan';
@@ -52,7 +27,6 @@ export function LoginPage() {
     tone: ''
   });
   const [submitting, setSubmitting] = useState(false);
-  const deviceName = useMemo(suggestedDeviceName, []);
 
   useEffect(() => {
     document.title = 'เข้าสู่ระบบ | Phish Radar AI';
@@ -103,12 +77,11 @@ export function LoginPage() {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     setSubmitting(true);
-    setMessage({ text: 'กำลังตรวจสอบบัญชีและอุปกรณ์…', tone: '' });
+    setMessage({ text: 'กำลังตรวจสอบบัญชี…', tone: '' });
     try {
       await login({
         identifier: String(data.get('identifier') || '').trim(),
         password: String(data.get('password') || ''),
-        device_name: String(data.get('device_name') || '').trim()
       });
       setMessage({ text: 'เข้าสู่ระบบสำเร็จ กำลังเปิดระบบ…', tone: 'success' });
       navigate(nextPage, { replace: true });
@@ -130,13 +103,12 @@ export function LoginPage() {
     }
 
     setSubmitting(true);
-    setMessage({ text: 'กำลังสร้างบัญชีและลงทะเบียนอุปกรณ์…', tone: '' });
+    setMessage({ text: 'กำลังสร้างบัญชี…', tone: '' });
     try {
       await register({
         username: String(data.get('username') || '').trim(),
         email: String(data.get('email') || '').trim(),
         password,
-        device_name: String(data.get('device_name') || '').trim()
       });
       setMessage({ text: 'สร้างบัญชีสำเร็จ กำลังเปิดระบบ…', tone: 'success' });
       navigate(nextPage, { replace: true });
@@ -169,7 +141,7 @@ export function LoginPage() {
           <h1 id="introTitle">ตรวจลิงก์อย่างมั่นใจ<br />ในพื้นที่ของคุณ</h1>
           <p className="intro-copy">
             เข้าสู่ระบบเพื่อใช้งาน URL Scanner, QR Scanner และ Dashboard
-            โดยอุปกรณ์ที่เชื่อมต่อจะถูกบันทึกเพื่อช่วยตรวจสอบความปลอดภัยของบัญชี
+            พร้อมบันทึกประวัติการตรวจไว้ในบัญชีของคุณ
           </p>
           <div className="auth-radar" aria-hidden="true">
             <div className="auth-radar-visual">
@@ -246,20 +218,6 @@ export function LoginPage() {
                   disabled={submitting}
                 />
               </div>
-              <div className="field">
-                <label htmlFor="loginDevice">ชื่ออุปกรณ์นี้</label>
-                <input
-                  id="loginDevice"
-                  name="device_name"
-                  type="text"
-                  autoComplete="off"
-                  maxLength="200"
-                  defaultValue={deviceName}
-                  required
-                  disabled={submitting}
-                />
-                <small>ตั้งชื่อที่จำง่าย เช่น “Chrome บนโน้ตบุ๊ก”</small>
-              </div>
               <button className={`submit-button ${submitting ? 'loading' : ''}`} type="submit" disabled={submitting}>
                 <span>เข้าสู่ระบบ</span><span className="button-loader" aria-hidden="true" />
               </button>
@@ -287,10 +245,6 @@ export function LoginPage() {
                 </div>
               </div>
               <p className="form-hint">ใช้รหัสผ่านอย่างน้อย 12 ตัวอักษร และไม่ควรใช้ซ้ำกับระบบอื่น</p>
-              <div className="field">
-                <label htmlFor="registerDevice">ชื่ออุปกรณ์นี้</label>
-                <input id="registerDevice" name="device_name" type="text" autoComplete="off" maxLength="200" defaultValue={deviceName} required disabled={submitting} />
-              </div>
               <button className={`submit-button ${submitting ? 'loading' : ''}`} type="submit" disabled={submitting}>
                 <span>สร้างบัญชี User</span><span className="button-loader" aria-hidden="true" />
               </button>

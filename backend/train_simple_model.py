@@ -147,6 +147,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--uci-limit', type=int, default=100000)
     parser.add_argument('--trees', type=int, default=180)
+    parser.add_argument('--formula', choices=['ml_only', 'compare'], default='ml_only',
+                        help='Default: calibrated RF only; compare explicitly evaluates the legacy 40/60 blend too.')
     parser.add_argument('--mendeley', action='store_true')
     parser.add_argument('--balance-shapes', action='store_true')
     parser.add_argument('--prior-experiment', type=Path)
@@ -159,6 +161,13 @@ def main():
     parser.add_argument('--external-source', help='Reserve a never-seen source, e.g. reviewed_partner_2026_10')
     parser.add_argument('--output', type=Path, required=True, help='A new, unused experiment directory')
     args = parser.parse_args()
+    legacy_path = BASE / 'data' / 'training_urls.csv'
+    if not legacy_path.is_file():
+        raise FileNotFoundError('Restore backend/data/training_urls.csv from the original training run. '
+                                'Its domains are required to prevent evaluation leakage; do not regenerate it as a substitute.')
+    for previous in (BASE / 'data').glob('simple_*'):
+        if (previous / 'evaluation.json').is_file() and not (previous / 'dataset.csv').is_file():
+            raise FileNotFoundError(f'Restore {previous / "dataset.csv"} to exclude previously seen domains from evaluation.')
     out = args.output.resolve()
     # Exclusive directory creation prevents concurrent runs overwriting each other.
     out.mkdir(parents=True, exist_ok=False)
@@ -326,7 +335,9 @@ def main():
     calibrated = calibrator.predict_proba(raw.reshape(-1,1))[:, 1]
     if calibrator.coef_[0,0] <= 0:
         raise ValueError('Calibration must be monotonic')
-    scores = {'ml_only': calibrated, 'weighted_40_60': .4 * rules / 100 + .6 * calibrated}
+    scores = {'ml_only': calibrated}
+    if args.formula == 'compare':
+        scores['weighted_40_60'] = .4 * rules / 100 + .6 * calibrated
     validation = {}
     policies = {}
     v = masks['validation']
@@ -342,7 +353,9 @@ def main():
     holdout = {name: {'warning': classification_metrics(y[h], score[h], policies[name][0]),
                        'blocking': classification_metrics(y[h], score[h], policies[name][1])} for name,score in scores.items()}
     old = joblib.load(BASE / 'model.pkl')
-    old_scores = legacy_scores(old, x[h], rules[h])
+    old_schema = old.get('feature_schema_version', 'url-v3-www-canonical')
+    old_x = np.asarray([feature_vector(r['url'], old_schema) for r in rows if r['split'] == 'holdout'])
+    old_scores = legacy_scores(old, old_x, rules[h])
     old_holdout = {'warning': classification_metrics(y[h], old_scores, old['policy']['warning_threshold']/100),
                    'blocking': classification_metrics(y[h], old_scores, old['policy']['blocking_threshold']/100)}
     # Old training domains were forced into train; this is fresh-domain comparison.

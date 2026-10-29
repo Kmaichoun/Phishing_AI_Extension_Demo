@@ -1,3 +1,16 @@
+# Preserve exact published source bytes for SHA256 verification.
+/backend/** -text
+/extension/** -text
+/web-app/** -text
+/scripts/** -text
+/database/** -text
+/deploy/** -text
+/.env.example -text
+/.dockerignore -text
+/.gitignore -text
+/.gitattributes -text
+/Dockerfile -text
+/*.sh -text
 # Generated binary artifacts
 *.bacpac binary
 *.pdf binary

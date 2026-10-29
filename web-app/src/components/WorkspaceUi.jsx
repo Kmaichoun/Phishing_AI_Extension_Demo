@@ -34,17 +34,17 @@ export function formatTime(value) {
   const date = new Date(/(?:Z|[+-]\d\d:\d\d)$/.test(value) ? value : `${value}Z`);
   return Number.isNaN(date.valueOf()) ? 'ยังไม่มีข้อมูล' : date.toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' });
 }
-export const decisionLabel = { allow: 'ไม่ถึงเกณฑ์เตือน', warn: 'ควรระวัง', block: 'เสี่ยงสูง' };
+export const decisionLabel = { allow: 'ไม่พบความเสี่ยงชัดเจน', warn: 'พบสัญญาณน่าสงสัย', block: 'เสี่ยงสูง', unknown: 'ข้อมูลไม่เพียงพอ' };
 export function decisionOf(item) {
   if (item.decision && decisionLabel[item.decision]) return item.decision;
   const score = item.finalScore ?? item.final_score;
   if (!Number.isFinite(score)) return 'unknown';
-  if (score >= (item.blockingThreshold ?? item.blocking_threshold ?? 81)) return 'block';
-  if (score >= (item.warningThreshold ?? item.warning_threshold ?? 61)) return 'warn';
+  if (score >= (item.blockingThreshold ?? item.blocking_threshold ?? 80)) return 'block';
+  if (score >= (item.warningThreshold ?? item.warning_threshold ?? 60)) return 'warn';
   return 'allow';
 }
-export function DecisionBadge({ decision }) {
-  return <span className={`decision-badge decision-${decision}`}>{decisionLabel[decision] || 'ไม่มีผลตัดสิน'}</span>;
+export function DecisionBadge({ decision, label }) {
+  return <span className={`decision-badge decision-${decision}`}>{label || decisionLabel[decision] || 'ไม่มีผลตัดสิน'}</span>;
 }
 export function serviceStates(health, privacyMode, checking) {
   const make = (key, name, ready) => ({ key, name, ready,

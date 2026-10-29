@@ -9,6 +9,7 @@ from typing import Literal
 import joblib
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from auth_router import WEB_ORIGINS, router as auth_router
@@ -16,17 +17,21 @@ from database import database_status
 from feature_extractor import (
     FEATURE_NAMES,
     FEATURE_SCHEMA_VERSION,
+    LEGACY_FEATURE_SCHEMA_VERSION,
     extract_features,
     feature_vector,
 )
 from fuzzy_scoring import FUZZY_SCHEMA_VERSION, fuzzy_audit, fuzzy_score
 from history_router import router as history_router
 from workspace_router import router as workspace_router
+from chat_router import router as chat_router
 from llm_explainer import ExplainRequest, explain_with_llm, llm_status
 from risk_policy import apply_consensus_guardrail
+from demo_model import authorized_demo
 
 BASE_DIR = Path(__file__).resolve().parent
 MODEL_PATH = BASE_DIR / "model.pkl"
+DEMO_AUTHORIZATION_PATH = BASE_DIR / 'model-demo-authorization.json'
 FEEDBACK_PATH = BASE_DIR / "data" / "feedback.csv"
 LEGACY_RULE_WEIGHT = 0.40
 LEGACY_ML_WEIGHT = 0.60
@@ -45,6 +50,7 @@ app.add_middleware(
 app.include_router(auth_router)
 app.include_router(history_router)
 app.include_router(workspace_router)
+app.include_router(chat_router)
 
 
 class PredictRequest(BaseModel):
@@ -62,10 +68,18 @@ class FeedbackRequest(BaseModel):
 
 
 @lru_cache(maxsize=2)
-def _load_model_bundle(model_modified_ns: int) -> dict[str, object]:
+def _load_model_bundle(model_modified_ns: int, authorization_modified_ns: int = 0) -> dict[str, object]:
     """Load one immutable model revision while avoiding disk I/O per request."""
     bundle = joblib.load(MODEL_PATH)
+    if isinstance(bundle, dict) and bundle.get('production_ready') is False:
+        if not authorized_demo(MODEL_PATH, DEMO_AUTHORIZATION_PATH):
+            raise ValueError('Research artifact requires explicit hash-bound Web demo authorization.')
+        bundle = {**bundle, 'deployment_mode': 'experimental_demo'}
     if isinstance(bundle, dict) and "model" in bundle:
+        if bundle.get('feature_schema_version') in {'url-v9-reference-origin', 'url-v10-reference-root-context'}:
+            from reference_origin_features import registry
+            if bundle.get('reference_origin_registry_sha256') != registry()[1]:
+                raise ValueError('Reference-origin metadata changed; retrain and reevaluate the model.')
         return bundle
     return {"model": bundle}
 
@@ -76,7 +90,11 @@ def load_model_bundle() -> dict[str, object] | None:
         model_modified_ns = MODEL_PATH.stat().st_mtime_ns
     except FileNotFoundError:
         return None
-    return _load_model_bundle(model_modified_ns)
+    try:
+        authorization_modified_ns = DEMO_AUTHORIZATION_PATH.stat().st_mtime_ns
+    except FileNotFoundError:
+        authorization_modified_ns = 0
+    return _load_model_bundle(model_modified_ns, authorization_modified_ns)
 
 
 def model_policy(bundle: dict[str, object] | None) -> dict[str, object]:
@@ -85,8 +103,8 @@ def model_policy(bundle: dict[str, object] | None) -> dict[str, object]:
             "model_version": None,
             "policy_version": "local-evidence-fallback-1.0",
             "feature_schema_version": FEATURE_SCHEMA_VERSION,
-            "warning_threshold": 61.0,
-            "blocking_threshold": 81.0,
+            "warning_threshold": 60.0,
+            "blocking_threshold": 80.0,
             "probability_method": "unavailable",
             "rule_weight": None,
             "ml_weight": None,
@@ -100,12 +118,14 @@ def model_policy(bundle: dict[str, object] | None) -> dict[str, object]:
     if isinstance(policy, dict):
         return {
             "model_version": bundle.get("model_version"),
+            "deployment_mode": bundle.get('deployment_mode', 'standard'),
+            "production_ready": bundle.get('production_ready'),
             "policy_version": bundle.get("policy_version"),
             "feature_schema_version": bundle.get(
                 "feature_schema_version", FEATURE_SCHEMA_VERSION
             ),
-            "warning_threshold": float(policy.get("warning_threshold", 61.0)),
-            "blocking_threshold": float(policy.get("blocking_threshold", 81.0)),
+            "warning_threshold": float(policy.get("warning_threshold", 60.0)),
+            "blocking_threshold": float(policy.get("blocking_threshold", 80.0)),
             "warning_max_fpr": policy.get("warning_max_fpr"),
             "blocking_max_fpr": policy.get("blocking_max_fpr"),
             "probability_method": bundle.get(
@@ -128,7 +148,7 @@ def model_policy(bundle: dict[str, object] | None) -> dict[str, object]:
         }
 
     # Compatibility for a model bundle produced before Risk Model v2.
-    legacy_threshold = float(bundle.get("decision_threshold", 61.0))
+    legacy_threshold = float(bundle.get("decision_threshold", 60.0))
     return {
         "model_version": "legacy-alpha-model",
         "policy_version": "legacy-single-threshold",
@@ -136,7 +156,7 @@ def model_policy(bundle: dict[str, object] | None) -> dict[str, object]:
             "feature_schema_version", FEATURE_SCHEMA_VERSION
         ),
         "warning_threshold": legacy_threshold,
-        "blocking_threshold": min(100.0, max(81.0, legacy_threshold + 20.0)),
+        "blocking_threshold": min(100.0, max(80.0, legacy_threshold + 20.0)),
         "probability_method": bundle.get("calibration", "legacy_uncalibrated"),
         "rule_weight": float(bundle.get("alpha", LEGACY_RULE_WEIGHT)),
         "ml_weight": 1.0 - float(bundle.get("alpha", LEGACY_RULE_WEIGHT)),
@@ -213,8 +233,10 @@ def health():
 
 @app.post("/predict")
 def predict(payload: PredictRequest):
-    features = extract_features(payload.url)
     bundle = load_model_bundle()
+    # Never feed changed feature meanings into a previously trained forest.
+    schema = bundle.get("feature_schema_version", LEGACY_FEATURE_SCHEMA_VERSION) if bundle else FEATURE_SCHEMA_VERSION
+    features = extract_features(payload.url, schema)
     policy = model_policy(bundle)
     model = bundle.get("model") if bundle else None
     fusion_model = bundle.get("fusion_model") if bundle else None
@@ -239,7 +261,7 @@ def predict(payload: PredictRequest):
     fusion_method = policy.get("fusion_method")
 
     if model is not None:
-        probabilities = model.predict_proba([feature_vector(payload.url)])[0]
+        probabilities = model.predict_proba([feature_vector(payload.url, schema)])[0]
         class_values = list(model.classes_)
         raw_phishing_probability = float(probabilities[class_values.index(1)])
         if probability_calibrator is not None:
@@ -356,6 +378,8 @@ def predict(payload: PredictRequest):
         "blocking_threshold": blocking_threshold,
         "risk_margin": round(risk_score_value - warning_threshold, 2),
         "model_version": policy.get("model_version"),
+        "deployment_mode": policy.get('deployment_mode', 'standard'),
+        "production_ready": policy.get('production_ready'),
         "policy_version": policy.get("policy_version"),
         "feature_schema_version": policy.get("feature_schema_version"),
         "probability_method": policy.get("probability_method"),
@@ -380,7 +404,7 @@ def predict(payload: PredictRequest):
                 "score": rule_score,
             },
             "fuzzy_rule_evidence": {
-                "status": "ready",
+                "status": "not_used" if fusion_method == "ml_only" else "ready",
                 "score": fuzzy_score_rounded,
                 "audit": fuzzy_audit_result,
             },
@@ -433,3 +457,10 @@ def feedback(payload: FeedbackRequest):
             status_code=500,
             detail=f"Could not save feedback to {FEEDBACK_PATH}: {error}",
         ) from error
+
+
+# A production build can serve the React app and API from one origin. Keep this
+# mount last so API, health and documentation routes take precedence.
+WEB_DIST = BASE_DIR.parent / "web-app" / "dist"
+if (WEB_DIST / "index.html").is_file():
+    app.mount("/", StaticFiles(directory=WEB_DIST, html=True), name="web-app")

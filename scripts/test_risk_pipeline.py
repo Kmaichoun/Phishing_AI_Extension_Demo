@@ -40,7 +40,17 @@ def main() -> None:
     assert warning["meets_fpr_constraint"] is True
     assert blocking["meets_fpr_constraint"] is True
 
-    bundle = joblib.load(MODEL_PATH)
+    active = joblib.load(MODEL_PATH)
+    if active.get('fusion_method') == 'ml_only':
+        change = json.loads((PROJECT_DIR / 'output/calibrated-rf-active/status.json').read_text(encoding='utf-8'))
+        bundle = joblib.load(change['backup'])
+        assert active['metrics'] is None
+        assert active['risk_formula'] == 'Score = 100 × Calibrate(Random Forest)'
+        assert active['feature_schema_version'] == bundle['feature_schema_version']
+        assert active['rule_weight'] == 0.0 and active['ml_weight'] == 1.0
+        assert 'fusion_model' not in active
+    else:
+        bundle = active
     assert bundle["model_version"] == report["model"]["version"]
     assert bundle["model_family"] == "random_forest"
     assert bundle["probability_method"] == "learned_logistic_fusion_probability"
@@ -130,29 +140,42 @@ def main() -> None:
         safe_deep_link_results[3]["warning_threshold"] * 0.6
     )
     assert risky["label"] == "phishing"
-    assert risky["decision"] == "block"
-    assert risky["consensus_trigger"] == "block_consensus"
+    assert risky["decision"] == ('warn' if active.get('fusion_method') == 'ml_only' else 'block')
+    assert risky["consensus_trigger"] == (None if active.get('fusion_method') == 'ml_only' else 'block_consensus')
     assert safe["risk_score"] == safe["final_score"]
     assert safe["fuzzy_score"] == 0
     assert risky["fuzzy_score"] == 100
     assert safe["random_forest_score"] == safe["ml_score"]
-    assert safe["fusion_method"] == "learned_logistic_stacking"
-    assert safe["fusion_applied"] is True
-    assert safe["alpha"] is None
-    assert safe["rule_weight"] is None
-    assert safe["ml_weight"] is None
+    assert safe["fusion_method"] == active['fusion_method']
+    assert safe["fusion_applied"] is (active.get('fusion_method') != 'ml_only')
+    assert safe["alpha"] == active['rule_weight']
+    assert safe["rule_weight"] == active['rule_weight']
+    assert safe["ml_weight"] == active['ml_weight']
     assert safe["formula_applied"] is True
     assert safe["warning_threshold"] == bundle["policy"]["warning_threshold"]
     assert safe["blocking_threshold"] == bundle["policy"]["blocking_threshold"]
-    assert safe["layer_results"]["local_rule_evidence"]["status"] == "fuzzy_input"
-    assert safe["layer_results"]["fuzzy_rule_evidence"]["status"] == "ready"
-    assert safe["layer_results"]["learned_fusion"]["status"] == "ready"
+    if active.get('fusion_method') == 'ml_only':
+        assert safe['layer_results']['local_rule_evidence']['status'] == 'explanation_only'
+        assert safe['layer_results']['fuzzy_rule_evidence']['status'] == 'not_used'
+        assert safe['layer_results']['learned_fusion']['status'] == 'unavailable'
+        for url in ['https://www.ku.ac.th/th', *safe_deep_links, 'http://paypal-login-verify.example.xyz/account/confirm?token=test']:
+            raw = active['model'].predict_proba([feature_vector(url, active['feature_schema_version'])])[0][list(active['model'].classes_).index(1)]
+            calibrated = active['probability_calibrator'].predict_proba([[raw]])[0][list(active['probability_calibrator'].classes_).index(1)]
+            for rule in [0, 39, 100]:
+                result = predict(PredictRequest(url=url, rule_score=rule))
+                assert result['final_score'] == result['ml_score'] == int(round(100 * calibrated))
+                assert result['risk_formula'] == active['risk_formula']
+                assert result['consensus_trigger'] is None
+    else:
+        assert safe['layer_results']['local_rule_evidence']['status'] == 'fuzzy_input'
+        assert safe['layer_results']['fuzzy_rule_evidence']['status'] == 'ready'
+        assert safe['layer_results']['learned_fusion']['status'] == 'ready'
 
     print(
         "Risk pipeline test passed: "
         f"warn={bundle['policy']['warning_threshold']}, "
         f"block={bundle['policy']['blocking_threshold']}, "
-        f"holdout ROC-AUC={report['independent_holdout']['probability']['roc_auc']}"
+        f"formula={active['risk_formula']} (historical evaluation checked separately)"
     )
 
 

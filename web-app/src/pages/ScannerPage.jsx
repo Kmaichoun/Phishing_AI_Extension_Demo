@@ -1,7 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../contexts/AppContext';
-import { flattenReason, safeHistoryUrl } from '../services/risk';
+import { explanationReasonItems, flattenReason, safeHistoryUrl } from '../services/risk';
 import { PageTitle, SystemStrip, DecisionBadge, decisionOf, decisionLabel } from '../components/WorkspaceUi';
+
+export function ExplanationReasons({ title, items, emptyText }) {
+  const reasons = explanationReasonItems(items);
+  return <section className="explanation-reasons"><h4>{title}</h4>
+    {reasons.length ? <ol>{reasons.map((item, index) => <li key={index}>
+      <strong>{item.title}</strong><p>{item.explanation}</p>
+    </li>)}</ol> : <p className="workspace-muted">{emptyText}</p>}
+  </section>;
+}
 
 export function AnalysisResult({ result, phase = 'done', historical = false }) {
   const { submitFeedback } = useApp();
@@ -11,24 +20,43 @@ export function AnalysisResult({ result, phase = 'done', historical = false }) {
   const [tab, setTab] = useState('evidence');
   useEffect(() => { setMessage(''); setSent(false); setTab('evidence'); }, [result?.time]);
   if (!result) return <div className="workspace-empty"><h2>เริ่มจากลิงก์ที่ต้องการตรวจสอบ</h2><p>วาง URL ด้านบน แล้วอ่านผลตัดสินพร้อมเหตุผลก่อนเปิดเว็บไซต์</p></div>;
-  const decision = decisionOf(result);
+  const rawDecision = decisionOf(result);
   let parsed;
   try { parsed = new URL(result.url); } catch { parsed = null; }
   const loading = phase === 'analyzing';
   const waiting = loading || phase === 'explaining';
   const modelReady = result.modelStatus === 'ready' || result.fusionApplied;
+  const decision = loading || (!modelReady && rawDecision === 'allow') ? 'unknown' : rawDecision;
+  const modelOnlyWarning = modelReady && result.fusionMethod === 'ml_only'
+    && ['warn', 'block'].includes(decision) && result.ruleScore === 0
+    && !(result.reasons || []).some(reason => Number(reason?.points) > 0);
+  const scoreSource = modelReady ? result.fusionMethod === 'ml_only'
+    ? 'Random Forest หลังปรับเทียบ' : 'โมเดลที่ใช้ในผลตรวจนี้' : 'กฎ URL ในเครื่อง';
+  const riskReasons = explanationReasonItems(result.llm?.riskReasons);
+  const reassuringReasons = explanationReasonItems(result.llm?.reassuringReasons);
+  const hasDetailedReasons = typeof result.llm?.hasDetailedReasons === 'boolean'
+    ? result.llm.hasDetailedReasons
+    : Array.isArray(result.llm?.riskReasons) || Array.isArray(result.llm?.reassuringReasons);
+  const noRiskReasonText = hasDetailedReasons
+    ? 'ยังไม่พบข้อควรระวังจากข้อมูล URL ที่ตรวจในครั้งนี้'
+    : result.llm?.explanation ? 'คำอธิบายนี้ไม่มีเหตุผลแยกรายข้อ อ่านสรุปด้านบนหรือตรวจ URL ใหม่เพื่อรับรายละเอียดล่าสุด' : 'ยังไม่มีคำอธิบายแยกรายข้อ';
+  const noReassuringReasonText = hasDetailedReasons
+    ? 'ยังไม่พบข้อมูลที่ช่วยลดความกังวลจาก URL ที่ตรวจ ผลนี้ไม่ยืนยันว่าเว็บไซต์ปลอดภัยหรืออันตราย'
+    : 'ไม่มีข้อมูลประกอบส่วนนี้ในคำอธิบาย ไม่ได้หมายความว่าเว็บไซต์ปลอดภัยหรืออันตราย';
   const report = [
     'Phish Radar AI Report',
     'URL: ' + (result.privacy ? result.displayUrl : safeHistoryUrl(result.url)),
     'Decision: ' + decision, 'FinalScore: ' + result.finalScore,
-    'RuleScore: ' + result.ruleScore, 'FuzzyScore: ' + (result.fuzzyScore ?? '-'),
-    'Random Forest: ' + (result.randomForestScore ?? '-'),
-    'Formula: ' + (result.riskFormula || 'Not recorded'),
+    'Score source: ' + scoreSource,
     'Warning / Blocking: ' + result.warningThreshold + ' / ' + result.blockingThreshold,
     'Model: ' + (result.modelVersion || '-'), 'Policy: ' + (result.policyVersion || '-'),
     'Reasons: ' + (result.reasons || []).map(flattenReason).join(' | '),
+    'Risk summary: ' + (result.llm?.riskType || '-'),
     'LLM: ' + (result.llm?.explanation || 'ไม่มีคำอธิบาย'),
-    'Advice: ' + (result.llm?.advice || '-')
+    ...(riskReasons.length ? ['เหตุผลที่ควรระวัง:', ...riskReasons.map((item, index) => `${index + 1}. ${item.title}: ${item.explanation}`)] : hasDetailedReasons ? ['เหตุผลที่ควรระวัง: ' + noRiskReasonText] : []),
+    ...(reassuringReasons.length ? ['สิ่งที่ช่วยลดความกังวล:', ...reassuringReasons.map((item, index) => `${index + 1}. ${item.title}: ${item.explanation}`)] : hasDetailedReasons ? ['สิ่งที่ช่วยลดความกังวล: ' + noReassuringReasonText] : []),
+    'Advice: ' + (result.llm?.advice || '-'),
+    ...(result.llm?.confidenceNote ? ['Limitations: ' + result.llm.confidenceNote] : [])
   ].join('\n');
   async function copy() {
     try {
@@ -45,16 +73,17 @@ export function AnalysisResult({ result, phase = 'done', historical = false }) {
     <div className="result-overview">
       <div className="result-verdict">
         <p className="workspace-muted">{historical ? 'ผลตรวจที่บันทึกไว้' : loading ? 'กำลังวิเคราะห์ URL' : 'ผลการตรวจสอบ'}</p>
-        {loading ? <p role="status">กำลังตรวจหลักฐานและขอคำอธิบาย…</p> : <DecisionBadge decision={decision} />}
+        {loading ? <p role="status">กำลังตรวจหลักฐานและขอคำอธิบาย…</p> : <DecisionBadge decision={decision} label={modelOnlyWarning ? 'โมเดลประเมินว่าควรระวัง' : undefined} />}
         <h2>{parsed?.hostname || 'อ่านโดเมนไม่ได้'}</h2>
         <p className="url-text">{result.privacy ? result.displayUrl : safeHistoryUrl(result.url)}</p>
-        <p>{decision === 'block' ? 'หลีกเลี่ยงการกรอกข้อมูลหรือดาวน์โหลดไฟล์ จนกว่าจะตรวจสอบแหล่งที่มา' : decision === 'warn' ? 'ตรวจสอบโดเมนและแหล่งที่มาเพิ่มเติมก่อนกรอกข้อมูลสำคัญ' : 'ไม่พบคะแนนเกินเกณฑ์เตือนจากการตรวจครั้งนี้ ควรตรวจแหล่งที่มาก่อนกรอกข้อมูลสำคัญ'}</p>
-        {!modelReady && <p className="workspace-notice">{result.privacy ? 'Privacy Mode: ใช้กฎในเครื่อง' : 'ผลเบื้องต้น: โมเดลยังไม่พร้อม คะแนนนี้มาจากหลักฐานที่มี'}</p>}
+        {modelOnlyWarning && <p className="workspace-notice">โมเดลประเมินความเสี่ยงถึงเกณฑ์เตือน แต่ยังไม่พบหลักฐานเสี่ยงจากกฎ URL ที่ตรวจ ไม่ใช่การยืนยันว่าเว็บไซต์นี้เป็น phishing</p>}
+        <p>{decision === 'block' ? 'หลีกเลี่ยงการกรอกข้อมูลหรือดาวน์โหลดไฟล์ จนกว่าจะตรวจสอบแหล่งที่มา' : decision === 'warn' ? 'ตรวจสอบโดเมนและแหล่งที่มาเพิ่มเติมก่อนกรอกข้อมูลสำคัญ' : decision === 'unknown' ? 'ยังสรุปความเสี่ยงไม่ได้ อ่านข้อสังเกตที่ตรวจพบด้านล่าง' : 'ผลตรวจครั้งนี้ยังไม่พบความเสี่ยงชัดเจน ควรตรวจแหล่งที่มาก่อนกรอกข้อมูลสำคัญ'}</p>
+        {!loading && !modelReady && <p className="workspace-notice">{result.privacy ? 'Privacy Mode: ใช้กฎในเครื่อง' : result.modelStatus === 'offline' ? 'ครั้งนี้ไม่ได้รับผลจากโมเดล ใช้คะแนนกฎเบื้องต้น กรุณาลองตรวจสอบอีกครั้ง' : 'ครั้งนี้โมเดลไม่ได้คำนวณผล คะแนนนี้มาจากหลักฐานที่มี'}{result.predictionError && <span> · {result.predictionError}</span>}</p>}
+        {result.deploymentMode === 'experimental_demo' && <p className="workspace-notice">โมเดลทดลอง: Random Forest สำหรับทดสอบบน Web app ยังไม่ผ่านเกณฑ์เปิดใช้งานจริงทั้งหมด</p>}
       </div>
       <div className="score-breakdown">
-        <div className={'final-score decision-' + (loading ? 'unknown' : decision)}><span>{loading ? 'คะแนนกฎเบื้องต้น' : 'FinalScore'}</span><strong>{result.finalScore}<small>/100</small></strong></div>
-        <dl><div><dt>RuleScore</dt><dd>{result.ruleScore}</dd></div><div><dt>FuzzyScore</dt><dd>{result.fuzzyScore ?? 'ไม่ได้ใช้'}</dd></div><div><dt>Random Forest</dt><dd>{result.randomForestScore ?? 'ไม่ได้ใช้'}</dd></div></dl>
-        <small>คะแนนแต่ละส่วนไม่จำเป็นต้องบวกกันตรง ๆ ดูสูตรในรายละเอียดโมเดล</small>
+        <div className={'final-score decision-' + decision}><span>{loading ? 'คะแนนกฎเบื้องต้น' : modelReady && result.fusionMethod === 'ml_only' ? 'Random Forest' : !modelReady ? 'คะแนนตรวจในเครื่อง' : 'คะแนนความเสี่ยง'}</span><strong>{result.finalScore ?? '—'}<small>/100</small></strong></div>
+        <small>{modelReady ? result.fusionMethod === 'ml_only' ? 'คะแนนจาก Random Forest หลังปรับเทียบ' : 'คะแนนจากโมเดลที่ใช้ในผลตรวจนี้' : 'คะแนนจากกฎที่ตรวจ URL ในเครื่อง'}</small>
       </div>
     </div>
     <div className="workspace-tabs" aria-label="รายละเอียดผลตรวจ">
@@ -66,12 +95,17 @@ export function AnalysisResult({ result, phase = 'done', historical = false }) {
         <h3>บริบทของโดเมนและแบรนด์</h3><ul className="evidence-list">{(result.insights?.length ? result.insights : ['ไม่มีข้อมูลส่วนนี้ในผลตรวจ']).map((text, i) => <li key={i}>{text}</li>)}</ul>
         <small>ส่วนนี้วิเคราะห์ชื่อและโครงสร้าง URL ไม่ใช่การยืนยันภาพหรือเนื้อหาทั้งหน้าเว็บไซต์</small>
       </section>}
-      {tab === 'model' && <section><h3>Policy ของผลตรวจนี้</h3><p className="formula-display">{result.riskFormula || 'ไม่ได้บันทึกสูตรของผลตรวจนี้'}</p><dl className="detail-list">
+      {tab === 'model' && <section><h3>ข้อมูลโมเดลของผลตรวจนี้</h3><p>ที่มาของคะแนน: {scoreSource}</p><dl className="detail-list">
         <div><dt>Model version</dt><dd>{result.modelVersion || 'ไม่มีข้อมูล'}</dd></div><div><dt>Policy version</dt><dd>{result.policyVersion || 'ไม่มีข้อมูล'}</dd></div>
-        <div><dt>Warning / Blocking</dt><dd>{result.warningThreshold ?? '-'} / {result.blockingThreshold ?? '-'}</dd></div><div><dt>ผลตัดสิน</dt><dd>{decisionLabel[decision]}</dd></div>
-      </dl><details><summary>ดูหลักฐานที่ Backend ส่งกลับ</summary><pre className="json-detail">{JSON.stringify(result.layerResults || {}, null, 2)}</pre></details></section>}
+        <div><dt>Warning / Blocking</dt><dd>{result.warningThreshold ?? '-'} / {result.blockingThreshold ?? '-'}</dd></div><div><dt>ผลตัดสิน</dt><dd>{modelOnlyWarning ? 'โมเดลประเมินว่าควรระวัง' : decisionLabel[decision]}</dd></div>
+      </dl><p>คะแนนนี้ไม่ใช่เปอร์เซ็นต์ยืนยันว่าเป็นเว็บปลอม ข้อสังเกตจากกฎไม่ใช่คำอธิบายการตัดสินภายใน Random Forest</p></section>}
       {tab === 'llm' && <section><h3>คำอธิบายจาก LLM</h3><p className="workspace-muted">{result.llm?.state || 'ไม่มีคำอธิบายในประวัตินี้'} / ไม่มีผลต่อคะแนนตัดสิน</p><dl className="detail-list">
-        <div><dt>ประเภทความเสี่ยง</dt><dd>{result.llm?.riskType || '-'}</dd></div><div><dt>อธิบาย</dt><dd>{result.llm?.explanation || 'ตรวจ URL ใหม่เพื่อขอคำอธิบายล่าสุด'}</dd></div><div><dt>คำแนะนำ</dt><dd>{result.llm?.advice || '-'}</dd></div>
+        <div><dt>สรุปความเสี่ยง</dt><dd>{result.llm?.riskType || '-'}</dd></div><div><dt>เหตุผลของคะแนน</dt><dd>{result.llm?.explanation || 'ตรวจ URL ใหม่เพื่อขอคำอธิบายล่าสุด'}</dd></div>
+      </dl>
+      <ExplanationReasons title="เหตุผลที่ควรระวัง" items={riskReasons} emptyText={noRiskReasonText} />
+      <ExplanationReasons title="สิ่งที่ช่วยลดความกังวล" items={reassuringReasons} emptyText={noReassuringReasonText} />
+      <dl className="detail-list"><div><dt>คำแนะนำ</dt><dd>{result.llm?.advice || '-'}</dd></div>
+        {result.llm?.confidenceNote && <div><dt>ข้อจำกัดของผลตรวจ</dt><dd>{result.llm.confidenceNote}</dd></div>}
       </dl></section>}
       {tab === 'feedback' && <section><h3>ผลตรวจตรงกับที่พบหรือไม่</h3><p>รายงานนี้จะส่งให้ผู้ดูแลตรวจทาน และไม่เปลี่ยนคะแนนหรือฝึกโมเดลทันที</p>{historical ? <p>ส่ง Feedback ได้จากผลตรวจล่าสุดในหน้าตรวจลิงก์</p> :
         <div className="workspace-actions">{[['dangerous','อันตรายจริง'],['safe','เป็นเว็บปกติ'],['unsure','ไม่แน่ใจ']].map(([value,label]) => <button key={value} disabled={waiting || sending || sent} onClick={() => feedback(value)}>{label}</button>)}</div>}</section>}

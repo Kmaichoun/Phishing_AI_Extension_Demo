@@ -11,7 +11,6 @@ CREATE TABLE IF NOT EXISTS `Sessions`
 (
     `SessionId` CHAR(36) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
     `UserId` BIGINT UNSIGNED NOT NULL,
-    `UserDeviceId` BIGINT UNSIGNED NOT NULL,
     `TokenHash` BINARY(32) NOT NULL,
     `CreatedAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     `LastSeenAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
@@ -20,7 +19,6 @@ CREATE TABLE IF NOT EXISTS `Sessions`
 
     CONSTRAINT `PK_Sessions` PRIMARY KEY (`SessionId`),
     CONSTRAINT `UX_Sessions_TokenHash` UNIQUE (`TokenHash`),
-    INDEX `IX_Sessions_UserDeviceId` (`UserDeviceId`),
     INDEX `IX_Sessions_User_ExpiresAt` (`UserId`, `ExpiresAt`)
 ) ENGINE=InnoDB
   DEFAULT CHARACTER SET utf8mb4

@@ -48,7 +48,6 @@ def main() -> None:
                     "username": original_username,
                     "email": original_email,
                     "password": original_password,
-                    "device_name": "Primary settings test",
                 },
             ),
             201,
@@ -63,7 +62,6 @@ def main() -> None:
                 json={
                     "identifier": original_email,
                     "password": original_password,
-                    "device_name": "Secondary settings test",
                 },
             ),
             200,
@@ -152,7 +150,6 @@ def main() -> None:
                 json={
                     "identifier": updated_email,
                     "password": original_password,
-                    "device_name": "Fresh settings test",
                 },
             ),
             401,
@@ -165,7 +162,6 @@ def main() -> None:
                 json={
                     "identifier": updated_email,
                     "password": updated_password,
-                    "device_name": "Fresh settings test",
                 },
             ),
             200,
@@ -188,7 +184,6 @@ def main() -> None:
             if user_id is not None:
                 database.execute(text("DELETE FROM SearchHistory WHERE UserId = :user_id"), {"user_id": user_id})
                 database.execute(text("DELETE FROM Sessions WHERE UserId = :user_id"), {"user_id": user_id})
-                database.execute(text("DELETE FROM UserDevices WHERE UserId = :user_id"), {"user_id": user_id})
                 database.execute(text("DELETE FROM Users WHERE UserId = :user_id"), {"user_id": user_id})
                 database.commit()
 

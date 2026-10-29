@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { AppHeader } from './components/AppHeader';
+import { ChatWidget } from './components/ChatWidget';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Redirect, useRouter } from './contexts/RouterContext';
 
@@ -41,6 +42,7 @@ function AppShell({ children }) {
         <main className="app-main overflow-x-hidden w-full max-w-full">
           {children}
         </main>
+        <ChatWidget />
       </div>
     </>
   );

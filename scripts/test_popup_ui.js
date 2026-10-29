@@ -2,6 +2,8 @@
 
 const fs = require('fs');
 const path = require('path');
+const vm = require('vm');
+const assert = require('assert/strict');
 
 const projectRoot = path.resolve(__dirname, '..');
 const extensionRoot = path.join(projectRoot, 'extension');
@@ -33,6 +35,9 @@ for (const expected of [
   'id="pageScanningEnabled"',
   'id="privacyMode"',
   'id="llmEnabled"',
+  'id="riskyAdProtection"',
+  'id="adFilterMode"',
+  'id="adFilterSiteException"',
   'id="popupThemeToggle"',
   'id="openWebApp" class="header-action login-entry"',
   'class="theme-icon theme-icon-sun"',
@@ -138,3 +143,146 @@ for (const [theme, variables] of [['dark', darkVariables], ['light', lightVariab
 }
 
 console.log(`Popup UI contract passed (${requiredIds.size} functional IDs, SVG/CSS icons, and light/dark contrast).`);
+
+async function testAdFilterControls() {
+  const saved = { privacyMode: true, llmEnabled: true, pageScanningEnabled: false, threshold: 75, adFilterAllowlist: ['other.example'] };
+  const broadcasts = [];
+  let backgroundListener;
+  const event = () => ({ addListener() {} });
+  const backgroundContext = vm.createContext({
+    URL, console, importScripts() {},
+    chrome: {
+      runtime: {
+        onInstalled: event(),
+        onMessage: { addListener(listener) { backgroundListener = listener; } },
+      },
+      storage: {
+        sync: {
+          async get(defaults) { return { ...defaults, ...saved }; },
+          async set(value) { Object.assign(saved, value); },
+        },
+        session: { async get() { return {}; }, async set() {}, async remove() {} },
+      },
+      tabs: {
+        onUpdated: event(), onActivated: event(), onCreated: event(), onRemoved: event(),
+        async query() { return [{ id: 1, url: 'https://www.up-manga.com/genres/manhwa/' }, { id: 2, url: 'chrome://extensions' }]; },
+        async sendMessage(tabId, message) { broadcasts.push({ tabId, message }); },
+      },
+      webNavigation: { onBeforeNavigate: event(), onCreatedNavigationTarget: event(), onCommitted: event() },
+    },
+  });
+  vm.runInContext(fs.readFileSync(path.join(extensionRoot, 'background.js'), 'utf8'), backgroundContext);
+  const backgroundMessage = message => new Promise(resolve => backgroundListener(message, {}, resolve));
+
+  const defaults = await backgroundMessage({ type: 'GET_SETTINGS' });
+  assert.equal(defaults.settings.riskyAdProtection, true, 'New protection must default on without resetting existing settings.');
+  assert.equal(defaults.settings.adFilterMode, 'all', 'All detected ads is the default for existing installations.');
+  assert.equal(defaults.settings.privacyMode, true);
+  assert.equal(defaults.settings.pageScanningEnabled, false);
+  await backgroundMessage({ type: 'SET_SETTINGS', settings: { riskyAdProtection: false } });
+  assert.equal(saved.riskyAdProtection, false);
+  assert.equal(saved.privacyMode, true);
+  assert.equal(saved.llmEnabled, true);
+  assert.equal(saved.threshold, 75);
+  assert.equal(saved.pageScanningEnabled, false);
+  assert.equal(broadcasts.length, 1, 'Filter settings must reach normal pages even while page scanning is paused.');
+  assert.equal(broadcasts[0].message.type, 'SETTINGS_UPDATED');
+  assert.equal(broadcasts[0].message.settings.privacyMode, true);
+
+  const broadcastCount = broadcasts.length;
+  await backgroundMessage({ type: 'SET_SETTINGS', settings: { adFilterMode: 'risky' } });
+  assert.equal(saved.adFilterMode, 'risky', 'Risk-only mode must be stored explicitly.');
+  assert.equal(broadcasts.length, broadcastCount + 1, 'Changing only the mode must reach current pages.');
+  assert.equal(broadcasts.at(-1).message.settings.adFilterMode, 'risky');
+  assert.equal(saved.privacyMode, true);
+  assert.equal(saved.llmEnabled, true);
+  assert.equal(saved.pageScanningEnabled, false);
+  assert.equal(saved.threshold, 75);
+  await backgroundMessage({ type: 'SET_SETTINGS', settings: { adFilterMode: 'invalid-mode' } });
+  assert.equal(saved.adFilterMode, 'all', 'Unknown modes normalize to all detected ads.');
+  saved.adFilterMode = 'RISKY';
+  assert.equal((await backgroundMessage({ type: 'GET_SETTINGS' })).settings.adFilterMode, 'all', 'Reading storage also normalizes unexpected mode values.');
+  saved.adFilterMode = 'all';
+
+  await backgroundMessage({ type: 'SET_SETTINGS', settings: {
+    adFilterAllowlist: [' WWW.UP-MANGA.COM. ', 'www.up-manga.com', 'sub.up-manga.com', '*.up-manga.com', 'foo..bar', 'evil.example/path', 'https://evil.example', 'bad@evil.example'],
+  } });
+  assert.deepEqual([...saved.adFilterAllowlist], ['www.up-manga.com', 'sub.up-manga.com'], 'Exceptions must remain exact hostnames and reject paths or wildcards.');
+
+  const elements = new Map([...htmlIds].map(id => [id, {
+    checked: false, disabled: false, textContent: '', value: '', events: {}, style: {},
+    classList: { toggle() {}, add() {}, remove() {} },
+    addEventListener(type, handler) { this.events[type] = handler; },
+    setAttribute() {},
+  }]));
+  const popupMessages = [];
+  const popupContext = vm.createContext({
+    URL, console,
+    document: { getElementById(id) { return elements.get(id); } },
+    chrome: {
+      runtime: { sendMessage(message, callback) { popupMessages.push(message); backgroundMessage(message).then(callback); } },
+      storage: { onChanged: event() },
+      tabs: {
+        async get() { return { url: 'https://www.up-manga.com/genres/manhwa/' }; },
+        sendMessage(tabId, message, callback) {
+          callback(message.type === 'GET_AD_FILTER_STATS' ? { ok: true, stats: { hiddenCount: 7, blockedClicks: 2 } } : { ok: true });
+        },
+      },
+    },
+    PhishRadarAppTrust: require(path.join(extensionRoot, 'app-trust.js')),
+  });
+  vm.runInContext(script.replace(/\bload\(\);\s*$/, ''), popupContext);
+  vm.runInContext("activeTab = { id: 1, url: 'https://WWW.UP-MANGA.COM/genres/manhwa/' }; renderAdFilter({riskyAdProtection:true, adFilterAllowlist:[]});", popupContext);
+  assert.equal(vm.runInContext('currentAdFilterHost()', popupContext), 'www.up-manga.com');
+  assert.equal(elements.get('adFilterSiteException').disabled, false);
+  assert.equal(elements.get('adFilterMode').value, 'all');
+  assert.equal(elements.get('adFilterMode').disabled, false);
+
+  saved.adFilterAllowlist = ['other.example'];
+  elements.get('adFilterSiteException').checked = true;
+  await elements.get('adFilterSiteException').events.change({ target: elements.get('adFilterSiteException') });
+  assert.deepEqual([...saved.adFilterAllowlist], ['www.up-manga.com', 'other.example'], 'Adding one site must preserve other exceptions.');
+  assert.equal(saved.privacyMode, true);
+  assert.equal(saved.llmEnabled, true);
+  assert.equal(saved.pageScanningEnabled, false);
+  assert.equal(saved.threshold, 75);
+  assert.deepEqual(Object.keys(popupMessages.find(message => message.type === 'SET_SETTINGS').settings), ['adFilterAllowlist']);
+
+  elements.get('adFilterSiteException').checked = false;
+  await elements.get('adFilterSiteException').events.change({ target: elements.get('adFilterSiteException') });
+  assert.deepEqual([...saved.adFilterAllowlist], ['other.example']);
+  elements.get('riskyAdProtection').checked = true;
+  await elements.get('riskyAdProtection').events.change({ target: elements.get('riskyAdProtection') });
+  assert.equal(saved.riskyAdProtection, true);
+  assert.match(elements.get('adFilterStatus').textContent, /7.*2/, 'Popup must display the independent filter counts.');
+  assert.match(elements.get('adFilterStatus').textContent, /ซ่อนโฆษณา/, 'Hidden ad counts must not claim phishing evidence.');
+
+  const sentBeforeModeChange = popupMessages.length;
+  elements.get('adFilterMode').value = 'risky';
+  await elements.get('adFilterMode').events.change({ target: elements.get('adFilterMode') });
+  assert.equal(saved.adFilterMode, 'risky');
+  assert.equal(elements.get('adFilterMode').value, 'risky');
+  assert.deepEqual(Object.keys(popupMessages.slice(sentBeforeModeChange).find(message => message.type === 'SET_SETTINGS').settings), ['adFilterMode'], 'Mode changes save only their own preference.');
+  assert.deepEqual([...saved.adFilterAllowlist], ['other.example']);
+  assert.equal(saved.threshold, 75);
+  assert.equal(saved.privacyMode, true);
+  assert.equal(saved.llmEnabled, true);
+  assert.equal(saved.pageScanningEnabled, false);
+  elements.get('adFilterMode').value = 'all';
+  await elements.get('adFilterMode').events.change({ target: elements.get('adFilterMode') });
+  assert.equal(saved.adFilterMode, 'all');
+  vm.runInContext('renderAdFilter({riskyAdProtection:false, adFilterMode:"risky", adFilterAllowlist:[]});', popupContext);
+  assert.equal(elements.get('adFilterMode').value, 'risky', 'Disabling does not discard the selected mode.');
+  assert.equal(elements.get('adFilterMode').disabled, true);
+  vm.runInContext('renderAdFilter({riskyAdProtection:true, adFilterMode:"unexpected", adFilterAllowlist:[]});', popupContext);
+  assert.equal(elements.get('adFilterMode').value, 'all');
+
+  vm.runInContext("activeTab.url = 'chrome://extensions'; renderAdFilter();", popupContext);
+  assert.equal(elements.get('adFilterSiteException').disabled, true);
+  vm.runInContext("activeTab.url = PhishRadarAppTrust.DEFAULT_WEB_APP_URL; renderAdFilter();", popupContext);
+  assert.equal(elements.get('adFilterSiteException').disabled, true, 'Phish Radar origin exception is managed by the system.');
+  assert.match(elements.get('adFilterStatus').textContent, /Phish Radar/);
+  console.log('Ad-filter controls passed (all/risky mode selection and normalization, independent toggle, exact host exceptions, preference preservation and live status).');
+}
+
+testAdFilterControls().catch(error => { console.error(error); process.exitCode = 1; });

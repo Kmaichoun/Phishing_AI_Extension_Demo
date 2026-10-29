@@ -9,6 +9,7 @@ import uuid
 from collections import defaultdict, deque
 from collections.abc import Generator
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pwdlib import PasswordHash
@@ -30,7 +31,6 @@ router = APIRouter(prefix="/auth", tags=["authentication"])
 password_hash = PasswordHash.recommended()
 
 SESSION_COOKIE = "phish_radar_session"
-DEVICE_COOKIE = "phish_radar_device"
 SESSION_HOURS = max(1, int(os.getenv("AUTH_SESSION_HOURS", "168")))
 COOKIE_SECURE = os.getenv("AUTH_COOKIE_SECURE", "false").lower() in {"1", "true", "yes"}
 WEB_ORIGINS = {
@@ -41,6 +41,8 @@ WEB_ORIGINS = {
     ).split(",")
     if value.strip()
 }
+if render_origin := os.getenv("RENDER_EXTERNAL_URL", "").strip().rstrip("/"):
+    WEB_ORIGINS.add(render_origin)
 
 FAIL_WINDOW_SECONDS = 300
 FAIL_LIMIT = 5
@@ -73,11 +75,17 @@ def _session_scope() -> Generator[Session, None, None]:
 def _require_web_client(request: Request) -> None:
     origin = request.headers.get("origin", "")
     client = request.headers.get("x-phish-radar-client", "")
-    if origin not in WEB_ORIGINS or client != "web-app":
+    host = request.headers.get("host", "").lower()
+    same_origin_get = (
+        request.method in {"GET", "HEAD"}
+        and not origin
+        and any(urlsplit(allowed).netloc.lower() == host for allowed in WEB_ORIGINS)
+    )
+    if client != "web-app" or (origin not in WEB_ORIGINS and not same_origin_get):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="คำขอนี้ไม่ได้มาจาก Web App ที่อนุญาต")
 
 
-def _set_auth_cookies(response: Response, session_token: str, device_token: str) -> None:
+def _set_auth_cookies(response: Response, session_token: str) -> None:
     max_age = SESSION_HOURS * 60 * 60
     common = {
         "httponly": True,
@@ -86,10 +94,17 @@ def _set_auth_cookies(response: Response, session_token: str, device_token: str)
         "path": "/",
     }
     response.set_cookie(SESSION_COOKIE, session_token, max_age=max_age, **common)
-    response.set_cookie(DEVICE_COOKIE, device_token, max_age=60 * 60 * 24 * 365, **common)
+    _clear_legacy_device_cookie(response)
+
+
+def _clear_legacy_device_cookie(response: Response) -> None:
+    # Remove the persistent identifier issued by older versions, without reading it.
+    response.delete_cookie("phish_radar_device", path="/", httponly=True,
+                           secure=COOKIE_SECURE, samesite="lax")
 
 
 def _clear_session_cookie(response: Response) -> None:
+    _clear_legacy_device_cookie(response)
     response.delete_cookie(
         SESSION_COOKIE,
         path="/",
@@ -157,81 +172,29 @@ def _verify_current_password(
     _clear_failures(key)
 
 
-def _create_or_update_device(
-    database: Session,
-    user_id: int,
-    device_name: str,
-    device_token: str,
-) -> int:
-    key_hash = _token_hash(device_token)
-    existing = database.execute(
-        text(
-            """
-            SELECT UserDeviceId
-            FROM UserDevices
-            WHERE UserId = :user_id AND DeviceKeyHash = :key_hash
-            """
-        ),
-        {"user_id": user_id, "key_hash": key_hash},
-    ).scalar_one_or_none()
-
-    if existing is not None:
-        database.execute(
-            text(
-                """
-                UPDATE UserDevices
-                SET DeviceName = :device_name,
-                    IsRevoked = 0,
-                    RevokedAt = NULL,
-                    LastSeenAt = UTC_TIMESTAMP(3)
-                WHERE UserDeviceId = :device_id
-                """
-            ),
-            {"device_name": device_name, "device_id": existing},
-        )
-        return int(existing)
-
-    result = database.execute(
-        text(
-            """
-            INSERT INTO UserDevices (UserId, DeviceName, DeviceKeyHash)
-            VALUES (:user_id, :device_name, :key_hash)
-            """
-        ),
-        {"user_id": user_id, "device_name": device_name, "key_hash": key_hash},
-    )
-    if result.lastrowid is None:
-        raise RuntimeError("MySQL did not return UserDeviceId")
-    return int(result.lastrowid)
-
-
-def _create_session(database: Session, user_id: int, device_id: int) -> str:
+def _create_session(database: Session, user_id: int, previous_token: str | None = None) -> str:
     session_token = secrets.token_urlsafe(32)
     session_id = str(uuid.uuid4())
     now = _utc_now()
-    database.execute(
-        text(
-            """
-            UPDATE Sessions
-            SET RevokedAt = COALESCE(RevokedAt, :now)
-            WHERE UserDeviceId = :device_id AND RevokedAt IS NULL
-            """
-        ),
-        {"device_id": device_id, "now": now},
-    )
+    # Replace only the session presented by this client; other logins stay active.
+    if previous_token:
+        database.execute(
+            text("""UPDATE Sessions SET RevokedAt = :now
+                WHERE TokenHash = :token_hash AND UserId = :user_id AND RevokedAt IS NULL"""),
+            {"token_hash": _token_hash(previous_token), "user_id": user_id, "now": now},
+        )
     database.execute(
         text(
             """
             INSERT INTO Sessions
-                (SessionId, UserId, UserDeviceId, TokenHash, CreatedAt, LastSeenAt, ExpiresAt)
+                (SessionId, UserId, TokenHash, CreatedAt, LastSeenAt, ExpiresAt)
             VALUES
-                (:session_id, :user_id, :device_id, :token_hash, :now, :now, :expires_at)
+                (:session_id, :user_id, :token_hash, :now, :now, :expires_at)
             """
         ),
         {
             "session_id": session_id,
             "user_id": user_id,
-            "device_id": device_id,
             "token_hash": _token_hash(session_token),
             "now": now,
             "expires_at": now + timedelta(hours=SESSION_HOURS),
@@ -246,7 +209,6 @@ def _user_response(row: dict[str, object]) -> UserResponse:
         username=str(row["Username"]),
         email=str(row["Email"]),
         role=str(row["Role"]),
-        device_name=str(row["DeviceName"]),
     )
 
 
@@ -263,15 +225,13 @@ def require_authenticated_user(
         text(
             """
             SELECT u.UserId, u.Username, u.Email, u.Role,
-                   d.UserDeviceId, d.DeviceName, s.SessionId
+                   s.SessionId
             FROM Sessions AS s
             INNER JOIN Users AS u ON u.UserId = s.UserId
-            INNER JOIN UserDevices AS d ON d.UserDeviceId = s.UserDeviceId
             WHERE s.TokenHash = :token_hash
               AND s.RevokedAt IS NULL
               AND s.ExpiresAt > UTC_TIMESTAMP(3)
               AND u.IsActive = 1
-              AND d.IsRevoked = 0
             """
         ),
         {"token_hash": _token_hash(session_token)},
@@ -290,16 +250,7 @@ def require_authenticated_user(
         ),
         {"session_id": row["SessionId"]},
     )
-    database.execute(
-        text(
-            """
-            UPDATE UserDevices
-            SET LastSeenAt = UTC_TIMESTAMP(3)
-            WHERE UserDeviceId = :device_id
-            """
-        ),
-        {"device_id": row["UserDeviceId"]},
-    )
+    _clear_legacy_device_cookie(response)
     database.commit()
     return dict(row)
 
@@ -317,7 +268,6 @@ def register(
     database: Session = Depends(_session_scope),
 ) -> UserResponse:
     _require_web_client(request)
-    device_token = request.cookies.get(DEVICE_COOKIE) or secrets.token_urlsafe(32)
     hashed_password = password_hash.hash(payload.password.get_secret_value())
 
     try:
@@ -337,8 +287,7 @@ def register(
         if result.lastrowid is None:
             raise RuntimeError("MySQL did not return UserId")
         user_id = int(result.lastrowid)
-        device_id = _create_or_update_device(database, user_id, payload.device_name, device_token)
-        session_token = _create_session(database, user_id, device_id)
+        session_token = _create_session(database, user_id, request.cookies.get(SESSION_COOKIE))
         database.commit()
     except IntegrityError as error:
         database.rollback()
@@ -347,13 +296,12 @@ def register(
             detail="ชื่อผู้ใช้หรืออีเมลนี้ถูกใช้งานแล้ว",
         ) from error
 
-    _set_auth_cookies(response, session_token, device_token)
+    _set_auth_cookies(response, session_token)
     return UserResponse(
         user_id=user_id,
         username=payload.username,
         email=str(payload.email).lower(),
         role="user",
-        device_name=payload.device_name,
     )
 
 
@@ -399,22 +347,19 @@ def login(
         )
 
     _clear_failures(key)
-    device_token = request.cookies.get(DEVICE_COOKIE) or secrets.token_urlsafe(32)
-    device_id = _create_or_update_device(database, int(row["UserId"]), payload.device_name, device_token)
-    session_token = _create_session(database, int(row["UserId"]), device_id)
+    session_token = _create_session(database, int(row["UserId"]), request.cookies.get(SESSION_COOKIE))
     database.execute(
         text("UPDATE Users SET LastLoginAt = UTC_TIMESTAMP(3), UpdatedAt = UTC_TIMESTAMP(3) WHERE UserId = :user_id"),
         {"user_id": row["UserId"]},
     )
     database.commit()
 
-    _set_auth_cookies(response, session_token, device_token)
+    _set_auth_cookies(response, session_token)
     return UserResponse(
         user_id=int(row["UserId"]),
         username=str(row["Username"]),
         email=str(row["Email"]),
         role=str(row["Role"]),
-        device_name=payload.device_name,
     )
 
 
@@ -484,7 +429,6 @@ def update_profile(
         username=str(row["Username"]),
         email=str(row["Email"]),
         role=str(row["Role"]),
-        device_name=str(current_user["DeviceName"]),
     )
 
 

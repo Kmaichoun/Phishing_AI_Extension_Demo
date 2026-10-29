@@ -12,7 +12,10 @@ function apiErrorMessage(payload, fallback) {
 
 async function request(path, options = {}) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), path === '/explain' ? 120000 : 15000);
+  const abort = () => controller.abort();
+  if (options.signal?.aborted) abort();
+  options.signal?.addEventListener('abort', abort, { once: true });
+  const timeout = setTimeout(abort, ['/explain', '/chat'].includes(path) ? 120000 : 15000);
   try {
   const response = await fetch(`${runtime.apiBase}${path}`, {
     credentials: options.credentials ?? 'include',
@@ -36,11 +39,13 @@ async function request(path, options = {}) {
     throw error;
   } finally {
     clearTimeout(timeout);
+    options.signal?.removeEventListener('abort', abort);
   }
 }
 
 export const api = {
   health: () => request('/health', { credentials: 'omit' }),
+  chat: (body, signal) => request('/chat', { method: 'POST', body: JSON.stringify(body), signal }),
   authHealth: () => request('/auth/health'),
   me: () => request('/auth/me'),
   login: body => request('/auth/login', { method: 'POST', body: JSON.stringify(body) }),
@@ -48,7 +53,13 @@ export const api = {
   logout: () => request('/auth/logout', { method: 'POST' }),
   updateProfile: body => request('/auth/profile', { method: 'PATCH', body: JSON.stringify(body) }),
   changePassword: body => request('/auth/change-password', { method: 'POST', body: JSON.stringify(body) }),
-  predict: body => request('/predict', { method: 'POST', credentials: 'omit', body: JSON.stringify(body) }),
+  predict: async body => {
+    const result = await request('/predict', { method: 'POST', credentials: 'omit', body: JSON.stringify(body) });
+    if (!result?.ok || !Number.isFinite(result.risk_score) || !result.model_status) {
+      throw new Error('เซิร์ฟเวอร์ส่งผลตรวจไม่ครบ กรุณาลองตรวจสอบอีกครั้ง');
+    }
+    return result;
+  },
   explain: body => request('/explain', { method: 'POST', credentials: 'omit', body: JSON.stringify(body) }),
   feedback: body => request('/feedback', { method: 'POST', credentials: 'omit', body: JSON.stringify(body) }),
   history: (limit = 50) => request(`/history?limit=${limit}`),
@@ -58,7 +69,6 @@ export const api = {
   stats: () => request('/workspace/stats'),
   security: () => request('/workspace/security'),
   revokeSession: id => request(`/workspace/sessions/${encodeURIComponent(id)}`, { method: 'DELETE' }),
-  revokeDevice: id => request(`/workspace/devices/${id}`, { method: 'DELETE' }),
   accountFeedback: body => request('/workspace/feedback', { method: 'POST', body: JSON.stringify(body) }),
   adminUsers: (q = '', offset = 0) => request(`/workspace/admin/users?${new URLSearchParams({ q, offset })}`),
   adminUpdateUser: (id, body) => request(`/workspace/admin/users/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),

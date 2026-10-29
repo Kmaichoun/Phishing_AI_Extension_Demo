@@ -66,13 +66,24 @@ def database_status() -> dict[str, object]:
                             SELECT COUNT(*)
                             FROM information_schema.tables
                             WHERE table_schema = DATABASE()
-                              AND table_name IN ('Users', 'UserDevices', 'Sessions')
-                        ) = 3 THEN 1 ELSE 0 END AS AuthSchemaReady,
+                              AND table_name IN ('Users', 'Sessions')
+                        ) = 2 AND NOT EXISTS (
+                            SELECT 1 FROM information_schema.tables
+                            WHERE table_schema = DATABASE() AND table_name = 'UserDevices'
+                        ) AND NOT EXISTS (
+                            SELECT 1 FROM information_schema.columns
+                            WHERE table_schema = DATABASE() AND table_name = 'Sessions'
+                              AND column_name = 'UserDeviceId'
+                        ) THEN 1 ELSE 0 END AS AuthSchemaReady,
                         CASE WHEN EXISTS (
                             SELECT 1
                             FROM information_schema.tables
                             WHERE table_schema = DATABASE()
                               AND table_name = 'SearchHistory'
+                        ) AND NOT EXISTS (
+                            SELECT 1 FROM information_schema.columns
+                            WHERE table_schema = DATABASE() AND table_name = 'SearchHistory'
+                              AND column_name = 'UserDeviceId'
                         ) THEN 1 ELSE 0 END AS HistorySchemaReady,
                         CASE WHEN (
                             SELECT COUNT(DISTINCT column_name)

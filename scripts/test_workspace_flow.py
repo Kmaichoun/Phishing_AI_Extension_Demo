@@ -35,13 +35,12 @@ def client():
 def create(account, name):
     return expect(account.post('/auth/register', json={
         'username': name, 'email': name + '@example.com', 'password': PASSWORD,
-        'device_name': name + ' primary',
     }), 201)['user_id']
 
 
-def login(account, name, device):
+def login(account, name):
     expect(account.post('/auth/login', json={
-        'identifier': name, 'password': PASSWORD, 'device_name': device,
+        'identifier': name, 'password': PASSWORD,
     }), 200)
 
 
@@ -61,7 +60,7 @@ def cleanup(ids):
         for uid in ids:
             for table, column in [('ScanFeedback', 'UserId'), ('AuditEvents', 'ActorUserId'),
                                   ('SearchHistory', 'UserId'), ('Sessions', 'UserId'),
-                                  ('UserDevices', 'UserId'), ('Users', 'UserId')]:
+                                  ('Users', 'UserId')]:
                 db.execute(text(f'DELETE FROM {table} WHERE {column}=:uid'), {'uid': uid})
         db.commit()
         for uid in ids:
@@ -128,7 +127,7 @@ def main():
         assert stats['totals']['total'] == 2 and stats['totals']['warned'] == 1
         assert stats['feedback']['reported_false_positives'] == stats['feedback']['confirmed_false_positives'] == 1
 
-        login(second, names[1], 'Disposable second browser')
+        login(second, names[1])
         security = expect(member.get('/workspace/security'), 200)
         current = next(s for s in security['sessions'] if s['current'])
         remote = next(s for s in security['sessions'] if not s['current'])
@@ -136,25 +135,28 @@ def main():
         expect(other.delete('/workspace/sessions/' + remote['id']), 404)
         expect(member.delete('/workspace/sessions/' + remote['id']), 200)
         expect(second.get('/auth/me'), 401)
-        login(second, names[1], 'Disposable second browser')
+        login(second, names[1])
+        previous_token = second.cookies.get('phish_radar_session')
+        login(second, names[1])
+        # Re-login replaces only that client's session, and cannot revive its old cookie.
+        stolen = client()
+        stolen.cookies.set('phish_radar_session', previous_token)
+        expect(stolen.get('/auth/me'), 401)
+        expect(member.get('/auth/me'), 200)
         security = expect(member.get('/workspace/security'), 200)
-        device = next(d for d in security['devices'] if not d['current'])
-        own = next(d for d in security['devices'] if d['current'])
-        expect(member.delete(f"/workspace/devices/{own['id']}"), 400)
-        expect(other.delete(f"/workspace/devices/{device['id']}"), 404)
-        expect(member.delete(f"/workspace/devices/{device['id']}"), 200)
-        expect(second.get('/auth/me'), 401)
-        assert expect(member.get('/history', params={'device_id': own['id']}), 200)['total'] == 2
-        assert expect(member.get('/history', params={'device_id': device['id']}), 200)['total'] == 0
+        assert set(security) == {'sessions'} and len(security['sessions']) == 2
+        assert all('device_name' not in session for session in security['sessions'])
+        assert 'device_name' not in first
+        assert expect(second.get('/history'), 200)['total'] == 2
 
         # Role changes must be checked server-side and invalidate old sessions.
         expect(admin.patch(f'/workspace/admin/users/{ids[2]}', json={'role': 'admin', 'active': True}), 200)
         expect(other.get('/auth/me'), 401)
-        login(other, names[2], 'Disposable admin browser')
+        login(other, names[2])
         expect(other.get('/workspace/admin/users'), 200)
         expect(admin.patch(f'/workspace/admin/users/{ids[2]}', json={'role': 'user', 'active': False}), 200)
         expect(other.get('/workspace/admin/users'), 401)
-        expect(other.post('/auth/login', json={'identifier': names[2], 'password': PASSWORD, 'device_name': 'blocked'}), 401)
+        expect(other.post('/auth/login', json={'identifier': names[2], 'password': PASSWORD}), 401)
 
         expect(member.delete('/history'), 200)
         assert expect(member.get('/history'), 200)['total'] == 0
@@ -162,9 +164,9 @@ def main():
             assert db.execute(text('SELECT COUNT(*) FROM ScanFeedback WHERE UserId=:uid'), {'uid': ids[1]}).scalar_one() == 0
         audit = expect(admin.get('/workspace/admin/audit'), 200)
         actions = {item['action'] for item in audit['items'] if item['actor'] in names}
-        assert {'history.clear', 'session.revoke', 'device.revoke', 'user.update', 'feedback.review'} <= actions
+        assert {'history.clear', 'session.revoke', 'user.update', 'feedback.review'} <= actions
         print('Workspace integration passed: authentication, admin authorization, owner isolation,')
-        print('session/device revocation, history filters/pagination, feedback review/export, Model Lab, audit and cleanup.')
+        print('session revocation, history filters/pagination, feedback review/export, Model Lab, audit and cleanup.')
     finally:
         cleanup(ids)
 

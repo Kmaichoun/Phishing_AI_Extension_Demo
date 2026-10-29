@@ -21,18 +21,10 @@ EXPECTED_TABLES = {
         "NormalizedEmail",
         "Role",
     },
-    "002_create_user_devices.sql": {
-        "UserDevices",
-        "UserDeviceId",
-        "UserId",
-        "DeviceName",
-        "DeviceKeyHash",
-    },
     "003_create_sessions.sql": {
         "Sessions",
         "SessionId",
         "UserId",
-        "UserDeviceId",
         "TokenHash",
         "ExpiresAt",
     },
@@ -40,7 +32,6 @@ EXPECTED_TABLES = {
         "SearchHistory",
         "HistoryId",
         "UserId",
-        "UserDeviceId",
         "Url",
         "RiskProbability",
         "RiskScore",
@@ -67,6 +58,7 @@ def main() -> None:
         sql = path.read_text(encoding="utf-8-sig")
         executable_sql = re.sub(r"/\*.*?\*/", "", sql, flags=re.DOTALL)
         assert len(re.findall(r"\bCREATE\s+TABLE\b", sql, flags=re.IGNORECASE)) == 1
+        assert "UserDevice" not in sql
         assert "ENGINE=InnoDB" in sql
         assert "utf8mb4" in sql
         assert not re.search(

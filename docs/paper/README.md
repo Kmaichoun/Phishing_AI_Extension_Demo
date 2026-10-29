@@ -1,5 +1,7 @@
 # ชุดเอกสารให้เพื่อนเขียนบทความ Phish Radar
 
+> บริบทการส่ง 2026-10-29: เอกสารนี้เก็บข้อเท็จจริง/ผลและวันตรวจเดิม ไม่ใช่ผล evaluation ใหม่ Source ที่ root ของ `submission/latest-project-20261029` เป็น curated source รุ่นใหม่แล้ว ส่วนคำเตือนเกี่ยวกับ native source เก่าในเนื้อหาเดิมหมายถึง branch เก่า ดู [รายงานการส่ง](../submission-20261029/README.md) และ [ผลตรวจรอบนี้](../submission-20261029/VERIFICATION_TH.md)
+
 จัดเตรียมวันที่ 17 ตุลาคม 2026 ตามหัวข้อในภาพที่ได้รับจากผู้ใช้ ชุดนี้มี **โครงบทความและคู่มือให้ผู้เขียนลงมือเขียนเอง** ยังไม่ใช่บทความฉบับส่งอาจารย์
 
 ## เริ่มจากตรงนี้
@@ -44,20 +46,20 @@
 
 ข้อมูลในชุดนี้อ้างอิง source และ artifact ในเครื่องที่ตรวจวันที่ 17 ตุลาคม 2026 โดยใช้ SHA256 และไฟล์หลักฐานใน `evidence/` ระบุรุ่น ไม่ใช่ผลทดสอบใหม่ในวันนี้ และไม่ได้ยืนยันว่าเซิร์ฟเวอร์ใดกำลังโหลดรุ่นนี้
 
-branch เอกสารนี้ต่อจาก commit `c875719792321a2ca4e4d057e037b7c253522d39` ของ repository เดิม ซึ่งเป็น source ที่เก่ากว่าสำเนาในเครื่องที่ใช้ตรวจข้อเท็จจริง source และ `backend/model.pkl` ที่ root ของ branch ยังคงเป็นฐานเดิม ส่วนโค้ดรุ่นใหม่สำหรับอ่านอยู่ใน [source snapshot และคู่มือ AI](../ai/README.md) ซึ่งแนบเพิ่มวันที่ 20 ตุลาคม 2026 อย่าใช้ native source เก่าพิสูจน์ผลของโมเดลใหม่ หากจะรันทดลองซ้ำ ยังต้องรับ artifact และ registry ที่มี hash ตรงกับหลักฐานจากเจ้าของโครงงาน
+ใน branch ส่งต่อเดิม `docs/article-handoff-20261017` source และ native model เคยเป็นฐานเก่าจาก commit `c875719792321a2ca4e4d057e037b7c253522d39` ส่วน branch ส่งอาจารย์ `submission/latest-project-20261029` รอบนี้นำ curated source รุ่นใหม่มาไว้ที่ root แล้ว และนำ model binary เก่าออกจากปลาย branch เพื่อป้องกันการใช้ผิดรุ่น มี [source snapshot และคู่มือ AI](../ai/README.md) สำหรับตรวจ hash เพิ่มเติม หากจะรันทดลองซ้ำ ยังต้องรับ model artifact, registry และ authorization ที่ตรงกับหลักฐานจากเจ้าของโครงงาน
 
 เอกสารเดิมใน repository บางฉบับอธิบายสูตรหลายยุค เช่น learned fusion หรือเกณฑ์เดิม ให้เริ่มจาก `PROJECT_FACTS_TH.md` เมื่อเขียนถึงรุ่นที่ตรวจครั้งนี้
 
 ## รับช่วงผ่าน GitHub
 
-ลิงก์ที่ควรส่งให้เพื่อนคือโฟลเดอร์ `docs/paper` บน branch `docs/article-handoff-20261017`:
+ลิงก์สำหรับรับช่วงรอบนี้คือโฟลเดอร์ `docs/paper` บน branch `submission/latest-project-20261029`:
 
-[เปิดชุดเอกสารบน GitHub](https://github.com/Kmaichoun/Phishing_AI_Extension_Demo/tree/docs/article-handoff-20261017/docs/paper)
+[เปิดชุดเอกสารบน GitHub](https://github.com/Kmaichoun/Phishing_AI_Extension_Demo/tree/submission/latest-project-20261029/docs/paper)
 
 หากต้องการแก้ Markdown ในเครื่อง:
 
 ```bash
-git clone --branch docs/article-handoff-20261017 --single-branch https://github.com/Kmaichoun/Phishing_AI_Extension_Demo.git
+git clone --branch submission/latest-project-20261029 --single-branch https://github.com/Kmaichoun/Phishing_AI_Extension_Demo.git
 cd Phishing_AI_Extension_Demo
 ```
 

@@ -7,11 +7,12 @@ const appTrust = require(path.join(projectRoot, 'extension', 'app-trust.js'));
 
 assert.equal(
   appTrust.DEFAULT_WEB_APP_URL,
-  'http://app.phishradar.localhost:5505/#/login',
+  `${appTrust.PUBLIC_WEB_APP_ORIGIN || 'http://app.phishradar.localhost:5505'}/#/login`,
   'Extension login entry must use the React hash route'
 );
 
 const trustedUrls = [
+  `${appTrust.PUBLIC_WEB_APP_ORIGIN}/#/login`,
   'http://app.phishradar.localhost:5505/',
   'http://app.phishradar.localhost:5505/#/login',
   'http://127.0.0.1:5505/#/scan',
@@ -26,6 +27,8 @@ for (const url of trustedUrls) {
 }
 
 const rejectedUrls = [
+  'https://another-demo.trycloudflare.com/#/login',
+  `${appTrust.PUBLIC_WEB_APP_ORIGIN}.evil.example/#/login`,
   'http://app.phishradar.localhost:5506/',
   'https://app.phishradar.localhost:5505/',
   'http://api.phishradar.localhost:8765/health',

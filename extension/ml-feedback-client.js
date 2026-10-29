@@ -1,4 +1,4 @@
-const PHISH_RADAR_ML_API = 'http://127.0.0.1:8765';
+const PHISH_RADAR_ML_API = globalThis.PhishRadarAppTrust.API_BASE_URL;
 
 async function phishRadarPredictWithMl(url, ruleScore) {
   try {
@@ -69,10 +69,12 @@ async function phishRadarSendFeedback(payload) {
 }
 
 function phishRadarClassifyPolicy(score, warningThreshold, blockingThreshold, decision) {
-  const warnCut = Number.isFinite(warningThreshold) ? Math.max(1, Math.min(99, warningThreshold)) : 61;
+  const warnCut = Number.isFinite(warningThreshold) ? Math.max(1, Math.min(99, warningThreshold)) : 60;
   const blockCut = Number.isFinite(blockingThreshold) ? Math.max(warnCut, Math.min(100, blockingThreshold)) : Math.min(100, warnCut + 20);
-  if (decision === 'block' || score >= blockCut) return { level: 'critical', decision: 'block', text: 'อันตรายมาก' };
-  if (decision === 'warn' || score >= warnCut) return { level: 'high', decision: 'warn', text: 'เสี่ยงสูง' };
+  if (decision === 'block') return { level: 'critical', decision: 'block', text: 'อันตรายมาก' };
+  if (decision === 'warn') return { level: 'high', decision: 'warn', text: 'เสี่ยงสูง' };
+  if (decision !== 'allow' && score >= blockCut) return { level: 'critical', decision: 'block', text: 'อันตรายมาก' };
+  if (decision !== 'allow' && score >= warnCut) return { level: 'high', decision: 'warn', text: 'เสี่ยงสูง' };
   if (score >= Math.max(5, Math.round(warnCut * 0.6))) return { level: 'medium', decision: 'allow', text: 'น่าสงสัย' };
   return { level: 'low', decision: 'allow', text: 'ปลอดภัย' };
 }

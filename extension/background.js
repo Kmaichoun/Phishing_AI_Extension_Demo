@@ -7,12 +7,15 @@ try {
 }
 
 const DEFAULT_SETTINGS = {
-  threshold: 61,
+  threshold: 60,
   warnMedium: true,
   highlightLinks: true,
   protectForms: true,
   showStatusPanel: true,
   pageScanningEnabled: true,
+  riskyAdProtection: true,
+  adFilterMode: 'all',
+  adFilterAllowlist: [],
   privacyMode: false,
   llmEnabled: false,
   searchProtection: true,
@@ -24,7 +27,30 @@ const APP_TRUST = globalThis.PhishRadarAppTrust;
 
 async function getSettings() {
   const data = await chrome.storage.sync.get(DEFAULT_SETTINGS);
-  return { ...DEFAULT_SETTINGS, ...data };
+  return { ...DEFAULT_SETTINGS, ...data,
+    adFilterMode: data.adFilterMode === 'risky' ? 'risky' : 'all',
+    adFilterAllowlist: normalizeAdFilterAllowlist(data.adFilterAllowlist) };
+}
+
+// Ad-filter exceptions apply to one exact hostname; they do not whitelist URL
+// risk checks or automatically cover other subdomains.
+function normalizeAdFilterAllowlist(value) {
+  if (!Array.isArray(value)) return [];
+  const hosts = value.map(item => {
+    if (typeof item !== 'string') return '';
+    const host = item.trim().toLowerCase().replace(/\.$/, '');
+    if (!host || host.length > 253 || !host.split('.').every(label => /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label))) return '';
+    try { return new URL(`https://${host}/`).hostname === host ? host : ''; } catch (_) { return ''; }
+  }).filter(Boolean);
+  return [...new Set(hosts)].slice(0, 50);
+}
+
+async function syncAdFilterSettingsAcrossTabs(settings) {
+  const tabs = await chrome.tabs.query({});
+  await Promise.all(tabs.map(async tab => {
+    if (!tab.id || !/^https?:/i.test(tab.url || '')) return;
+    try { await chrome.tabs.sendMessage(tab.id, { type: 'SETTINGS_UPDATED', settings }); } catch (_) {}
+  }));
 }
 
 function warningUrl(target, source = 'navigation', extra = {}) {
@@ -39,7 +65,9 @@ function warningUrl(target, source = 'navigation', extra = {}) {
   const warningThreshold = extra.warningThreshold ?? extra.warning_threshold ?? extra.decisionThreshold ?? extra.decision_threshold ?? extra.ml?.warning_threshold ?? '';
   const blockingThreshold = extra.blockingThreshold ?? extra.blocking_threshold ?? extra.ml?.blocking_threshold ?? '';
   const modelVersion = extra.modelVersion ?? extra.model_version ?? extra.ml?.model_version ?? '';
+  const modelStatus = extra.modelStatus ?? extra.model_status ?? extra.ml?.model_status ?? '';
   const policyVersion = extra.policyVersion ?? extra.policy_version ?? extra.ml?.policy_version ?? '';
+  const featureSchemaVersion = extra.featureSchemaVersion ?? extra.feature_schema_version ?? extra.ml?.feature_schema_version ?? '';
   const params = new URLSearchParams({
     target,
     source,
@@ -55,7 +83,9 @@ function warningUrl(target, source = 'navigation', extra = {}) {
     warning_threshold: warningThreshold === null || warningThreshold === undefined ? '' : String(warningThreshold),
     blocking_threshold: blockingThreshold === null || blockingThreshold === undefined ? '' : String(blockingThreshold),
     model_version: String(modelVersion),
+    model_status: String(modelStatus),
     policy_version: String(policyVersion),
+    feature_schema_version: String(featureSchemaVersion),
     // Legacy aliases keep an already-open older warning page readable.
     ml_score: extra.mlScore ?? extra.ml_score ?? extra.ml?.ml_score ?? '',
     final_score: String(riskScore),
@@ -73,8 +103,8 @@ function localOnlyMlResult(ruleScore) {
     risk_probability: null,
     risk_score: ruleScore,
     decision: null,
-    warning_threshold: 61,
-    blocking_threshold: 81,
+    warning_threshold: 60,
+    blocking_threshold: 80,
     ml_score: null,
     final_score: ruleScore,
     privacy_mode: true
@@ -82,7 +112,7 @@ function localOnlyMlResult(ruleScore) {
 }
 
 function effectiveRiskThreshold(settings, result) {
-  const userThreshold = Number(settings?.threshold || 61);
+  const userThreshold = Number(settings?.threshold || 60);
   const modelThreshold = Number(result?.warningThreshold ?? result?.warning_threshold ?? result?.decisionThreshold ?? result?.decision_threshold ?? result?.ml?.warning_threshold);
   return Number.isFinite(modelThreshold) ? modelThreshold : userThreshold;
 }
@@ -190,8 +220,8 @@ async function analyzeUrlWithMl(url, options = {}) {
       riskProbability: null,
       riskScore: ruleResult.score,
       decision: null,
-      warningThreshold: Number(settings.threshold || 61),
-      blockingThreshold: Math.min(100, Number(settings.threshold || 61) + 20),
+      warningThreshold: Number(settings.threshold || 60),
+      blockingThreshold: Math.min(100, Number(settings.threshold || 60) + 20),
       mlScore: null,
       fuzzyScore: null,
       randomForestScore: null,
@@ -211,8 +241,8 @@ async function analyzeUrlWithMl(url, options = {}) {
       riskProbability: null,
       riskScore: ruleResult.score,
       decision: null,
-      warningThreshold: Number(settings.threshold || 61),
-      blockingThreshold: Math.min(100, Number(settings.threshold || 61) + 20),
+      warningThreshold: Number(settings.threshold || 60),
+      blockingThreshold: Math.min(100, Number(settings.threshold || 60) + 20),
       mlScore: null,
       finalScore: ruleResult.score,
       score: ruleResult.score,
@@ -376,6 +406,57 @@ chrome.tabs.onActivated.addListener(async ({ tabId }) => {
   } catch (_) {}
 });
 
+// Close only a newly-created tab whose exact destination was filtered as an
+// advertisement in its source page. Normal links, login windows and unknown
+// destinations fail open. This is not network-level request blocking.
+function comparableAdUrl(value) {
+  try {
+    const parsed = new URL(value);
+    if (!/^https?:$/.test(parsed.protocol)) return '';
+    parsed.hash = '';
+    return parsed.href;
+  } catch (_) { return ''; }
+}
+
+async function closeFilteredAdPopup(details) {
+  if (details.sourceFrameId !== 0 || details.sourceTabId === details.tabId) return;
+  const targetUrl = comparableAdUrl(details.url);
+  if (!targetUrl) return;
+  try {
+    const initialSettings = await getSettings();
+    if (initialSettings.riskyAdProtection === false) return;
+    const source = await chrome.tabs.get(details.sourceTabId);
+    const pageUrl = comparableAdUrl(source.url);
+    if (!pageUrl || APP_TRUST?.isTrustedWebAppUrl(pageUrl)) return;
+    const pageHost = new URL(pageUrl).hostname.toLowerCase().replace(/\.$/, '');
+    const targetHost = new URL(targetUrl).hostname.toLowerCase().replace(/\.$/, '');
+    const protectedLoginHost = ['accounts.google.com', 'login.microsoftonline.com', 'login.live.com', 'appleid.apple.com'].includes(targetHost);
+    const sameReviewedSite = ['up-manga.com', 'www.up-manga.com'].includes(pageHost) && ['up-manga.com', 'www.up-manga.com'].includes(targetHost);
+    if (pageHost === targetHost || sameReviewedSite || protectedLoginHost || APP_TRUST?.isTrustedWebAppUrl(targetUrl) || initialSettings.adFilterAllowlist.includes(pageHost)) return;
+    const decision = await chrome.tabs.sendMessage(details.sourceTabId,
+      { type: 'CHECK_AD_FILTER_TARGET', targetUrl }, { frameId: 0 });
+    if (!decision?.ok || decision.blocked !== true || comparableAdUrl(decision.pageUrl) !== pageUrl) return;
+    // Recheck after the async round trip so an exception/toggle or user
+    // navigation cannot cause a stale decision to close another destination.
+    const currentSettings = await getSettings();
+    if (currentSettings.riskyAdProtection === false || currentSettings.adFilterAllowlist.includes(pageHost)) return;
+    const currentSource = await chrome.tabs.get(details.sourceTabId);
+    if (comparableAdUrl(currentSource.url) !== pageUrl) return;
+    const target = await chrome.tabs.get(details.tabId);
+    const currentTarget = target.pendingUrl || target.url;
+    let matches = comparableAdUrl(currentTarget) === targetUrl || currentTarget === 'about:blank';
+    if (!matches && currentTarget?.startsWith(chrome.runtime.getURL('warning.html'))) {
+      matches = comparableAdUrl(new URL(currentTarget).searchParams.get('target')) === targetUrl;
+    }
+    if (!matches) return;
+    await chrome.tabs.remove(details.tabId);
+    try { await chrome.tabs.sendMessage(details.sourceTabId,
+      { type: 'AD_FILTER_POPUP_BLOCKED', targetUrl }, { frameId: 0 }); } catch (_) {}
+  } catch (_) { /* Missing source/runtime/closed tab: leave unrelated tabs alone. */ }
+}
+
+chrome.webNavigation.onCreatedNavigationTarget.addListener(closeFilteredAdPopup);
+
 chrome.webNavigation.onBeforeNavigate.addListener(async details => {
   if (details.frameId !== 0 || !/^https?:/.test(details.url)) return;
   const settings = await getSettings();
@@ -464,12 +545,27 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     if (message?.type === 'SET_SETTINGS') {
-      const nextSettings = message.settings || {};
+      const nextSettings = { ...(message.settings || {}) };
+      if (Object.prototype.hasOwnProperty.call(nextSettings, 'riskyAdProtection')) {
+        nextSettings.riskyAdProtection = nextSettings.riskyAdProtection !== false;
+      }
+      if (Object.prototype.hasOwnProperty.call(nextSettings, 'adFilterMode')) {
+        nextSettings.adFilterMode = nextSettings.adFilterMode === 'risky' ? 'risky' : 'all';
+      }
+      if (Object.prototype.hasOwnProperty.call(nextSettings, 'adFilterAllowlist')) {
+        nextSettings.adFilterAllowlist = normalizeAdFilterAllowlist(nextSettings.adFilterAllowlist);
+      }
       await chrome.storage.sync.set(nextSettings);
       if (Object.prototype.hasOwnProperty.call(nextSettings, 'pageScanningEnabled')) {
         await syncPageScanningAcrossTabs(!!nextSettings.pageScanningEnabled);
       }
-      sendResponse({ ok: true, settings: await getSettings() });
+      const savedSettings = await getSettings();
+      if (Object.prototype.hasOwnProperty.call(nextSettings, 'riskyAdProtection') ||
+          Object.prototype.hasOwnProperty.call(nextSettings, 'adFilterMode') ||
+          Object.prototype.hasOwnProperty.call(nextSettings, 'adFilterAllowlist')) {
+        await syncAdFilterSettingsAcrossTabs(savedSettings);
+      }
+      sendResponse({ ok: true, settings: savedSettings });
       return;
     }
 

@@ -13,11 +13,11 @@ If you cannot read or extract an artifact, state the missing evidence. Do not pr
 
 ## Critical source distinction
 
-- The native application directories on this documentation branch come from an older September 2026 Git baseline. New documentation commits do not mean those application files were updated.
-- The archive is a curated snapshot of the newer local source inspected on 2026-10-20. It is reference material for understanding the newer project, not an activated runtime or a complete experiment reproduction bundle.
+- On `submission/latest-project-20261029`, the root application directories are curated actual-parent-project source re-inspected on 2026-10-29. Read `docs/submission-20261029/README.md` and its publication/verification records. On the earlier `docs/article-handoff-20261017` branch, native application directories remain the older September 2026 baseline. Never apply one branch's source identity to the other.
+- The archive on this submission branch was refreshed from its curated published source on 2026-10-29; the earlier reference archive was inspected on 2026-10-20. This submission does not activate a runtime or supply a complete experiment reproduction bundle. Model/results evidence retains its original inspection/evaluation dates.
 - The archive excludes the trained model binary, raw datasets, `.env`, credentials, dependencies, build output, logs, and backups. Dataset provenance and model metadata are supplied separately.
 - The original reference-origin registry JSON and demo-authorization JSON are also omitted because their source copies contain transient URL parameters or machine-local paths. Their hashes/status remain in the recorded evidence; do not fabricate replacements with the same identity.
-- The documented model SHA256 is `bc4e024e32aaf0ad695ea4a4dff552ece09d606c4963a49e8bf6aa8a447575bb`. Compare the actual model before applying these facts to a running application. A bundled native model with a different hash is a different artifact.
+- The documented model SHA256 is `bc4e024e32aaf0ad695ea4a4dff552ece09d606c4963a49e8bf6aa8a447575bb`. Compare the actual model before applying these facts to a running application. A binary with a different hash is a different artifact. This submission branch deliberately omits model binaries, including the old native model.
 - Do not load an untrusted pickle merely to learn the project. Inspect JSON/source first. Only deserialize artifacts from a trusted origin within an authorized execution task.
 - Choose and name the source baseline used for a code change. Do not silently copy the archive over the native application or replace a model to make it match a report.
 

@@ -1,13 +1,15 @@
 # คู่มือให้ AI รับช่วงโครงงาน Phish Radar
 
-จัดทำวันที่ 20 ตุลาคม 2026 เพื่อให้ AI บนอีกเครื่องเริ่มจากข้อมูลชุดเดียวกัน ค้นส่วนที่เกี่ยวข้องได้ และบอกสิ่งที่ยังยืนยันไม่ได้ คู่มือนี้เป็นแผนที่สำหรับอ่านโค้ดและหลักฐาน ไม่ใช่การรับรองว่า AI ได้อ่านทุกไฟล์หรือระบบพร้อมใช้งานจริง
+> ชุดส่งอาจารย์รอบ 2026-10-29: อ่าน [รายงานล่าสุด](../submission-20261029/README.md) และ [ผลตรวจ](../submission-20261029/VERIFICATION_TH.md) ประกอบ คู่มือนี้แยก branch ใหม่จาก source เก่าตามตารางด้านล่าง
+
+ปรับปรุงสำหรับ branch ส่งอาจารย์วันที่ 29 ตุลาคม 2026 (คู่มือและหลักฐานเดิมจัดทำ 20 ตุลาคม 2026) เพื่อให้ AI บนอีกเครื่องเริ่มจากข้อมูลชุดเดียวกัน ค้นส่วนที่เกี่ยวข้องได้ และบอกสิ่งที่ยังยืนยันไม่ได้ คู่มือนี้เป็นแผนที่สำหรับอ่านโค้ดและหลักฐาน ไม่ใช่การรับรองว่า AI ได้อ่านทุกไฟล์หรือระบบพร้อมใช้งานจริง
 
 ## 1 เริ่มใช้งานบนอีกเครื่อง
 
 ต้องเลือก branch ที่มีชุดเอกสารนี้ เพราะ default branch ของ repository อาจยังเป็นรุ่นเก่า:
 
 ```bash
-git clone --branch docs/article-handoff-20261017 --single-branch https://github.com/Kmaichoun/Phishing_AI_Extension_Demo.git
+git clone --branch submission/latest-project-20261029 --single-branch https://github.com/Kmaichoun/Phishing_AI_Extension_Demo.git
 cd Phishing_AI_Extension_Demo
 python scripts/inspect_project_context.py --json
 ```
@@ -16,7 +18,7 @@ python scripts/inspect_project_context.py --json
 
 ```text
 อ่าน AGENTS.md และ docs/ai/README.md ก่อนทำงานกับ Phish Radar นี้
-ตรวจแยก native source รุ่นเก่าออกจาก snapshot โค้ดปัจจุบันและหลักฐานโมเดล
+ตรวจ branch/source identity: branch ส่งอาจารย์มี curated source รุ่นใหม่ที่ root ส่วน branch เดิมมี source เก่า แยกผล/โมเดลตาม hash
 ถ้าใช้ Python ได้ ให้รัน scripts/inspect_project_context.py --json
 ตรวจ manifest แล้วแตก docs/ai/current-source.zip ไป .ai-context/current-source เพื่ออ่าน source ปัจจุบัน
 อ่าน PROJECT_FACTS_TH.md, DATASET_SOURCES_TH.md และ evidence ที่เกี่ยวข้อง
@@ -28,18 +30,19 @@ python scripts/inspect_project_context.py --json
 
 AI ต้องเข้าถึงไฟล์จริงใน checkout การส่ง URL repository อย่างเดียวไม่ได้ยืนยันว่าเครื่องมือนั้นได้ clone หรืออ่านทุกไฟล์แล้ว
 
-## 2 มีโค้ดสองบริบท ต้องแยกก่อนอ่าน
+## 2 บริบทของ source และ branch ต้องแยกก่อนอ่าน
 
 | บริบท | ตำแหน่ง | ใช้ทำอะไร |
 |---|---|---|
-| Native source รุ่นเดิม | `backend/`, `web-app/`, `extension/`, `database/` ที่ root ของ branch | รักษาประวัติฐาน Git เดิม ไฟล์หลักยังมาจาก commit `c875719792321a2ca4e4d057e037b7c253522d39` วันที่ 17 กันยายน 2026 |
+| Source ของ branch ส่งอาจารย์ | `backend/`, `web-app/`, `extension/`, `database/` ที่ root ของ `submission/latest-project-20261029` | คัดจากโครงการหลักที่ตรวจซ้ำ 29 ตุลาคม 2026; ดู publication provenance และ verification ใน `docs/submission-20261029/` |
+| Native source รุ่นเดิมใน branch เก่า | root ของ `docs/article-handoff-20261017` และฐาน Git เดิม | เป็นบริบทเก่า ห้ามใช้ hash/model/runtime ของ branch เก่าอธิบาย branch ส่งอาจารย์ |
 | Snapshot source ที่ตรวจในเครื่องล่าสุด | [current-source.zip](current-source.zip) และ [CURRENT_SOURCE_MANIFEST.json](CURRENT_SOURCE_MANIFEST.json) | อ่าน implementation ที่รองรับเอกสารรุ่นใหม่ โดยแตกไป `.ai-context/current-source/` |
 | หลักฐานโมเดลและการทดลอง | [PROJECT_FACTS_TH.md](../paper/PROJECT_FACTS_TH.md), [evidence](../paper/evidence/) | ตรวจชื่อรุ่น hash สูตร policy ผลเดิม และข้อจำกัดของการตีความ |
 | หลักฐานที่มาข้อมูล | [DATASET_SOURCES_TH.md](../paper/DATASET_SOURCES_TH.md) และ [dataset-provenance.json](../paper/evidence/dataset-provenance.json) | แยกแหล่ง รุ่น จำนวน split และบทบาทของ dataset |
 
 ไฟล์ archive คัดเฉพาะ source และทรัพยากรที่ manifest ระบุ ไม่มี `.env`, model binary, raw dataset, dependency folders, output หรือ backup จึงอ่านวิธีทำงานได้ แต่ยังไม่ใช่ชุดทำซ้ำการทดลองหรือเปิดระบบครบทุกบริการ ถ้าไฟล์ใดไม่อยู่ใน manifest ให้ถือว่ายังไม่ได้แนบ
 
-snapshot มาจาก local working copy ที่ไม่ได้มี Git commit ครอบคลุมทั้งชุด ใช้ SHA256 รายไฟล์และ hash ของ archive ใน manifest เป็นตัวระบุสำเนานี้ แทนการอ้างว่า commit ของ branch เป็น commit ของ source ทั้งหมดใน archive
+snapshot รุ่นเดิมมาจาก local working copy ที่ไม่มี Git commit ครอบคลุมทั้งชุด ส่วน branch ส่งอาจารย์รอบนี้มี curated source ที่ root และ archive ที่ refresh จาก source ชุดเผยแพร่ ใช้ SHA256 รายไฟล์/archive และ commit ที่เผยแพร่จริงร่วมกัน ระบุวันตรวจ source แยกจากวันของ model/evaluation เดิม
 
 ไม่แนบ `backend/reference-origin-v1.json` ต้นฉบับและ `model-demo-authorization.json` ด้วย เพราะสำเนาต้นทางมี URL parameters ชั่วคราวหรือ path เฉพาะเครื่อง ให้ใช้ hash/status จาก evidence ประกอบการอ่าน code ไม่สร้างไฟล์แทนแล้วอ้างว่าเป็นต้นฉบับเดียวกัน
 
@@ -75,7 +78,7 @@ exit code 0 ของ inventory หมายถึงสคริปต์อ่
 
 ## 3 ลำดับอ่านเพื่อเข้าใจระบบ
 
-1. อ่าน `AGENTS.md` และตารางบริบทข้างต้น แล้วบันทึกว่าจะอ้าง native source หรือ extracted snapshot
+1. อ่าน `AGENTS.md` และตารางบริบทข้างต้น แล้วบันทึกว่าจะอ้าง root source ของ branch ใด หรือ extracted snapshot
 2. อ่าน `web-app/package.json`, `extension/manifest.json`, `backend/requirements.txt` เพื่อดูเทคโนโลยีและ entry points
 3. อ่าน `backend/app.py` → `feature_extractor.py` → `probability_calibration.py` → `risk_policy.py` เพื่อเข้าใจคะแนนและสถานะโมเดล
 4. อ่าน `web-app/src/contexts/AppContext.jsx` และ `src/services/api.js` ตามด้วย `extension/background.js`, `ml-feedback-client.js`, `analyzer.js` และ `content.js` เพื่อเข้าใจ client flow
@@ -196,7 +199,7 @@ npm run build
 
 ## 9 ข้อจำกัดและข้อขัดแย้งที่ต้องจำ
 
-- native source เดิมยังอธิบาย learned fusion/consensus และมี fallback defaults คนละยุค อย่าใช้ยืนยันสูตรของ artifact รุ่นใหม่
+- source ใน branch เก่าและเอกสารประวัติบางไฟล์ยังอธิบาย learned fusion/consensus อย่าใช้ยืนยันสูตร ml_only ของ artifact รุ่นรายงาน; branch ส่งอาจารย์มีหลาย compatibility paths ใน code เช่นกัน ต้องยึด metadata ของ bundle ที่ตรง hash
 - SHA256 ต่างอาจเกิดจาก line endings ได้ ต้องดูเนื้อหาและ code path ร่วมด้วยก่อนสรุปว่าพฤติกรรมเปลี่ยน
 - source archive ไม่มี private settings, model binary หรือ raw dataset จึงไม่อาจรันทุก workflow ได้จากการ clone เพียงอย่างเดียว
 - ไม่มี fresh forward-temporal test ครบ benign/phishing และประวัติ baseline exposure บางส่วนยังไม่ครบ จึงไม่รับรองความแม่นยำปัจจุบันทั่วอินเทอร์เน็ต
@@ -209,4 +212,4 @@ npm run build
 
 ให้ AI สรุปสั้น ๆ ว่าเลือก source root ใด แผนภาพ request flow เป็นอย่างไร ไฟล์หลักของคำขออยู่ที่ใด สูตร/policy/model identity ใดยืนยันได้ แหล่งข้อมูลและ split ที่เกี่ยวข้องคืออะไร มีข้อขัดแย้งหรือไฟล์ขาดใด และจะตรวจงานระดับไหน วิธีนี้ช่วยตรวจว่า AI ใช้หลักฐานถูกชุดก่อนลงมือทำงานต่อ
 
-เมื่อเจ้าของโครงงานจะอัปเดตชุด context ให้ใช้ `scripts/package_ai_source_context.py --root <โฟลเดอร์ source ปัจจุบัน> --source-date YYYY-MM-DD` กับ source ที่ตรวจแล้ว ตรวจ manifest/ข้อจำกัดและเอกสารที่เกี่ยวข้องใหม่ก่อนเผยแพร่ ไม่ใช้ native legacy source ใน checkout นี้สร้าง snapshot ทับรุ่นใหม่โดยไม่ตรวจรุ่น
+เมื่อเจ้าของโครงงานจะอัปเดตชุด context ให้ใช้ `scripts/package_ai_source_context.py --root <โฟลเดอร์ source ปัจจุบัน> --source-date YYYY-MM-DD` กับ source ที่ตรวจแล้ว ตรวจ manifest/ข้อจำกัดและเอกสารที่เกี่ยวข้องใหม่ก่อนเผยแพร่ ไม่ใช้ native legacy source จาก branch เก่าสร้าง snapshot ทับรุ่นใหม่โดยไม่ตรวจรุ่น

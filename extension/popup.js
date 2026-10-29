@@ -1,10 +1,13 @@
 const DEFAULT_SETTINGS = {
-  threshold: 61,
+  threshold: 60,
   warnMedium: true,
   highlightLinks: true,
   protectForms: true,
   showStatusPanel: true,
   pageScanningEnabled: true,
+  riskyAdProtection: true,
+  adFilterMode: 'all',
+  adFilterAllowlist: [],
   privacyMode: false,
   llmEnabled: false,
   searchProtection: true,
@@ -15,6 +18,83 @@ const $ = id => document.getElementById(id);
 let activeTab = null;
 let currentResult = null;
 let popupTheme = 'dark';
+let adFilterSettings = { riskyAdProtection: true, adFilterMode: 'all', adFilterAllowlist: [] };
+
+function normalizeAdFilterAllowlist(value) {
+  if (!Array.isArray(value)) return [];
+  const hosts = value.map(item => {
+    if (typeof item !== 'string') return '';
+    const host = item.trim().toLowerCase().replace(/\.$/, '');
+    if (!host || host.length > 253 || !host.split('.').every(label => /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label))) return '';
+    try { return new URL(`https://${host}/`).hostname === host ? host : ''; } catch (_) { return ''; }
+  }).filter(Boolean);
+  return [...new Set(hosts)].slice(0, 50);
+}
+
+function currentAdFilterHost() {
+  try {
+    const url = new URL(activeTab?.url || '');
+    if (!['http:', 'https:'].includes(url.protocol)) return '';
+    return normalizeAdFilterAllowlist([url.hostname])[0] || '';
+  } catch (_) { return ''; }
+}
+
+function renderAdFilter(settings = adFilterSettings, stats = null) {
+  adFilterSettings = {
+    riskyAdProtection: settings.riskyAdProtection !== false,
+    adFilterMode: settings.adFilterMode === 'risky' ? 'risky' : 'all',
+    adFilterAllowlist: normalizeAdFilterAllowlist(settings.adFilterAllowlist),
+  };
+  const host = currentAdFilterHost();
+  const trustedApp = !!globalThis.PhishRadarAppTrust?.isTrustedWebAppUrl(activeTab?.url);
+  const excepted = !!host && adFilterSettings.adFilterAllowlist.includes(host);
+  $('riskyAdProtection').checked = adFilterSettings.riskyAdProtection;
+  $('adFilterMode').value = adFilterSettings.adFilterMode;
+  $('adFilterMode').disabled = !adFilterSettings.riskyAdProtection;
+  $('adFilterSiteException').checked = excepted;
+  $('adFilterSiteException').disabled = !host || trustedApp;
+  $('adFilterSiteHost').textContent = host || 'เปิดเว็บไซต์ http/https เพื่อยกเว้นเป็นรายเว็บ';
+  $('adFilterCard').classList.toggle('is-enabled', adFilterSettings.riskyAdProtection);
+  $('adFilterStatus').textContent = trustedApp
+    ? 'เว็บของ Phish Radar ได้รับการยกเว้นตัวกรองโดยระบบ'
+    : !adFilterSettings.riskyAdProtection
+      ? 'ตัวกรองปิดอยู่'
+      : excepted
+        ? 'ยกเว้นตัวกรองเฉพาะชื่อนี้ การตรวจลิงก์เสี่ยงยังทำงานตามสวิตช์'
+        : !host
+          ? 'ตัวกรองจะทำงานบนเว็บไซต์ http/https'
+          : stats
+            ? `ซ่อนโฆษณา ${Number(stats.hiddenCount) || 0} รายการ • กันการคลิกโฆษณา ${Number(stats.blockedClicks) || 0} ครั้ง • ปิดป๊อปอัปโฆษณา ${Number(stats.blockedPopups) || 0} ครั้ง`
+            : adFilterSettings.adFilterMode === 'all'
+              ? 'ซ่อนโฆษณาที่ตรวจพบทุกเว็บ แยกจากสวิตช์สแกนหน้าเว็บ'
+              : 'ซ่อนเฉพาะโฆษณาที่มีสัญญาณเสี่ยง แยกจากสวิตช์สแกนหน้าเว็บ';
+}
+
+async function refreshAdFilterStatus() {
+  renderAdFilter();
+  if (!activeTab?.id || !currentAdFilterHost()) return;
+  const res = await sendToTab(activeTab.id, { type: 'GET_AD_FILTER_STATS' });
+  if (res?.ok) renderAdFilter(adFilterSettings, res.stats || res);
+}
+
+async function updateAdFilterSettings(patch) {
+  const previous = { ...adFilterSettings };
+  const next = { ...adFilterSettings, ...patch };
+  renderAdFilter(next);
+  const response = await sendMessage({ type: 'SET_SETTINGS', settings: patch });
+  if (!response.ok) {
+    renderAdFilter(previous);
+    setToast('ยังบันทึกตัวกรองโฆษณาไม่ได้');
+    return false;
+  }
+  renderAdFilter(response.settings || next);
+  if (activeTab?.id && currentAdFilterHost()) {
+    await ensureContentScript(activeTab.id);
+    await sendToTab(activeTab.id, { type: 'SETTINGS_UPDATED', settings: response.settings || next });
+    await refreshAdFilterStatus();
+  }
+  return true;
+}
 
 function applyPopupTheme() {
   const dark = popupTheme === 'dark';
@@ -117,7 +197,7 @@ async function ensureContentScript(tabId) {
     await chrome.scripting.insertCSS({ target: { tabId }, files: ['content.css'] });
   } catch (_) {}
   try {
-    await chrome.scripting.executeScript({ target: { tabId }, files: ['analyzer.js', 'content.js'] });
+    await chrome.scripting.executeScript({ target: { tabId }, files: ['app-trust.js', 'analyzer.js', 'ad-filter-policy.js', 'ad-filter.js', 'content.js'] });
     await new Promise(resolve => setTimeout(resolve, 350));
     const check = await sendToTab(tabId, { type: 'GET_LAST_SCAN' });
     return !!check?.ok;
@@ -130,7 +210,7 @@ async function ensureContentScript(tabId) {
 }
 
 function colorClass(score) {
-  if (score >= 61) return 'bad';
+  if (score >= 60) return 'bad';
   if (score >= 31) return 'warn';
   return 'good';
 }
@@ -332,11 +412,13 @@ async function load() {
   $('llmEnabled').checked = !!settings.llmEnabled;
   renderPageScanning(settings.pageScanningEnabled);
   renderCloudModes(settings.privacyMode, settings.llmEnabled);
+  renderAdFilter(settings);
 
   if (!settings.pageScanningEnabled) {
     if (activeTab?.id && /^https?:/.test(activeTab.url || '')) {
       await ensureContentScript(activeTab.id);
       await sendToTab(activeTab.id, { type: 'SET_PAGE_SCANNING', enabled: false });
+      await refreshAdFilterStatus();
     }
     renderManual($('manualUrl').value);
     return;
@@ -355,6 +437,7 @@ async function load() {
     : PhishRadarAnalyzer.analyzeUrl(activeTab.url);
   render(result);
   await ensureContentScript(activeTab.id);
+  await refreshAdFilterStatus();
   const pageScan = await sendToTab(activeTab.id, { type: 'GET_PAGE_SCAN' });
   if (pageScan?.ok && pageScan.pageResult) render(pageScan.pageResult);
   if (pageScan?.ok && pageScan.linkScan) renderStats(pageScan.linkScan);
@@ -422,6 +505,40 @@ $('threshold').addEventListener('change', e => sendMessage({ type: 'SET_SETTINGS
 $('highlightLinks').addEventListener('change', e => sendMessage({ type: 'SET_SETTINGS', settings: { highlightLinks: e.target.checked } }));
 $('protectForms').addEventListener('change', e => sendMessage({ type: 'SET_SETTINGS', settings: { protectForms: e.target.checked } }));
 $('showStatusPanel').addEventListener('change', e => sendMessage({ type: 'SET_SETTINGS', settings: { showStatusPanel: e.target.checked } }));
+$('riskyAdProtection').addEventListener('change', async e => {
+  const enabled = e.target.checked;
+  if (await updateAdFilterSettings({ riskyAdProtection: enabled })) {
+    setToast(enabled ? 'เปิดตัวกรองโฆษณาและป๊อปอัปแล้ว' : 'ปิดตัวกรองแล้ว รายการที่ซ่อนจะกลับมา');
+  }
+});
+$('adFilterMode').addEventListener('change', async e => {
+  const adFilterMode = e.target.value === 'risky' ? 'risky' : 'all';
+  if (await updateAdFilterSettings({ adFilterMode })) {
+    setToast(adFilterMode === 'all'
+      ? 'ซ่อนโฆษณาที่ตรวจพบทั้งหมดแล้ว'
+      : 'เปลี่ยนเป็นซ่อนเฉพาะโฆษณาที่มีสัญญาณเสี่ยงแล้ว');
+  }
+});
+$('adFilterSiteException').addEventListener('change', async e => {
+  const host = currentAdFilterHost();
+  if (!host || globalThis.PhishRadarAppTrust?.isTrustedWebAppUrl(activeTab?.url)) return;
+  const excepted = e.target.checked;
+  // Read the latest list before changing one host, so unrelated exceptions and
+  // protection preferences are not reset by an older popup snapshot.
+  const latest = await sendMessage({ type: 'GET_SETTINGS' });
+  if (!latest.ok) {
+    renderAdFilter();
+    setToast('ยังอ่านรายการยกเว้นตัวกรองไม่ได้');
+    return;
+  }
+  const hosts = normalizeAdFilterAllowlist(latest.settings?.adFilterAllowlist);
+  const adFilterAllowlist = excepted
+    ? [...new Set([host, ...hosts])]
+    : hosts.filter(item => item !== host);
+  if (await updateAdFilterSettings({ adFilterAllowlist })) {
+    setToast(excepted ? `ยกเว้นตัวกรองเฉพาะ ${host} แล้ว` : `กลับมากรองโฆษณาบน ${host} แล้ว`);
+  }
+});
 $('pageScanningEnabled').addEventListener('change', async e => {
   const enabled = e.target.checked;
   renderPageScanning(enabled);

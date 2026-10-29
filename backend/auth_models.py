@@ -9,7 +9,6 @@ class RegisterRequest(BaseModel):
     username: str = Field(min_length=3, max_length=50)
     email: EmailStr
     password: SecretStr = Field(min_length=12, max_length=128)
-    device_name: str = Field(min_length=1, max_length=200)
 
     @field_validator("username")
     @classmethod
@@ -21,21 +20,13 @@ class RegisterRequest(BaseModel):
             raise ValueError("ชื่อผู้ใช้ต้องไม่มีช่องว่างหรือเครื่องหมาย @")
         return value
 
-    @field_validator("device_name")
-    @classmethod
-    def normalize_device_name(cls, value: str) -> str:
-        value = value.strip()
-        if not value:
-            raise ValueError("กรุณาระบุชื่ออุปกรณ์")
-        return value
 
 
 class LoginRequest(BaseModel):
     identifier: str = Field(min_length=3, max_length=254)
     password: SecretStr = Field(min_length=1, max_length=128)
-    device_name: str = Field(min_length=1, max_length=200)
 
-    @field_validator("identifier", "device_name")
+    @field_validator("identifier")
     @classmethod
     def strip_required_text(cls, value: str) -> str:
         value = value.strip()
@@ -70,7 +61,6 @@ class UserResponse(BaseModel):
     username: str
     email: str
     role: Literal["user", "admin"]
-    device_name: str
 
 
 class PasswordChangeResponse(BaseModel):

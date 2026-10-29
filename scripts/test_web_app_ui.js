@@ -81,8 +81,10 @@ assert(login.includes('เข้าสู่ระบบ') && login.includes('�
 assert(scanner.includes('ตรวจสอบลิงก์') && !scanner.includes('hero-primary'), 'Scanner must open directly into the URL task.');
 assert(scanner.includes('className="input-row scan-input-row"'), 'Scanner URL field must use the responsive input-row layout.');
 assert(!scanner.includes('https://example.com/login'), 'Scanner URL field must not show the retired example URL.');
-assert(scanner.includes('FuzzyScore') && scanner.includes('Random Forest'), 'Fuzzy and Random Forest score breakdown is missing.');
-assert(scanner.includes('result.riskFormula') && !scanner.includes('FinalScore = 100 × LearnedFusion'), 'Formula must come from the result policy, not hardcoded copy.');
+assert(!scanner.includes('FuzzyScore') && !scanner.includes('RuleScore') && scanner.includes('Random Forest'), 'Retired score fields must not appear in scanner UI.');
+assert(scanner.includes("result.fusionMethod === 'ml_only'") && scanner.includes('scoreSource') && !scanner.includes('result.riskFormula'), 'Result source must follow model metadata without displaying retired scoring formulas.');
+assert(scanner.includes('เหตุผลที่ควรระวัง') && scanner.includes('สิ่งที่ช่วยลดความกังวล'), 'Grouped LLM explanation panels are missing.');
+assert(appContext.includes('riskReasons: explanationReasonItems(llm.risk_reasons)') && appContext.includes('reassuringReasons: explanationReasonItems(llm.reassuring_reasons)'), 'Structured LLM reasons must be mapped from the API.');
 assert(scanner.includes('คำอธิบายจาก LLM'), 'LLM explanation panel is missing.');
 assert(qr.includes("from 'jsqr'") && qr.includes('BarcodeDetector'), 'QR fallback and native reader support are missing.');
 assert(dashboard.includes('Export CSV') && dashboard.includes('Export JSON'), 'Dashboard exports are missing.');

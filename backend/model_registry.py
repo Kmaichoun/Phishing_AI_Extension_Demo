@@ -13,10 +13,12 @@ BASE = Path(__file__).resolve().parent
 DATA = BASE / 'data'
 ARTIFACTS = ('candidate.pkl', 'dataset.csv', 'evaluation.json', 'regression.json')
 SCORE_CODE = ('backend/feature_extractor.py', 'backend/fuzzy_scoring.py', 'backend/risk_policy.py',
+              'backend/domain_parts.py', 'backend/public_suffix_list.dat', 'extension/analyzer.js',
               'backend/train_simple_model.py', 'scripts/analyze_model_errors.py', 'backend/app.py',
               'scripts/check_candidate_model.py', 'scripts/score_dataset.js', 'web-app/analyzer.js',
               'scripts/collect_research_urls.py')
 REGRESSION_CODE = ('backend/app.py', 'backend/feature_extractor.py', 'backend/fuzzy_scoring.py',
+                   'backend/domain_parts.py', 'backend/public_suffix_list.dat', 'extension/analyzer.js',
                    'backend/risk_policy.py', 'scripts/check_candidate_model.py',
                    'scripts/score_dataset.js', 'web-app/analyzer.js')
 

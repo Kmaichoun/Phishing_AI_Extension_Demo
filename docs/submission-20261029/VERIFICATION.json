@@ -1,0 +1,95 @@
+{
+  "inspection_date": "2026-10-29",
+  "timezone": "Asia/Bangkok",
+  "branch": "submission/latest-project-20261029",
+  "runtime_verified": false,
+  "source_files": 237,
+  "source_bytes": 2563785,
+  "archive_sha256": "89a5cb167e614439507d6623689bd1cada74f8c355fb88e223742e636bb86c08",
+  "source_and_archive_all_entry_hashes_match": true,
+  "python_ast_syntax_files_passed": 113,
+  "node_syntax_files_passed": 37,
+  "isolated_backend_policy_cases": [
+    {
+      "unrounded_score": 59,
+      "decision": "allow"
+    },
+    {
+      "unrounded_score": 60,
+      "decision": "warn"
+    },
+    {
+      "unrounded_score": 79,
+      "decision": "warn"
+    },
+    {
+      "unrounded_score": 80,
+      "decision": "block"
+    },
+    {
+      "unrounded_score": 59.6,
+      "decision": "allow"
+    },
+    {
+      "unrounded_score": 79.6,
+      "decision": "warn"
+    },
+    {
+      "unrounded_score": 59.99,
+      "decision": "allow"
+    },
+    {
+      "unrounded_score": 60.01,
+      "decision": "warn"
+    },
+    {
+      "unrounded_score": 80.01,
+      "decision": "block"
+    }
+  ],
+  "isolated_backend_policy_method": "Extract only risk_decision AST from published app.py, compile and execute it. No app imports, .env reading, model load or service calls.",
+  "parent_source_changes_since_original_20261020_archive": [],
+  "parent_source_added_since_original_20261020_archive": [
+    "scripts/build_colab_comparison_notebook.py",
+    "scripts/package_colab_comparison.py",
+    "scripts/prepare_colab_comparison.py",
+    "scripts/run_colab_comparison_local.py"
+  ],
+  "publication_adjustments_to_parent_source_files": [
+    ".gitattributes",
+    ".gitignore"
+  ],
+  "paper_evidence_bytes_unchanged": {
+    "active-model.json": "c351a68c7169ce23add1eac24a28d67dcec430f06931659267d97b672ba4f359",
+    "dataset-provenance.json": "dfd6bd4505c512ddb034c6b1ceb9b53acc5ec1bd2dbb5ab84b12ed1ae58fdef9",
+    "design.json": "4b05b30f0beca9f8a6dd9d1c3343cfa3bedf01ae988f3c3c99352f01ef4a9753",
+    "evaluation.json": "c5379ca47feffb32f91699acf348b5143f2238ab6ec523b7c2a4de4ef761ef05",
+    "selection.json": "99e44336dcf99331b8a652ea18c9d6925b11645b76c11b22a49b34f6d1b708da",
+    "source-manifest.json": "5674e49638c044b81d8dc4b72877c4d496bae7696cd491dfd17a60cac779ee7b"
+  },
+  "credential_preflight_findings": [],
+  "maintained_doc_secret_findings": [],
+  "maintained_doc_relative_links_checked": 187,
+  "maintained_doc_broken_links": [],
+  "local_tests_on_actual_parent_source_with_existing_dependencies": {
+    "test_probability_calibration.py": "passed: 3 isolated tests; synthetic data/in-memory serialization, no recorded model loaded",
+    "test_prediction_response.cjs": "passed: mocked fetch malformed/valid/error API responses",
+    "test_result_presentation.cjs": "passed: real React components rendered with fixed context, no service requests",
+    "test_ad_filter_policy.cjs": "passed: 76 positive/negative cases and browser/CommonJS loading",
+    "test_ad_popup_guard.cjs": "passed: mocked Chrome worker navigation, exceptions, races and settings",
+    "inspect_project_context.py --self-test": "passed: parser/hash/path-safety checks",
+    "vite build --outDir ../tmp/submission-web-build-20261029": "passed: 74 modules; existing local Vite 7.3.6, no fresh dependency installation"
+  },
+  "test_source_identity": "All published source bytes equal the actual parent source except explicit .gitignore/.gitattributes publication adjustments, verified against SOURCE_PUBLICATION.json. Tests use existing parent dependencies, not a clean clone install.",
+  "known_nonfatal_test_warning": "scipy.optimize L-BFGS-B disp/iprint deprecation from scikit-learn calibration test; tests passed",
+  "not_tested": [
+    "Live HTTP /predict, /health, auth, history, workspace and chat",
+    "MySQL/MariaDB connection, schema and migrations",
+    "Ollama/provider model availability and explanation quality",
+    "Loaded Chrome Extension, live DOM, QR camera and browser network/privacy behavior",
+    "Public demo reachability",
+    "Full model evaluation or fresh temporal/domain-disjoint data",
+    "Clean-clone dependency installation",
+    "User study, satisfaction, latency or throughput benchmark"
+  ]
+}

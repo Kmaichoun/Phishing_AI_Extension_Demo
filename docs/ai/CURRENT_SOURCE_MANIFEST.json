@@ -1,11 +1,11 @@
 {
-  "source_date": "2026-10-20",
-  "inspection_date": "2026-10-20",
+  "source_date": "2026-10-29",
+  "inspection_date": "2026-10-29",
   "scope": "Curated current source from the original project root; not the old nested repository source.",
   "snapshot_zip": {
     "path": "docs/ai/current-source.zip",
-    "sha256": "ce339100ea8d96d9222f14e053cd3bba222fa8a03248117bea39412436986e45",
-    "bytes": 854506
+    "sha256": "89a5cb167e614439507d6623689bd1cada74f8c355fb88e223742e636bb86c08",
+    "bytes": 882337
   },
   "files": [
     {
@@ -20,13 +20,13 @@
     },
     {
       "path": ".gitattributes",
-      "sha256": "164541ecd28ab9ea76130f8319dbb984f81b9fd88298579e8bc24594d4434cfd",
-      "bytes": 71
+      "sha256": "dd912e6e1ab4f7c0623245ef49f31e0b5644f3961e7b04db26a3e4f1f7cf25be",
+      "bytes": 357
     },
     {
       "path": ".gitignore",
-      "sha256": "f2790d80737a50c7dd348d4287e1e66f2c807a68bae5fa3e421ccb7bc6138dbe",
-      "bytes": 778
+      "sha256": "c3e00e029cca9a65b2223120148bdd960f6ec7a2ecd43c2e86eb25362c66bb1a",
+      "bytes": 971
     },
     {
       "path": "Dockerfile",
@@ -399,6 +399,11 @@
       "bytes": 3767
     },
     {
+      "path": "scripts/build_colab_comparison_notebook.py",
+      "sha256": "900ac0833678adc0ea045150f1f9d7ead12fbc7d5dbce5313e1c810317c27872",
+      "bytes": 43431
+    },
+    {
       "path": "scripts/build_reference_origin_registry.py",
       "sha256": "4060f957e013371ee3305421b0fdef37c0b2200f3235a82ef7898b9a507f132a",
       "bytes": 3308
@@ -529,6 +534,11 @@
       "bytes": 19679
     },
     {
+      "path": "scripts/package_colab_comparison.py",
+      "sha256": "721ca68e7e0f005411b595223aa3b52d634beeb7a91ce6d94a3aee0efc38dfbe",
+      "bytes": 11303
+    },
+    {
       "path": "scripts/package_public_extension.py",
       "sha256": "a02950d974289f260ea77ed5c48df136d34cc152f1d7ccb90e8c7f10873e7fde",
       "bytes": 3105
@@ -539,6 +549,11 @@
       "bytes": 3357
     },
     {
+      "path": "scripts/prepare_colab_comparison.py",
+      "sha256": "77e20d5e8e0ba3bdb1875591c013188cd0b92a0d33411cfdd67e48a7e6b46af4",
+      "bytes": 20456
+    },
+    {
       "path": "scripts/recover_research_data.py",
       "sha256": "8e7cbbadb69164208e36011933986289c8f32b99ebcbcdfc8be0449867b255e1",
       "bytes": 10481
@@ -547,6 +562,11 @@
       "path": "scripts/report_recovered_rf.py",
       "sha256": "690865bc222b02605962fa0c6155f97512d48e45d257e48fb2de05a7aaee6af3",
       "bytes": 9248
+    },
+    {
+      "path": "scripts/run_colab_comparison_local.py",
+      "sha256": "113d3ea3930dba3b0695170452916992d268431cc6acf90c7677183a13088ec4",
+      "bytes": 3378
     },
     {
       "path": "scripts/run_public_backend.py",

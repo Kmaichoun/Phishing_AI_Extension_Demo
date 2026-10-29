@@ -48,3 +48,11 @@ backup-*/
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+# Private artifacts excluded from the academic source publication
+backend/model.pkl
+backend/reference-origin-v1.json
+backend/model-demo-authorization.json
+backend/data/
+local-backups/
+output/

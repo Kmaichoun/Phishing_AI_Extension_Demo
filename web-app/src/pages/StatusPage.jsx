@@ -7,6 +7,13 @@ const guidance = {
   model: 'ตรวจว่า backend/model.pkl มีอยู่และเป็นโมเดลที่ใช้กับโปรเจกต์นี้',
   llm: 'เปิด Ollama และติดตั้งโมเดลที่ระบุใน .env เช่น ollama pull qwen3:4b'
 };
+const localDevelopment = ['localhost', '127.0.0.1', 'app.phishradar.localhost'].includes(window.location.hostname);
+const hostedGuidance = {
+  backend: 'ตรวจสถานะและ Logs ของบริการเว็บ',
+  database: 'ตรวจ Host, สิทธิ์ Remote MySQL และค่า Environment ของบริการเว็บ',
+  model: 'ตรวจว่า backend/model.pkl ถูกใส่ในบริการเว็บ',
+  llm: 'ตรวจบริการ LLM ที่ตั้งค่าไว้บนเซิร์ฟเวอร์'
+};
 export function StatusPage() {
   const { health, backendStatus, checkHealth, privacyMode } = useApp();
   const services = serviceStates(health, privacyMode, backendStatus.online === null);
@@ -15,7 +22,7 @@ export function StatusPage() {
     {privacyMode && <p className="workspace-notice">Privacy Mode เปิดอยู่ จึงไม่ตรวจบริการภายนอก ปิดได้จากเมนูบัญชี</p>}
     <div className="workspace-section service-list">{services.map(item => <section key={item.key}>
       <div><h2>{item.name}</h2><span className={`decision-badge ${!privacyMode && item.ready ? 'decision-allow' : 'decision-unknown'}`}>{item.text}</span></div>
-      <p>{privacyMode ? 'ข้ามการเรียกบริการในโหมดส่วนตัว' : backendStatus.online === null ? 'กำลังตรวจสอบการเชื่อมต่อ' : item.ready ? (item.key === 'llm' ? 'คำอธิบายพร้อมใช้งาน และไม่มีผลต่อคะแนนความเสี่ยง' : 'เชื่อมต่อบริการได้') : guidance[item.key]}</p>
+      <p>{privacyMode ? 'ข้ามการเรียกบริการในโหมดส่วนตัว' : backendStatus.online === null ? 'กำลังตรวจสอบการเชื่อมต่อ' : item.ready ? (item.key === 'llm' ? 'คำอธิบายพร้อมใช้งาน และไม่มีผลต่อคะแนนความเสี่ยง' : 'เชื่อมต่อบริการได้') : (localDevelopment ? guidance : hostedGuidance)[item.key]}</p>
     </section>)}</div>
     <p className="workspace-muted">ตรวจล่าสุด: {formatTime(health?.checkedAt)}</p>
     {!privacyMode && <section className="workspace-section"><h2>ความพร้อมของฐานข้อมูล</h2><dl className="detail-list">
@@ -24,11 +31,11 @@ export function StatusPage() {
       <div><dt>ประวัติและข้อมูลโมเดล</dt><dd>{health?.database?.risk_audit_schema_ready ? 'พร้อม' : 'ยังไม่พร้อม'}</dd></div>
       <div><dt>Feedback และ Audit Log</dt><dd>{health?.database?.workspace_schema_ready ? 'พร้อม' : 'ต้องนำเข้า SQL 005 และ 006'}</dd></div>
     </dl></section>}
-    <section className="workspace-section"><h2>เริ่มใช้งานบนเครื่องนี้</h2><ol className="setup-list">
+    {localDevelopment && <section className="workspace-section"><h2>เริ่มใช้งานบนเครื่องนี้</h2><ol className="setup-list">
       <li>เปิด MySQL ใน XAMPP เพื่อใช้บัญชีและบันทึกประวัติ</li><li>เปิด Ollama เพื่อรับคำอธิบายจาก LLM</li>
       <li>เปิด Git Bash ในโฟลเดอร์โปรเจกต์ แล้วรัน <code>./start-demo.sh</code> เพื่อเปิด Backend และ Web App</li></ol>
       <p>Extension: เปิดหน้าจัดการส่วนขยาย เปิด Developer mode แล้วเลือก Load unpacked ที่โฟลเดอร์ <code>extension/</code></p>
       <p className="workspace-muted">หน้าเว็บนี้ยังไม่ตรวจยืนยันการติดตั้ง Extension อัตโนมัติ</p>
-    </section>
+    </section>}
   </section>;
 }

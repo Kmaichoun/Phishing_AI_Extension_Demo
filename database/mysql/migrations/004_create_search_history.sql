@@ -5,8 +5,8 @@
   serialized JSON from the Backend and is stored as LONGTEXT for broad
   MySQL/MariaDB hosting compatibility.
 
-  Shared-hosting compatible: UserId and UserDeviceId remain indexed logical
-  relationships, without FOREIGN KEY or CHECK clauses that require privileges
+  Shared-hosting compatible: UserId remains an indexed logical relationship,
+  without FOREIGN KEY or CHECK clauses that require privileges
   or parser support not provided by some hosting plans.
 */
 
@@ -14,7 +14,6 @@ CREATE TABLE IF NOT EXISTS `SearchHistory`
 (
     `HistoryId` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     `UserId` BIGINT UNSIGNED NOT NULL,
-    `UserDeviceId` BIGINT UNSIGNED NOT NULL,
     `Url` VARCHAR(2048) NOT NULL,
     `UrlHash` BINARY(32) NOT NULL,
     `Hostname` VARCHAR(253) NOT NULL,
@@ -38,7 +37,6 @@ CREATE TABLE IF NOT EXISTS `SearchHistory`
     `CreatedAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
 
     CONSTRAINT `PK_SearchHistory` PRIMARY KEY (`HistoryId`),
-    INDEX `IX_SearchHistory_UserDeviceId` (`UserDeviceId`),
     INDEX `IX_SearchHistory_User_CreatedAt` (`UserId`, `CreatedAt`, `HistoryId`)
 ) ENGINE=InnoDB
   DEFAULT CHARACTER SET utf8mb4

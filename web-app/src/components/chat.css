@@ -1,0 +1,35 @@
+.radar-chat { --chat-layer: 30; position: fixed; right: 24px; bottom: max(20px, env(safe-area-inset-bottom)); z-index: var(--chat-layer); font-family: 'IBM Plex Sans Thai', 'Outfit', sans-serif; }
+.radar-chat .radar-chat-launcher { display: flex; align-items: center; gap: 10px; margin-left: auto; padding: 12px 18px; background: var(--accent); color: var(--accent-ink); border-color: var(--accent); box-shadow: 0 6px 24px #19171930; font-weight: 600; }
+.radar-chat .radar-chat-launcher:hover { background: var(--accent-dark); }
+.radar-chat-panel { display: flex; flex-direction: column; width: min(420px, calc(100vw - 32px)); height: min(660px, calc(100dvh - 110px)); margin-bottom: 12px; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 16px; box-shadow: 0 16px 56px #19171940; overflow: hidden; animation: radar-chat-enter 180ms ease-out; }
+.radar-chat-header { display: flex; gap: 12px; align-items: center; padding: 18px; border-bottom: 1px solid var(--line); }
+.radar-chat-mark { color: var(--accent-dark); display: grid; place-items: center; }
+.radar-chat-header > div { flex: 1; }
+.radar-chat .radar-chat-header h2 { font-size: 1rem; margin: 0; }
+.radar-chat .radar-chat-header p { margin: 3px 0 0; color: var(--muted); font-size: .75rem; }
+.radar-chat .radar-chat-header button { border: 0; padding: 0; width: 44px; font-size: 1.5rem; }
+.radar-chat-notice { padding: 10px 18px; background: var(--soft); font-size: .75rem; color: var(--muted); }
+.radar-chat-log { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 18px; display: flex; flex-direction: column; gap: 20px; }
+.radar-chat-message { max-width: 96%; overflow-wrap: anywhere; flex-shrink: 0; }
+.radar-chat-message > small { display: block; color: var(--muted); font-size: .7rem; margin-bottom: 6px; }
+.radar-chat .radar-chat-message p { margin: 0; font-size: .875rem; line-height: 1.8; white-space: pre-wrap; }
+.radar-chat-message.user { align-self: flex-end; background: var(--soft); padding: 10px 14px; border-radius: 12px 12px 3px 12px; }
+.radar-chat-result { border-left: 3px solid var(--accent); padding: 2px 0 2px 12px; margin: 8px 0 12px; display: grid; gap: 6px; }
+.radar-chat-result > span { font-size: .75rem; color: var(--muted); }
+.radar-chat-result strong { font-size: 1rem; font-variant-numeric: tabular-nums; }
+.radar-chat-result small { font-size: .75rem; }
+.radar-chat-pending { color: var(--muted); font-size: .8rem; }
+.radar-chat-suggestions { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 16px; }
+.radar-chat .radar-chat-suggestions button { font-size: .75rem; min-height: 36px; padding: 7px 10px; white-space: normal; }
+.radar-chat-compose { padding: 12px 16px 10px; border-top: 1px solid var(--line); }
+.radar-chat-input-label { display: block; font-size: .75rem; color: var(--muted); margin-bottom: 6px; }
+.radar-chat-compose > div { display: flex; gap: 8px; align-items: stretch; }
+.radar-chat .radar-chat-compose textarea { flex: 1; min-width: 0; resize: none; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--soft); color: var(--ink); font-size: 16px; }
+.radar-chat-compose footer { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: .65rem; color: var(--muted); margin-top: 4px; }
+.radar-chat .radar-chat-compose footer button { border: 0; padding: 4px; font-size: .7rem; min-height: 36px; }
+.radar-chat-error { margin: 0; padding: 4px 16px; font-size: .8rem; color: var(--danger); }
+.radar-chat :is(button, textarea):focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+@keyframes radar-chat-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 600px) { .radar-chat { right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); } .radar-chat-panel { width: calc(100vw - 24px); height: min(660px, calc(100dvh - 92px)); } }
+@media (prefers-reduced-motion: reduce) { .radar-chat-panel { animation: none; } }
+@media print { .radar-chat { display: none; } }

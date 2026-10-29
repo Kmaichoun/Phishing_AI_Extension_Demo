@@ -23,34 +23,76 @@
     <section class="score-card" id="scoreCard">
       <div class="score" id="score">--</div>
       <div>
+        <p class="score-label" id="scoreLabel">คะแนนความเสี่ยง</p>
         <h2 id="status">กำลังวิเคราะห์</h2>
         <div class="meter"><span id="meterFill"></span></div>
+        <a class="explanation-jump" href="#llmPanel">อ่านเหตุผลและคำแนะนำ <span aria-hidden="true">↓</span></a>
       </div>
+    </section>
+
+    <section class="privacy-panel" id="privacyPanel" hidden>
+      <div>
+        <strong>Privacy Mode เปิดอยู่</strong>
+        <p>รอบนี้วิเคราะห์ใน browser เป็นหลัก ไม่ส่ง URL ไป backend, ML API หรือ LLM</p>
+      </div>
+      <span>Local only</span>
+    </section>
+
+    <section class="llm-panel" id="llmPanel" aria-labelledby="llmPanelTitle">
+      <div class="llm-panel-head">
+        <div class="llm-heading">
+          <span>คำอธิบายผลตรวจ</span>
+          <h2 id="llmPanelTitle">ทำไมลิงก์นี้จึงถูกเตือน</h2>
+        </div>
+        <button id="retryExplanation" class="explanation-retry" type="button" disabled>ขอคำอธิบายอีกครั้ง</button>
+      </div>
+      <p id="llmStatus" class="llm-status" aria-live="polite">กำลังสรุปเหตุผลจากผลตรวจ...</p>
+      <dl class="llm-details">
+        <div>
+          <dt>สรุปความเสี่ยง</dt>
+          <dd id="llmRiskType">-</dd>
+        </div>
+        <div>
+          <dt>เหตุผลของคะแนน</dt>
+          <dd id="llmExplanation">-</dd>
+        </div>
+      </dl>
+      <section class="llm-reason-group llm-risk-group" aria-labelledby="llmRiskReasonsTitle">
+        <h3 id="llmRiskReasonsTitle">เหตุผลที่ควรระวัง</h3>
+        <ol id="llmRiskReasons"></ol>
+        <p class="llm-reason-empty" id="llmRiskReasonsEmpty">รอคำอธิบายแยกรายข้อ</p>
+      </section>
+      <section class="llm-reason-group llm-reassuring-group" aria-labelledby="llmReassuringReasonsTitle">
+        <h3 id="llmReassuringReasonsTitle">สิ่งที่ช่วยลดความกังวล</h3>
+        <ol id="llmReassuringReasons"></ol>
+        <p class="llm-reason-empty" id="llmReassuringReasonsEmpty">รอคำอธิบายแยกรายข้อ</p>
+      </section>
+      <dl class="llm-details">
+        <div>
+          <dt>คำแนะนำผู้ใช้</dt>
+          <dd id="llmAdvice">-</dd>
+        </div>
+        <div>
+          <dt>ข้อจำกัดของผลตรวจ</dt>
+          <dd id="llmConfidence">-</dd>
+        </div>
+      </dl>
     </section>
 
     <section class="score-breakdown-card" aria-labelledby="scoreBreakdownTitle">
       <div class="score-breakdown-head">
         <div>
-          <span class="score-breakdown-kicker">Score sources</span>
-          <h3 id="scoreBreakdownTitle">คะแนนนี้มาจากอะไรบ้าง</h3>
+          <span class="score-breakdown-kicker">Score & explanation</span>
+          <h3 id="scoreBreakdownTitle">ที่มาของคะแนนและคำอธิบาย</h3>
         </div>
         <span id="scoreFormulaBadge" class="score-formula-badge">กำลังโหลด Risk Model policy</span>
       </div>
 
       <div class="score-source-list" id="scoreBreakdown">
-        <div class="score-source-row" id="sourceRuleRow" data-tone="danger">
-          <div class="score-source-text">
-            <span>Rule evidence</span>
-            <small id="sourceRuleMeta">หลักฐานจากกฎและบริบทหน้าเว็บ</small>
-          </div>
-          <strong id="sourceRuleValue">--</strong>
-          <div class="score-source-track" aria-hidden="true"><i id="sourceRuleFill"></i></div>
-        </div>
-
         <div class="score-source-row" id="sourceMlRow" data-tone="muted">
           <div class="score-source-text">
             <span>URL Risk Model</span>
-            <small id="sourceMlMeta">รอความน่าจะเป็นจาก backend</small>
+            <small id="sourceMlMeta">รอผลโมเดลจาก backend</small>
           </div>
           <strong id="sourceMlValue">--</strong>
           <div class="score-source-track" aria-hidden="true"><i id="sourceMlFill"></i></div>
@@ -69,44 +111,10 @@
       <p id="scoreBlendText" class="score-blend-text">กำลังแยกที่มาของคะแนน...</p>
     </section>
 
-    <section class="privacy-panel" id="privacyPanel" hidden>
-      <div>
-        <strong>Privacy Mode เปิดอยู่</strong>
-        <p>รอบนี้วิเคราะห์ใน browser เป็นหลัก ไม่ส่ง URL ไป backend, ML API หรือ LLM</p>
-      </div>
-      <span>Local only</span>
-    </section>
-
     <section class="reasons">
-      <h3>กลุ่มความเสี่ยง / เหตุผลที่ถูกเตือน</h3>
+      <h3>สิ่งที่ตรวจพบจาก URL</h3>
       <div id="threatTypes" class="threat-types"></div>
       <ul id="reasons"></ul>
-    </section>
-
-    <section class="llm-panel" id="llmPanel">
-      <div class="llm-heading">
-        <span>AI Explanation</span>
-        <strong>คำอธิบายจาก AI</strong>
-      </div>
-      <p id="llmStatus" class="llm-status" aria-live="polite">กำลังขอคำอธิบายจาก LLM...</p>
-      <dl class="llm-details">
-        <div>
-          <dt>ประเภทความเสี่ยง</dt>
-          <dd id="llmRiskType">-</dd>
-        </div>
-        <div>
-          <dt>อธิบายแบบเข้าใจง่าย</dt>
-          <dd id="llmExplanation">-</dd>
-        </div>
-        <div>
-          <dt>คำแนะนำผู้ใช้</dt>
-          <dd id="llmAdvice">-</dd>
-        </div>
-        <div>
-          <dt>หมายเหตุ</dt>
-          <dd id="llmConfidence">-</dd>
-        </div>
-      </dl>
     </section>
 
     <div class="actions">

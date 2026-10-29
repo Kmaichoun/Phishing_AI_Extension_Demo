@@ -12,24 +12,41 @@ export function flattenReason(reason) {
   return reason.detail ? `${reason.label}: ${reason.detail}` : reason.label;
 }
 
-export function riskLevel(score, warningThreshold = 61, blockingThreshold = 81) {
+export function explanationEvidenceReasons(reasons) {
+  return (Array.isArray(reasons) ? reasons : [])
+    .filter(reason => reason && typeof reason === 'object' && Number.isFinite(reason.points))
+    .slice(0, 8)
+    .map(reason => ({
+      title: String(reason.title || reason.name || reason.label || ''),
+      detail: String(reason.detail || ''),
+      points: reason.points
+    }));
+}
+
+export function explanationReasonItems(value) {
+  if (!Array.isArray(value)) return [];
+  return value.filter(item => item && typeof item === 'object'
+    && typeof item.title === 'string' && typeof item.explanation === 'string')
+    .slice(0, 4)
+    .map(item => ({ title: item.title.trim().slice(0, 160), explanation: item.explanation.trim().slice(0, 500) }))
+    .filter(item => item.title && item.explanation);
+}
+
+export function riskLevel(score, warningThreshold = 60, blockingThreshold = 80) {
   const warnCut = Number.isFinite(warningThreshold)
     ? Math.max(1, Math.min(99, warningThreshold))
-    : 61;
+    : 60;
   const blockCut = Number.isFinite(blockingThreshold)
     ? Math.max(warnCut, Math.min(100, blockingThreshold))
     : Math.min(100, warnCut + 20);
-  const mediumCut = Math.max(5, Math.round(warnCut * 0.6));
   if (score >= blockCut) {
-    return { key: 'critical', label: 'อันตรายมาก', decision: 'block', tone: 'risk-text-critical' };
+    return { key: 'critical', label: 'เสี่ยงสูง', decision: 'block', tone: 'risk-text-critical' };
   }
   if (score >= warnCut) {
-    return { key: 'high', label: 'เสี่ยงสูง', decision: 'warn', tone: 'risk-text-high' };
+    return { key: 'high', label: 'พบสัญญาณน่าสงสัย', decision: 'warn', tone: 'risk-text-high' };
   }
-  if (score >= mediumCut) {
-    return { key: 'medium', label: 'น่าสงสัย', decision: 'allow', tone: 'risk-text-medium' };
-  }
-  return { key: 'low', label: 'ค่อนข้างปลอดภัย', decision: 'allow', tone: 'risk-text-low' };
+  if (!Number.isFinite(score)) return { key: 'unknown', label: 'ข้อมูลไม่เพียงพอ', decision: 'unknown', tone: '' };
+  return { key: 'low', label: 'ไม่พบความเสี่ยงชัดเจน', decision: 'allow', tone: 'risk-text-low' };
 }
 
 export function redactUrl(url) {
@@ -87,11 +104,11 @@ export function brandVisualInsights(url, ruleResult) {
     const tokens = [profile.brand, ...(profile.aliases || [])]
       .filter(Boolean)
       .map(value => String(value).toLowerCase());
-    const mentionsBrand = tokens.some(token => decoded.includes(token));
+    const mentionsBrand = tokens.some(token => hostname.split(/[.-]/).includes(token));
     const isOfficial = (profile.officialDomains || [])
       .some(domain => sameOrSubdomain(hostname, domain));
     if (mentionsBrand && !isOfficial) {
-      insights.push(`พบคำ/แบรนด์ "${profile.brand}" แต่โดเมนไม่ใช่โดเมนทางการ อาจเป็นหน้าเลียนแบบแบรนด์`);
+      insights.push(`พบชื่อ "${profile.brand}" ในชื่อโฮสต์ที่ไม่ตรงรายการโดเมนทางการ ควรตรวจสอบแหล่งที่มา`);
       break;
     }
   }

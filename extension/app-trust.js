@@ -1,15 +1,20 @@
 (function initPhishRadarAppTrust(global) {
   'use strict';
 
+  // Updated together with backend origins by scripts/configure_public_demo.py.
+  const PUBLIC_WEB_APP_ORIGIN = 'https://phish-radar.taila97307.ts.net';
+
   // Exact origins owned by this project. Keep protocol and port explicit so a
   // different local service is never trusted only because it uses localhost.
   const TRUSTED_WEB_APP_ORIGINS = Object.freeze([
+    ...(PUBLIC_WEB_APP_ORIGIN ? [PUBLIC_WEB_APP_ORIGIN] : []),
     'http://app.phishradar.localhost:5505',
     'http://127.0.0.1:5505',
     'http://localhost:5505'
   ]);
 
   const DEFAULT_WEB_APP_URL = `${TRUSTED_WEB_APP_ORIGINS[0]}/#/login`;
+  const API_BASE_URL = PUBLIC_WEB_APP_ORIGIN || 'http://127.0.0.1:8765';
 
   function normalizeHttpOrigin(value) {
     try {
@@ -54,6 +59,8 @@
   }
 
   const api = {
+    PUBLIC_WEB_APP_ORIGIN,
+    API_BASE_URL,
     TRUSTED_WEB_APP_ORIGINS,
     DEFAULT_WEB_APP_URL,
     normalizeHttpOrigin,

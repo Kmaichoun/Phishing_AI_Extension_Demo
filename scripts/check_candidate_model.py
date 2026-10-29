@@ -21,6 +21,15 @@ def main():
     candidate_hash = sha256(args.experiment/'candidate.pkl')
     bundle = joblib.load(args.experiment/'candidate.pkl')
     urls = [
+        'https://web.facebook.com/',
+        'https://www.facebook.com/',
+        'https://m.facebook.com/',
+        'https://sites.google.com/go.buu.ac.th/regservice-burapha-university/home',
+        'https://www.ku.ac.th/th',
+        'https://www.chula.ac.th/',
+        'https://www.cmu.ac.th/',
+        'https://www.kmitl.ac.th/',
+        'https://www.su.ac.th/',
         'https://www.youtube.com/watch?v=AwKnraP_Wno',
         'https://www.youtube.com/results?search_query=cybersecurity',
         'https://www.google.com/',

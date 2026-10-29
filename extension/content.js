@@ -1,7 +1,7 @@
 ﻿(() => {
   'use strict';
 
-  let settings = { threshold: 61, warnMedium: true, highlightLinks: true, protectForms: true, showStatusPanel: true, pageScanningEnabled: true, privacyMode: false, searchProtection: true, clipboardProtection: true };
+  let settings = { threshold: 60, warnMedium: true, highlightLinks: true, protectForms: true, showStatusPanel: true, pageScanningEnabled: true, privacyMode: false, searchProtection: true, clipboardProtection: true };
   let uiTheme = 'dark';
   let alreadyScanned = false;
   let detailsPinned = false;
@@ -216,7 +216,7 @@
 
     const isSearch = scan?.mode === 'search';
     const displayItems = isSearch
-      ? (scan.items || []).filter(item => item.visuallyShown || item.score >= 61).slice(0, 5)
+      ? (scan.items || []).filter(item => item.visuallyShown || item.score >= 60).slice(0, 5)
       : (scan.items || []).slice(0, 5);
     const hasVisibleRisk = isSearch ? displayItems.length > 0 : !!scan?.risky;
 
@@ -231,7 +231,7 @@
 
     const list = displayItems.length ? displayItems.map((item, index) => {
       const reasons = (item.reasons || []).slice(0, 3).map(r => `<li>${escapeHtml(reasonLine(r))}</li>`).join('');
-      const levelIcon = item.score >= 81 ? '🚫' : item.score >= 61 ? '⛔' : '⚠️';
+      const levelIcon = item.score >= 80 ? '🚫' : item.score >= 60 ? '⛔' : '⚠️';
       const actionButtons = item.linkId ? `
         <div class="phish-radar-detail-actions">
           <button type="button" data-action="scroll-link" data-target-id="${escapeHtml(item.linkId)}">ชี้ตำแหน่งบนหน้า</button>
@@ -280,17 +280,35 @@
     try { return new URL(value, base); } catch (_) { return null; }
   }
 
-  function nestedUrlFromParams(url) {
-    const redirectKeys = [
-      'url', 'u', 'q', 'r', 'redirect', 'redirect_uri', 'next', 'target', 'to',
-      'continue', 'return', 'returnurl', 'dest', 'destination', 'adurl'
-    ];
-    for (const key of redirectKeys) {
-      const value = url.searchParams.get(key);
-      if (!value || !/^https?:\/\//i.test(value)) continue;
-      const nested = tryUrl(value);
-      if (nested && nested.hostname && nested.hostname !== url.hostname) return nested;
+  function knownRedirectValues(url) {
+    // Only unwrap known link-shim endpoints. An arbitrary site's next/u/q
+    // parameter must not hide its own hostname, userinfo or credential risks.
+    if (url.protocol !== 'https:' || url.username || url.password || (url.port && url.port !== '443')) return [];
+    const host = url.hostname.toLowerCase().replace(/\.$/, '');
+    let redirectKeys = [];
+    if (['l.facebook.com', 'lm.facebook.com'].includes(host) && url.pathname === '/l.php') {
+      redirectKeys = ['u'];
+    } else if (['google.com', 'www.google.com', 'google.co.th', 'www.google.co.th',
+      'google.co.uk', 'www.google.co.uk', 'google.com.au', 'www.google.com.au',
+      'google.de', 'www.google.de', 'google.fr', 'www.google.fr', 'google.co.jp', 'www.google.co.jp'].includes(host)) {
+      if (url.pathname === '/url') redirectKeys = ['url', 'q'];
+      if (url.pathname === '/aclk') redirectKeys = ['adurl'];
+    } else if (['bing.com', 'www.bing.com'].includes(host) && ['/ck/a', '/aclick'].includes(url.pathname)) {
+      redirectKeys = ['u'];
+    } else if (['youtube.com', 'www.youtube.com'].includes(host) && url.pathname === '/redirect') {
+      redirectKeys = ['q'];
     }
+    return redirectKeys.flatMap(key => url.searchParams.getAll(key));
+  }
+
+  function nestedUrlFromParams(url) {
+    const values = knownRedirectValues(url);
+    if (values.length !== 1) return null;
+    if (Array.from(url.searchParams.keys()).some(key => /^(?:password|passwd|pwd|otp|token|access_token|refresh_token|id_token|session|session_id|sessionid|auth|credential|pin|seed|seed_phrase|recovery_phrase|private[._-]?key)$/i.test(key))) return null;
+    const value = values[0];
+    if (!/^https?:\/\//i.test(value)) return null;
+    const nested = tryUrl(value);
+    if (nested && nested.hostname && nested.hostname !== url.hostname) return nested;
     return null;
   }
 
@@ -298,22 +316,20 @@
     const original = tryUrl(rawHref);
     if (!original) return null;
 
-    // Google/Bing/search engines often wrap real links with long redirect URLs.
-    // Analyze the real destination instead of the wrapper to avoid false positives
-    // from tracking parameters such as ved/ei/usg/q.
-    const nested = nestedUrlFromParams(original);
-    if (nested) {
-      return {
-        originalUrl: original.href,
-        effectiveUrl: nested.href,
-        wasRedirectWrapper: true
-      };
+    // Follow a bounded chain of recognized wrappers, without fetching URLs or
+    // discarding the final destination's query string or credential signals.
+    let effective = original;
+    const seen = new Set([original.href]);
+    for (let depth = 0; depth < 4; depth++) {
+      const nested = nestedUrlFromParams(effective);
+      if (!nested || seen.has(nested.href)) break;
+      seen.add(nested.href);
+      effective = nested;
     }
-
     return {
       originalUrl: original.href,
-      effectiveUrl: original.href,
-      wasRedirectWrapper: false
+      effectiveUrl: effective.href,
+      wasRedirectWrapper: effective.href !== original.href
     };
   }
 
@@ -358,15 +374,58 @@
   }
 
   function linkOptions(a, resolved, mode) {
-    const rel = (a.getAttribute('rel') || '').toLowerCase();
+    const rel = new Set((a.getAttribute('rel') || '').toLowerCase().split(/\s+/).filter(Boolean));
     return {
       linkText: trimmedOwnText(a, mode),
       searchContextText: searchResultContextText(a, mode),
       ignoreLinkText: mode === 'search',
-      opensNewTabNoNoopener: a.target === '_blank' && !rel.includes('noopener'),
+      // Modern HTML _blank implies noopener. Only explicit rel=opener opts
+      // back into opener access; noreferrer/noopener override that opt-in.
+      opensNewTabNoNoopener: String(a.target || '').toLowerCase() === '_blank' && rel.has('opener') && !rel.has('noopener') && !rel.has('noreferrer'),
       wasRedirectWrapper: !!resolved?.wasRedirectWrapper,
       originalUrl: resolved?.originalUrl || ''
     };
+  }
+
+  function analyzeResolvedLink(a, resolved, mode) {
+    const options = linkOptions(a, resolved, mode);
+    let result = PhishRadarAnalyzer.analyzeUrl(resolved.effectiveUrl, options);
+    const base = tryUrl(resolved.effectiveUrl);
+    if (!base) return result;
+    // Ambiguous recognized wrappers keep their actual URL. Still assess each
+    // possible destination so adding a second parameter or a wrapper token
+    // cannot exploit the official-host score ceiling to hide a phishing URL.
+    const queue = [{ url: base, depth: 0 }];
+    const seen = new Set([base.href]);
+    let assessed = 0;
+    let limited = false;
+    while (queue.length) {
+      const { url, depth } = queue.shift();
+      const values = knownRedirectValues(url);
+      if (!values.length) continue;
+      if (depth >= 4) { limited = true; continue; }
+      for (const value of values) {
+        if (!/^https?:\/\//i.test(value)) continue;
+        const candidate = tryUrl(value);
+        if (!candidate || seen.has(candidate.href)) continue;
+        if (assessed >= 16) { limited = true; break; }
+        seen.add(candidate.href);
+        assessed++;
+        const candidateResult = PhishRadarAnalyzer.analyzeUrl(candidate.href, options);
+        if (candidateResult.score > result.score) {
+          result = { ...candidateResult, redirectRiskUrl: candidate.href };
+        }
+        queue.push({ url: candidate, depth: depth + 1 });
+      }
+    }
+    if (limited) {
+      // Keep the score's origin honest: an incomplete redirect assessment is
+      // uncertainty, not a claim of maliciousness or a replacement ML score.
+      result = { ...result, redirectAssessmentLimited: true,
+        reasons: [{ points: 0, label: 'ลิงก์ตัวกลางมีปลายทางมากหรือซ้อนเกินขอบเขตตรวจ',
+          detail: 'ต้องตรวจปลายทางเพิ่มเติมก่อนเปิดลิงก์', category: 'redirect' }, ...result.reasons] };
+    }
+    return result;
   }
 
   function formIssuesForPage() {
@@ -896,15 +955,24 @@
     const reasons = (result.reasons || []).slice(0, 4).map(r => `
       <li><b>${escapeHtml(r.label)}</b>${r.detail ? `<br><small>${escapeHtml(r.detail)}</small>` : ''}</li>
     `).join('');
-    const icon = result.score >= 81 ? '🚫' : result.score >= 61 ? '⛔' : '⚠️';
-    const level = result.levelText || (result.score >= 61 ? 'เสี่ยงสูง' : 'น่าสงสัย');
+    const icon = result.score >= 80 ? '🚫' : result.score >= 60 ? '⛔' : '⚠️';
+    const level = result.levelText || (result.score >= 60 ? 'เสี่ยงสูง' : 'น่าสงสัย');
     const threatTypes = Array.isArray(result.threatTypes) && result.threatTypes.length
       ? `<div class="phish-radar-link-tooltip-mini"><b>กลุ่มความเสี่ยง:</b> ${escapeHtml(result.threatTypes.join(' • '))}</div>`
       : '';
     const urlText = compactUrl(data?.url || result.url || '', 90);
     const original = data?.wasRedirectWrapper && data?.originalUrl
-      ? `<div class="phish-radar-link-tooltip-mini">ปลายทางจริงจาก redirect: ${escapeHtml(compactUrl(data.originalUrl, 80))}</div>`
+      ? `<div class="phish-radar-link-tooltip-mini">ลิงก์ผ่านตัวกลาง: ${escapeHtml(compactUrl(data.originalUrl, 80))}</div>`
       : '';
+    const redirectCandidate = result.redirectRiskUrl
+      ? `<div class="phish-radar-link-tooltip-mini">ปลายทางในพารามิเตอร์ที่มีสัญญาณเสี่ยง: ${escapeHtml(compactUrl(result.redirectRiskUrl, 90))}</div>`
+      : '';
+    const warningThreshold = Number(settings.threshold || 60);
+    const warningNote = result.redirectAssessmentLimited
+      ? 'หยุดการเปิดลิงก์ไว้ก่อน เพราะตรวจปลายทางได้ไม่ครบ'
+      : Number(result.score) >= warningThreshold
+      ? 'คะแนนกฎถึงเกณฑ์เตือนก่อนเปิดลิงก์'
+      : 'คะแนนกฎยังไม่ถึงเกณฑ์เตือนก่อนเปิดลิงก์';
 
     return `
       <div class="phish-radar-link-tooltip-top" data-role="tooltip-drag" title="ลากแถบนี้เพื่อย้ายหน้าต่าง">
@@ -912,12 +980,13 @@
         <button type="button" class="phish-radar-link-tooltip-close" data-tooltip-action="close" title="ปิดหน้าต่างรายละเอียด" aria-label="ปิดหน้าต่างรายละเอียด">×</button>
       </div>
       <div class="phish-radar-link-tooltip-scroll" data-role="tooltip-scroll">
-        <div class="phish-radar-link-tooltip-score">Risk Score: <b>${escapeHtml(result.score ?? '-')}</b>/100</div>
+        <div class="phish-radar-link-tooltip-score">คะแนนกฎ URL (ในเครื่อง): <b>${escapeHtml(result.score ?? '-')}</b>/100</div>
         <div class="phish-radar-link-tooltip-url">${escapeHtml(urlText)}</div>
         ${threatTypes}
         ${original}
+        ${redirectCandidate}
         <ul>${reasons || '<li>พบรูปแบบ URL ที่น่าสงสัย</li>'}</ul>
-        <div class="phish-radar-link-tooltip-footer">ลากหัวหน้าต่างเพื่อย้ายตำแหน่ง • ระบบจะเตือนก่อนเปิดเว็บ</div>
+        <div class="phish-radar-link-tooltip-footer">ลากหัวหน้าต่างเพื่อย้ายตำแหน่ง • ${warningNote} (${warningThreshold}/100)</div>
       </div>
       <button type="button" class="phish-radar-tooltip-resize" data-tooltip-action="resize" title="ลากมุมนี้เพื่อขยายหรือย่อหน้าต่าง" aria-label="ปรับขนาดหน้าต่างรายละเอียด">↘</button>
     `;
@@ -997,7 +1066,7 @@
     const tip = ensureLinkTooltip();
     const keepManualPosition = tip.classList.contains('phish-radar-link-tooltip-manual') && linkTooltipPinned;
     tip.innerHTML = buildLinkTooltipHtml(data);
-    tip.className = data.result?.score >= 61 ? 'phish-radar-link-tooltip-open phish-radar-link-tooltip-high' : 'phish-radar-link-tooltip-open';
+    tip.className = data.result?.score >= 60 ? 'phish-radar-link-tooltip-open phish-radar-link-tooltip-high' : 'phish-radar-link-tooltip-open';
     if (keepManualPosition) tip.classList.add('phish-radar-link-tooltip-manual', 'phish-radar-link-tooltip-pinned');
     // Preserve the shared theme after className resets tooltip state classes.
     const tooltipTheme = uiTheme === 'dark' ? 'dark' : 'light';
@@ -1192,7 +1261,7 @@
   }
 
   function attachLinkTooltip(trigger, result, resolved) {
-    if (!trigger || trigger.dataset.phishRadarTooltipBound === '1') return;
+    if (!trigger) return;
     const tooltipData = {
       url: resolved?.effectiveUrl || result?.url || '',
       originalUrl: resolved?.originalUrl || '',
@@ -1202,10 +1271,13 @@
         levelText: result?.levelText,
         url: result?.url,
         reasons: (result?.reasons || []).slice(0, 6),
-        threatTypes: result?.threatTypes || []
+        threatTypes: result?.threatTypes || [],
+        redirectRiskUrl: result?.redirectRiskUrl || '',
+        redirectAssessmentLimited: !!result?.redirectAssessmentLimited
       }
     };
     trigger.dataset.phishRadarTooltip = JSON.stringify(tooltipData);
+    if (trigger.dataset.phishRadarTooltipBound === '1') return;
     trigger.dataset.phishRadarTooltipBound = '1';
     trigger.addEventListener('mouseenter', () => showLinkTooltip(trigger));
     trigger.addEventListener('focus', () => showLinkTooltip(trigger));
@@ -1216,8 +1288,8 @@
 
   function createBadge(result, mode) {
     const badge = document.createElement('span');
-    const high = result.score >= 61;
-    const critical = result.score >= 81;
+    const high = result.score >= 60;
+    const critical = result.score >= 80;
     badge.className = `phish-radar-badge ${high ? 'phish-radar-high' : ''} ${critical ? 'phish-radar-critical' : ''} ${mode === 'search' ? 'phish-radar-compact' : ''}`;
     // Search pages can distort inline score text; keep the badge icon-only and put the score in the tooltip.
     const displayScore = String(Math.round(Number(result.score) || 0));
@@ -1273,13 +1345,23 @@
   function markLink(a, result, mode, resolved) {
     if (!a) return '';
     const linkId = ensureLinkId(a);
-    if (a.dataset.phishRadarMarked === '1') return linkId;
+    if (a.dataset.phishRadarMarked === '1') {
+      const previous = (() => { try { return JSON.parse(a.dataset.phishRadarTooltip || '{}'); } catch (_) { return {}; } })();
+      const badge = Array.from(document.querySelectorAll('.phish-radar-badge')).find(node => node.dataset.phishRadarFor === linkId);
+      if (badge && previous.url === (resolved?.effectiveUrl || result.url) && previous.result?.score === result.score) {
+        attachLinkTooltip(a, result, resolved);
+        attachLinkTooltip(badge, result, resolved);
+        a.dataset.phishRadarReasons = result.reasons.map(r => r.label).join(' | ');
+        return linkId;
+      }
+      unmarkLink(a);
+    }
     a.dataset.phishRadarMarked = '1';
     a.dataset.phishRadarScore = String(result.score);
     a.dataset.phishRadarReasons = result.reasons.map(r => r.label).join(' | ');
     a.classList.add('phish-radar-link-target');
     if (mode === 'search') a.classList.add('phish-radar-search-result');
-    if (result.score >= 61) a.classList.add('phish-radar-high');
+    if (result.score >= 60) a.classList.add('phish-radar-high');
 
     attachLinkTooltip(a, result, resolved);
     const badge = createBadge(result, mode);
@@ -1298,6 +1380,17 @@
     });
     if (a.parentElement) a.insertAdjacentElement('afterend', badge);
     return linkId;
+  }
+
+  function unmarkLink(a) {
+    if (!a || a.dataset.phishRadarMarked !== '1') return;
+    const id = a.dataset.phishRadarId;
+    for (const badge of document.querySelectorAll('.phish-radar-badge')) {
+      if (badge.dataset.phishRadarFor === id) badge.remove();
+    }
+    a.classList.remove('phish-radar-link-target', 'phish-radar-search-result', 'phish-radar-high', 'phish-radar-flash-target');
+    for (const key of ['phishRadarMarked', 'phishRadarScore', 'phishRadarReasons', 'phishRadarTooltip']) delete a.dataset[key];
+    if (activeTooltipTrigger === a || activeTooltipTrigger?.dataset?.phishRadarFor === id) closeLinkTooltip();
   }
 
     function visualThresholdForMode(mode) {
@@ -1335,18 +1428,18 @@
     const visuallyMarkedUrls = new Set();
 
     for (const a of anchors) {
-      if (a.dataset.phishRadarSkip === '1') continue;
+      if (a.dataset.phishRadarSkip === '1') { unmarkLink(a); continue; }
       const raw = a.getAttribute('href');
-      if (shouldSkipUrl(raw)) continue;
+      if (shouldSkipUrl(raw)) { unmarkLink(a); continue; }
       const resolved = resolveEffectiveUrl(raw);
-      if (!resolved) continue;
-      if (isTrustedWebAppUrl(resolved.effectiveUrl)) continue;
+      if (!resolved) { unmarkLink(a); continue; }
+      if (isTrustedWebAppUrl(resolved.effectiveUrl)) { unmarkLink(a); continue; }
       scanned++;
 
-      const result = PhishRadarAnalyzer.analyzeUrl(resolved.effectiveUrl, linkOptions(a, resolved, mode));
+      const result = analyzeResolvedLink(a, resolved, mode);
       if (result.score >= 31) {
         risky++;
-        if (result.score >= 61) high++; else medium++;
+        if (result.score >= 60) high++; else medium++;
 
         let markerId = '';
         const normalizedUrl = resolved.effectiveUrl.replace(/[#?].*$/, '');
@@ -1355,7 +1448,7 @@
           markerId = markLink(a, result, mode, resolved);
           visuallyMarkedUrls.add(normalizedUrl);
           shown++;
-        }
+        } else unmarkLink(a);
 
         items.push({
           linkId: markerId || a.dataset.phishRadarId || '',
@@ -1367,7 +1460,7 @@
           visuallyShown: !!visual,
           reasons: result.reasons.slice(0, 4)
         });
-      }
+      } else unmarkLink(a);
     }
 
     items.sort((a, b) => b.score - a.score);
@@ -1717,6 +1810,35 @@
     });
   }
 
+  function showRedirectLimitNotice(result) {
+    document.getElementById('phish-radar-overlay')?.remove();
+    const div = document.createElement('div');
+    div.id = 'phish-radar-overlay';
+    div.setAttribute('role', 'dialog');
+    div.setAttribute('aria-modal', 'true');
+    div.setAttribute('aria-labelledby', 'phish-radar-overlay-title');
+    div.tabIndex = -1;
+    div.innerHTML = `
+      <h3 id="phish-radar-overlay-title">ตรวจปลายทางของลิงก์ได้ไม่ครบ</h3>
+      <p>ลิงก์ผ่านตัวกลางมีปลายทางหลายรายการหรือซ้อนหลายชั้น จึงหยุดการเปิดลิงก์ไว้ก่อน</p>
+      <p>คะแนนกฎ URL ที่ตรวจได้: <b>${escapeHtml(result.score)}</b>/100 คะแนนนี้ยังไม่ครอบคลุมทุกปลายทาง กรุณาขอลิงก์ตรงจากแหล่งที่เชื่อถือได้</p>
+      <div class="phish-radar-actions"><button type="button" class="primary" data-action="close">ปิดข้อความ</button></div>`;
+    const previousFocus = document.activeElement;
+    const close = () => {
+      div.remove();
+      previousFocus?.focus?.({ preventScroll: true });
+    };
+    div.addEventListener('click', event => {
+      if (event.target?.dataset?.action === 'close') close();
+    });
+    div.addEventListener('keydown', event => {
+      if (event.key === 'Escape') { event.preventDefault(); close(); }
+    });
+    document.documentElement.appendChild(div);
+    applyUiTheme();
+    requestAnimationFrame(() => div.focus({ preventScroll: true }));
+  }
+
   async function handleClick(e) {
     if (!settings.pageScanningEnabled) return;
     const a = e.target?.closest?.('a[href]');
@@ -1727,8 +1849,14 @@
     if (!resolved) return;
     if (isTrustedWebAppUrl(resolved.effectiveUrl)) return;
     const mode = currentPageMode();
-    const result = PhishRadarAnalyzer.analyzeUrl(resolved.effectiveUrl, linkOptions(a, resolved, mode));
+    const result = analyzeResolvedLink(a, resolved, mode);
 
+    if (result.redirectAssessmentLimited) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      showRedirectLimitNotice(result);
+      return;
+    }
     if (result.score >= settings.threshold) {
       e.preventDefault();
       e.stopImmediatePropagation();
@@ -1751,7 +1879,7 @@
       if (!url) return;
       if (isTrustedWebAppUrl(url)) return;
       const result = PhishRadarAnalyzer.analyzeUrl(url, { visibleText: text.slice(0, 500) });
-      if (result.score < Number(settings.threshold || 61)) return;
+      if (result.score < Number(settings.threshold || 60)) return;
       e.preventDefault();
       e.stopImmediatePropagation();
       showClipboardProtectionOverlay(url, result, e.target, text);
@@ -1843,11 +1971,13 @@
     let timer = null;
     pageScanObserver = new MutationObserver(mutations => {
       if (!settings.pageScanningEnabled) return;
-      if (mutations.every(m => isPhishRadarUiNode(m.target) || Array.from(m.addedNodes || []).every(isPhishRadarUiNode))) return;
+      if (mutations.every(m => isPhishRadarUiNode(m.target) || (m.type === 'childList' &&
+        [...Array.from(m.addedNodes || []), ...Array.from(m.removedNodes || [])].every(isPhishRadarUiNode)))) return;
       clearTimeout(timer);
       timer = setTimeout(() => { if (!document.hidden) scanLinks(180); }, 1400);
     });
-    if (document.documentElement) pageScanObserver.observe(document.documentElement, { childList: true, subtree: true });
+    if (document.documentElement) pageScanObserver.observe(document.documentElement, { childList: true, subtree: true,
+      attributes: true, attributeFilter: ['href'] });
   }
 
     chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {

@@ -564,6 +564,72 @@ body[data-surface="popup"] button:disabled {
   white-space: nowrap;
 }
 
+.ad-filter-options {
+  grid-column: 2;
+  display: grid;
+  gap: 4px;
+  color: var(--popup-muted);
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.ad-filter-exception {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  cursor: pointer;
+}
+
+.ad-filter-mode {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  margin-bottom: 5px;
+}
+
+.ad-filter-mode select {
+  width: 100%;
+  min-width: 0;
+  padding: 7px 8px;
+  color: var(--popup-text);
+  background: var(--popup-surface);
+  border: 1px solid var(--popup-line-soft);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.ad-filter-mode select:focus-visible {
+  outline: 2px solid var(--popup-focus);
+  outline-offset: 2px;
+}
+
+.ad-filter-mode select:disabled {
+  opacity: .6;
+  cursor: default;
+}
+
+.ad-filter-exception input {
+  margin: 0;
+  accent-color: var(--popup-accent);
+}
+
+.ad-filter-exception:has(input:disabled) {
+  opacity: .6;
+  cursor: default;
+}
+
+.ad-filter-host {
+  overflow-wrap: anywhere;
+  font-size: 9px;
+}
+
+.ad-filter-options p {
+  margin: 0;
+}
+
 .switch {
   width: 32px;
   height: 17px;

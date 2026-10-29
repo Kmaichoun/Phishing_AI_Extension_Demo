@@ -110,6 +110,11 @@
 .detail-list > div { display: grid; grid-template-columns: 200px minmax(0,1fr); gap: 24px; padding: 12px 0; border-bottom: 1px solid var(--line); }
 .detail-list dt { color: var(--muted); }
 .detail-list dd { margin: 0; overflow-wrap: anywhere; }
+.explanation-reasons { margin: 22px 0; }
+.explanation-reasons h4 { margin: 0 0 12px; font-size: 1rem; }
+.explanation-reasons ol { padding-left: 24px; margin: 0; }
+.explanation-reasons li { padding-left: 4px; margin: 12px 0; overflow-wrap: anywhere; }
+.explanation-reasons li p { margin: 4px 0 0; }
 .formula-display { padding: 16px; background: var(--soft); border-radius: 8px; overflow-wrap: anywhere; }
 .json-detail { white-space: pre-wrap; word-break: break-word; max-height: 380px; overflow-y: auto; font-size: .8125rem; }
 .pipeline-list { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); list-style: none; margin: 0; padding: 0; border-block: 1px solid var(--line); }

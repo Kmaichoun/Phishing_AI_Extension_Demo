@@ -46,7 +46,6 @@ def main() -> None:
                     "username": username,
                     "email": email,
                     "password": password,
-                    "device_name": "Automated test device",
                     "role": "admin",
                 },
             ),
@@ -55,6 +54,8 @@ def main() -> None:
         )
         assert registered and registered["role"] == "user"
         assert "password" not in registered and "session" not in registered
+        assert "device_name" not in registered
+        assert "phish_radar_device" not in client.cookies
 
         current = expect(client.get("/auth/me"), 200, "current user after registration")
         assert current and current["username"] == username and current["role"] == "user"
@@ -64,7 +65,6 @@ def main() -> None:
                 text(
                     """
                     SELECT u.PasswordHash,
-                           (SELECT COUNT(*) FROM UserDevices d WHERE d.UserId = u.UserId) AS DeviceCount,
                            (SELECT COUNT(*) FROM Sessions s WHERE s.UserId = u.UserId) AS SessionCount
                     FROM Users u
                     WHERE u.NormalizedUsername = LOWER(:username)
@@ -74,7 +74,6 @@ def main() -> None:
             ).mappings().one()
             assert str(row["PasswordHash"]).startswith("$argon2")
             assert row["PasswordHash"] != password
-            assert int(row["DeviceCount"]) == 1
             assert int(row["SessionCount"]) == 1
 
         expect(client.post("/auth/logout", headers=headers), 204, "logout after registration")
@@ -87,7 +86,6 @@ def main() -> None:
                 json={
                     "identifier": email.upper(),
                     "password": password,
-                    "device_name": "Renamed automated test device",
                 },
             ),
             200,
@@ -107,7 +105,6 @@ def main() -> None:
             if user_id is not None:
                 database.execute(text("DELETE FROM SearchHistory WHERE UserId = :user_id"), {"user_id": user_id})
                 database.execute(text("DELETE FROM Sessions WHERE UserId = :user_id"), {"user_id": user_id})
-                database.execute(text("DELETE FROM UserDevices WHERE UserId = :user_id"), {"user_id": user_id})
                 database.execute(text("DELETE FROM Users WHERE UserId = :user_id"), {"user_id": user_id})
                 database.commit()
 

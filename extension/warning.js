@@ -2,6 +2,8 @@
 const target = params.get('target') || '';
 let privacyMode = params.get('privacy_mode') === '1';
 let llmEnabled = false;
+let llmRequestPending = false;
+let llmRequestSequence = 0;
 let result;
 try {
   const reasons = JSON.parse(params.get('reasons') || '[]');
@@ -23,17 +25,19 @@ function clampRiskScore(value) {
 
 function scoreTone(score) {
   if (!Number.isFinite(score)) return 'muted';
-  if (score >= 81) return 'critical';
-  if (score >= 61) return 'danger';
+  if (score >= 80) return 'critical';
+  if (score >= 60) return 'danger';
   if (score >= 31) return 'warn';
   return 'safe';
 }
 
 function finalRiskLevel(score, warningThreshold, blockingThreshold, decision) {
-  const warnCut = Number.isFinite(warningThreshold) ? Math.max(1, Math.min(99, warningThreshold)) : 61;
+  const warnCut = Number.isFinite(warningThreshold) ? Math.max(1, Math.min(99, warningThreshold)) : 60;
   const blockCut = Number.isFinite(blockingThreshold) ? Math.max(warnCut, Math.min(100, blockingThreshold)) : Math.min(100, warnCut + 20);
-  if (decision === 'block' || score >= blockCut) return 'critical';
-  if (decision === 'warn' || score >= warnCut) return 'high';
+  if (decision === 'block') return 'critical';
+  if (decision === 'warn') return 'high';
+  if (decision !== 'allow' && score >= blockCut) return 'critical';
+  if (decision !== 'allow' && score >= warnCut) return 'high';
   if (score >= Math.max(5, Math.round(warnCut * 0.6))) return 'medium';
   return 'low';
 }
@@ -53,7 +57,7 @@ function setSourceRow(source, score, meta, options = {}) {
 }
 
 function llmBreakdownState(response) {
-  if (!response) {
+  if (!response || response.status === 'pending') {
     return {
       valueText: 'รอผล',
       percent: 28,
@@ -69,7 +73,7 @@ function llmBreakdownState(response) {
       meta: response.cached ? 'ใช้คำอธิบาย LLM ที่เคยวิเคราะห์ไว้แล้ว' : 'เชื่อมต่อ LLM สำเร็จ และสร้างคำอธิบายจากข้อมูลความเสี่ยง'
     };
   }
-  if (response.status === 'privacy_mode' || response.provider === 'local-only' || response.privacy_mode) {
+  if (response.status === 'privacy_mode' || response.privacy_mode) {
     return {
       valueText: 'Local only',
       percent: 100,
@@ -101,29 +105,30 @@ function llmBreakdownState(response) {
   };
 }
 
-function renderScoreBreakdown(llmResponse = null) {
-  const ruleScore = clampRiskScore(getNumericWarningParam('rule_score') ?? result.ruleScore ?? result.score);
-  const fuzzyScore = clampRiskScore(getNumericWarningParam('fuzzy_score'));
-  const randomForestScore = clampRiskScore(getNumericWarningParam('random_forest_score') ?? getNumericWarningParam('ml_score'));
-  const riskScore = clampRiskScore(getNumericWarningParam('risk_score') ?? getNumericWarningParam('final_score') ?? result.finalScore ?? result.score);
-  const riskProbability = getNumericWarningParam('risk_probability');
-  const warningThreshold = getNumericWarningParam('warning_threshold') ?? getNumericWarningParam('decision_threshold');
-  const blockingThreshold = getNumericWarningParam('blocking_threshold');
-  const decision = getWarningParam('decision') || '';
-  const modelVersion = getWarningParam('model_version') || '';
-  const fusionApplied = getWarningParam('fusion_applied') === '1';
+function warningModelReady() {
+  const status = getWarningParam('model_status');
+  const score = getNumericWarningParam('random_forest_score') ?? getNumericWarningParam('ml_score');
+  // Older warning URLs did not transmit status. Their actual model outputs
+  // remain readable; fusion_applied=false does not mean the RF is offline.
+  return !privacyMode && (status === 'ready' || (!status && Number.isFinite(score) && Number.isFinite(getNumericWarningParam('risk_probability'))));
+}
 
-  setSourceRow(
-    'Rule',
-    Number.isFinite(fuzzyScore) ? fuzzyScore : ruleScore,
-    Number.isFinite(fuzzyScore)
-      ? `FuzzyScore แปลง RuleScore ${ruleScore}/100 เป็นระดับสมาชิกความเสี่ยงก่อนรวมผล`
-      : 'RuleScore เป็นหลักฐานจากกฎภายใน browser'
-  );
+function mlWarningWithoutRuleEvidence() {
+  const rule = getNumericWarningParam('rule_score') ?? result.ruleScore ?? 0;
+  const positiveReasons = result.reasons.some(reason => Number(reason?.points) > 0);
+  return warningModelReady() && getWarningParam('fusion_method') === 'ml_only' && rule === 0 && !positiveReasons;
+}
+
+function renderScoreBreakdown(llmResponse = null) {
+  const modelVersion = getWarningParam('model_version') || '';
+  const modelReady = warningModelReady();
+  const mlOnly = getWarningParam('fusion_method') === 'ml_only';
+
+  $('scoreLabel').textContent = modelReady && mlOnly ? 'Random Forest หลังปรับเทียบ' : modelReady ? 'คะแนนจากโมเดลของผลตรวจนี้' : 'คะแนนตรวจ URL ในเครื่อง';
   if (privacyMode) {
     setSourceRow('Ml', null, 'ปิด URL Risk Model เพื่อไม่ส่ง URL ออกนอก browser', { valueText: 'ปิด', percent: 12, tone: 'muted' });
   } else {
-    setSourceRow('Ml', randomForestScore, Number.isFinite(riskProbability) ? `RandomForestScore จาก URL Risk Model${modelVersion ? ` (${modelVersion})` : ''}` : 'โมเดลไม่พร้อม รอบนี้จึงใช้หลักฐาน local เป็นคะแนนสำรอง', { tone: Number.isFinite(randomForestScore) ? scoreTone(randomForestScore) : 'muted' });
+    setSourceRow('Ml', null, modelReady ? `${mlOnly ? 'Random Forest หลังปรับเทียบ' : 'โมเดลที่ใช้ในผลตรวจนี้'}${modelVersion ? ` (${modelVersion})` : ''}` : 'โมเดลไม่พร้อม รอบนี้จึงใช้หลักฐาน local เป็นคะแนนสำรอง', { valueText: modelReady ? 'พร้อม' : 'ไม่พร้อม', percent: modelReady ? 100 : 0, tone: modelReady ? 'info' : 'muted' });
   }
 
   const llmState = llmBreakdownState(llmResponse);
@@ -134,14 +139,16 @@ function renderScoreBreakdown(llmResponse = null) {
   if (badge) {
     badge.textContent = privacyMode
       ? 'Privacy Mode • Local analysis'
-      : fusionApplied ? 'Fuzzy + Random Forest • Learned fusion' : 'Local evidence • Risk Model offline';
+      : modelReady && mlOnly ? 'Random Forest • Calibrated score'
+      : modelReady ? 'URL Risk Model • Ready' : 'Local evidence • Risk Model offline';
   }
   if (blend) {
     blend.textContent = privacyMode
-      ? 'คะแนน local ' + riskScore + '/100 มาจาก Rule evidence และหลักฐานบนหน้าเว็บเท่านั้น รอบนี้ไม่ส่ง URL ไป Risk Model หรือ LLM'
-      : fusionApplied
-        ? 'FinalScore ' + riskScore + '/100 มาจาก learned fusion ระหว่าง FuzzyScore ' + fuzzyScore + ' และ RandomForestScore ' + randomForestScore + '; ผลคือ ' + (decision || 'ไม่ระบุ') + ' เมื่อ warn ≥ ' + (Number.isFinite(warningThreshold) ? warningThreshold : '-') + ' และ block ≥ ' + (Number.isFinite(blockingThreshold) ? blockingThreshold : '-')
-        : 'Risk Model ไม่พร้อม จึงใช้ Rule evidence เป็นหลักฐาน local ชั่วคราว และแสดงสถานะนี้อย่างชัดเจน';
+      ? 'คะแนนตรวจในเครื่องมาจากกฎ URL และหลักฐาน local รอบนี้ไม่ส่ง URL ไปโมเดลหรือ LLM'
+      : modelReady && mlOnly
+        ? 'คะแนนด้านบนมาจาก Random Forest หลังปรับเทียบเพียงชุดเดียว ข้อสังเกตจากกฎ URL แสดงเป็นเหตุผลประกอบ และ LLM ไม่เปลี่ยนคะแนน'
+        : modelReady ? 'คะแนนด้านบนมาจากโมเดลที่ใช้ในผลตรวจนี้ อ่านข้อสังเกตจาก URL และคำอธิบายประกอบได้ด้านล่าง'
+        : 'โมเดลไม่พร้อม คะแนนด้านบนจึงเป็นผลตรวจในเครื่องชั่วคราว ไม่ใช่คะแนนจาก Random Forest';
   }
 }
 $('target').textContent = target;
@@ -153,24 +160,29 @@ const level = finalRiskLevel(
   getNumericWarningParam('blocking_threshold'),
   getWarningParam('decision')
 );
-const levelText = level === 'critical' ? 'อันตรายมาก' : level === 'high' ? 'เสี่ยงสูง' : level === 'medium' ? 'น่าสงสัย' : 'ปลอดภัย';
+const modelOnlyWarning = mlWarningWithoutRuleEvidence();
+const levelText = modelOnlyWarning && (level === 'high' || level === 'critical') ? 'โมเดลประเมินว่าควรระวัง' : level === 'critical' ? 'อันตรายมาก' : level === 'high' ? 'เสี่ยงสูง' : level === 'medium' ? 'น่าสงสัย' : 'ยังไม่พบความเสี่ยงชัดเจน';
 $('status').textContent = `${levelText} (${result.score}/100)`;
 renderScoreBreakdown();
 
 document.body.dataset.level = level;
-const headlineText = level === 'critical'
+const headlineText = modelOnlyWarning && (level === 'high' || level === 'critical')
+  ? 'โมเดลประเมินว่าลิงก์นี้ควรระวัง'
+  : level === 'critical'
   ? 'หยุดก่อน! ลิงก์นี้อันตรายมาก'
   : level === 'high'
     ? 'หยุดก่อน! เว็บไซต์นี้มีความเสี่ยงสูง'
     : level === 'medium'
       ? 'ระวัง! เว็บไซต์นี้น่าสงสัย'
-      : 'เว็บไซต์นี้ดูปลอดภัย';
+      : 'ยังไม่พบความเสี่ยงชัดเจนจาก URL';
 $('headline').textContent = headlineText;
-$('lead').textContent = level === 'medium'
-  ? 'ระบบพบสัญญาณบางอย่าง เช่น phishing, scam, malware, redirect หรือ SEO spam ควรตรวจสอบก่อนเปิดต่อ'
+$('lead').textContent = modelOnlyWarning && (level === 'high' || level === 'critical')
+  ? 'คะแนนโมเดลถึงเกณฑ์เตือน แต่ยังไม่พบหลักฐานเสี่ยงจากกฎ URL ที่ตรวจ ผลนี้ยังไม่ยืนยันว่าเว็บไซต์เป็น phishing ควรตรวจแหล่งที่มาก่อนกรอกข้อมูลสำคัญ'
+  : level === 'medium'
+  ? 'คะแนนอยู่ในช่วงที่ควรอ่านข้อสังเกตเพิ่มเติม ผลตรวจนี้ไม่ได้ยืนยันว่าเว็บไซต์เป็น phishing'
   : level === 'low'
     ? 'ระบบยังไม่พบสัญญาณเสี่ยงสำคัญจากกฎที่ตรวจในขณะนี้ แต่ยังควรระวังก่อนกรอกข้อมูลสำคัญ'
-    : 'ระบบป้องกันก่อนเข้าถึงตรวจพบสัญญาณที่เข้าข่าย Phishing หรือเนื้อหาเสี่ยง จึงพาคุณมาหน้านี้แทนที่จะเปิดเว็บปลายทางทันที';
+    : 'ผลตรวจ URL ถึงเกณฑ์เตือน จึงพาคุณมาหน้านี้เพื่ออ่านเหตุผลก่อนเปิดปลายทาง ผลนี้ไม่ได้ยืนยันเนื้อหาทั้งเว็บไซต์';
 
 const threatBox = $('threatTypes');
 if (threatBox) {
@@ -191,7 +203,7 @@ for (const r of result.reasons.slice(0, 6)) {
 }
 if (!result.reasons.length) {
   const li = document.createElement('li');
-  li.textContent = 'คะแนนสูงจากรูปแบบ URL ที่ผิดปกติ';
+  li.textContent = modelOnlyWarning ? 'ยังไม่พบหลักฐานเสี่ยงจากกฎ URL; การเตือนครั้งนี้มาจากคะแนนโมเดล' : 'ยังไม่มีเหตุผลจากกฎ URL ให้แสดง';
   reasons.appendChild(li);
 }
 
@@ -201,7 +213,31 @@ function flattenReason(reason) {
   return reason.detail ? `${reason.label}: ${reason.detail}` : reason.label;
 }
 
+function renderExplanationReasons(id, items, emptyText) {
+  const list = $(id);
+  const empty = $(id + 'Empty');
+  if (!list || !empty) return;
+  const reasons = Array.isArray(items) ? items.filter(item => item && typeof item === 'object'
+    && typeof item.title === 'string' && typeof item.explanation === 'string'
+    && item.title.trim() && item.explanation.trim()).slice(0, 4) : [];
+  list.innerHTML = '';
+  list.hidden = !reasons.length;
+  empty.hidden = Boolean(reasons.length);
+  empty.textContent = emptyText;
+  for (const item of reasons) {
+    const li = document.createElement('li');
+    const title = document.createElement('strong');
+    const detail = document.createElement('p');
+    title.textContent = item.title.trim().slice(0, 160);
+    detail.textContent = item.explanation.trim().slice(0, 500);
+    li.appendChild(title);
+    li.appendChild(detail);
+    list.appendChild(li);
+  }
+}
+
 function renderLlmExplanation(response) {
+  if (!response?.llm) response = buildLocalExplanation(response?.status || 'llm_unavailable');
   const status = $('llmStatus');
   const explanation = response?.llm;
   if (!explanation) {
@@ -213,21 +249,34 @@ function renderLlmExplanation(response) {
   $('llmExplanation').textContent = explanation.simple_explanation || '-';
   $('llmAdvice').textContent = explanation.user_advice || '-';
   $('llmConfidence').textContent = explanation.confidence_note || '-';
+  const hasDetailedReasons = Array.isArray(explanation.risk_reasons) || Array.isArray(explanation.reassuring_reasons);
+  renderExplanationReasons('llmRiskReasons', explanation.risk_reasons,
+    hasDetailedReasons ? 'ยังไม่พบข้อควรระวังจากข้อมูล URL ที่ตรวจในครั้งนี้'
+      : 'คำอธิบายนี้ไม่มีเหตุผลแยกรายข้อ อ่านสรุปด้านบนหรือตรวจ URL ใหม่เพื่อรับรายละเอียดล่าสุด');
+  renderExplanationReasons('llmReassuringReasons', explanation.reassuring_reasons,
+    hasDetailedReasons ? 'ยังไม่พบข้อมูลที่ช่วยลดความกังวลจาก URL ที่ตรวจ ผลนี้ไม่ยืนยันว่าเว็บไซต์ปลอดภัยหรืออันตราย'
+      : 'ไม่มีข้อมูลประกอบส่วนนี้ในคำอธิบาย ไม่ได้หมายความว่าเว็บไซต์ปลอดภัยหรืออันตราย');
 
   if (response.ok && (response.provider === 'openai' || response.provider === 'ollama')) {
     status.textContent = response.cached
       ? `ใช้คำอธิบายจาก LLM ที่เคยวิเคราะห์ไว้ (${response.model})`
       : `วิเคราะห์ด้วย LLM สำเร็จ (${response.model})`;
-  } else if (response.status === 'privacy_mode' || response.provider === 'local-only' || response.privacy_mode) {
-    status.textContent = 'Privacy Mode เปิดอยู่ จึงไม่เรียก AI explanation หรือ backend';
+  } else if (response.status === 'pending') {
+    status.textContent = 'แสดงเหตุผลจากผลตรวจไว้ก่อน กำลังขอคำสรุปจาก Ollama…';
+  } else if (response.status === 'local_evidence') {
+    status.textContent = 'ข้อสังเกตจากผลตรวจในเครื่อง ยังไม่ได้ใช้คำอธิบายจาก Ollama';
+  } else if (response.status === 'privacy_mode' || response.privacy_mode) {
+    status.textContent = 'Privacy Mode: แสดงเหตุผลในเครื่อง ไม่ส่ง URL ไปโมเดลหรือ Ollama';
   } else if (response.status === 'llm_disabled') {
-    status.textContent = 'LLM ปิดอยู่ ระบบไม่ได้ส่งคำขอไป Qwen/Ollama';
+    status.textContent = 'แสดงเหตุผลจากผลตรวจในเครื่อง; เปิด AI Explanation ใน Popup เพื่อขอคำสรุปจาก Ollama';
+  } else if (response.status === 'llm_timeout') {
+    status.textContent = 'Ollama ตอบกลับไม่ทัน แสดงเหตุผลจากผลตรวจไว้ก่อน สามารถกดขอคำอธิบายอีกครั้งได้';
   } else if (response.status === 'missing_api_key') {
     status.textContent = 'ยังไม่ได้ตั้งค่า OPENAI_API_KEY จึงแสดงคำอธิบายสำรอง';
   } else if (response.status === 'openai_package_missing') {
     status.textContent = 'ยังไม่ได้ติดตั้งแพ็กเกจ openai ใน backend จึงแสดงคำอธิบายสำรอง';
   } else if (response.status === 'ollama_unavailable') {
-    status.textContent = 'ยังเชื่อมต่อ Ollama ไม่ได้ กรุณาเปิด Ollama และติดตั้ง qwen3:4b';
+    status.textContent = 'ยังเชื่อมต่อ Ollama ไม่ได้ กรุณาเปิด Ollama และตรวจสอบโมเดลที่ตั้งค่าไว้';
   } else if (response.status === 'ollama_error') {
     status.textContent = 'Qwen/Ollama ตอบกลับไม่สำเร็จ จึงใช้คำอธิบายสำรอง';
   } else {
@@ -235,34 +284,92 @@ function renderLlmExplanation(response) {
   }
 }
 
-function privacyModeLlmResponse() {
+function buildLocalExplanation(status = 'local_evidence') {
+  const modelReady = warningModelReady();
+  const warning = getNumericWarningParam('warning_threshold') ?? getNumericWarningParam('decision_threshold') ?? 60;
+  const blocking = getNumericWarningParam('blocking_threshold') ?? Math.max(80, warning);
+  const score = getNumericWarningParam('risk_score') ?? getNumericWarningParam('final_score') ?? result.score;
+  const suppliedDecision = getWarningParam('decision');
+  const decision = ['allow', 'warn', 'block'].includes(suppliedDecision) ? suppliedDecision
+    : score >= blocking ? 'block' : score >= warning ? 'warn' : 'allow';
+  const rawReasons = Array.isArray(result.reasons) ? result.reasons : [];
+  const positive = rawReasons.filter(reason => reason && typeof reason === 'object' && Number(reason.points) > 0);
+  const negative = rawReasons.filter(reason => reason && typeof reason === 'object' && Number(reason.points) < 0);
+  const rule = getNumericWarningParam('rule_score') ?? result.ruleScore ?? PhishRadarAnalyzer.analyzeUrl(target).score;
+  const modelOnly = modelReady && ['warn', 'block'].includes(decision) && !positive.length && rule === 0;
+  const source = modelReady ? getWarningParam('fusion_method') === 'ml_only'
+    ? 'Random Forest หลังปรับเทียบ' : 'โมเดลที่ใช้ในผลตรวจนี้' : 'กฎตรวจ URL ในเครื่อง';
+  const relation = decision === 'block' ? `ผลตัดสินถึงเกณฑ์หยุดตรวจสอบ ${blocking}`
+    : decision === 'warn' ? `ผลตัดสินถึงเกณฑ์เตือน ${warning}` : `ผลตัดสินยังไม่ถึงเกณฑ์เตือน ${warning}`;
+  const riskReasons = [];
+  const reassuringReasons = [];
+  const append = (rows, title, detail) => {
+    title = String(title || '').trim().slice(0, 120);
+    detail = String(detail || '').trim().slice(0, 300);
+    if (title && detail && !rows.some(item => item.title === title)) rows.push({ title, explanation: detail });
+  };
+  const meaning = reason => {
+    const text = String(reason.title || reason.label || '').toLowerCase();
+    if (/เลียนแบบ|แบรนด์|brand/.test(text)) return 'ชื่อที่อ้างแบรนด์ไม่ยืนยันว่าเป็นผู้ให้บริการจริง ควรตรวจโดเมนปลายทางก่อนกรอกข้อมูล';
+    if (/ลิงก์ย่อ|redirect|ปลายทาง|ซ้อน|shorten/.test(text)) return 'ปลายทางอาจอ่านได้ไม่ชัดจากลิงก์นี้ ควรตรวจโดเมนที่จะไปถึงก่อนกรอกข้อมูลหรือดาวน์โหลด';
+    if (/ข้อมูลลับ|รหัสผ่าน|otp|token|credential|ยืนยันตัวตน/.test(text)) return 'เกี่ยวข้องกับข้อมูลสำคัญ ควรตรวจเจ้าของปลายทางก่อนส่งข้อมูล การพบรูปแบบนี้ยังไม่ยืนยันว่ามีการขโมยข้อมูล';
+    if (/ไม่ได้ใช้ https|ไม่มี https/.test(text)) return 'การเชื่อมต่อที่ไม่เข้ารหัสอาจเปิดเผยข้อมูลระหว่างทาง ควรหลีกเลี่ยงการส่งข้อมูลสำคัญก่อนตรวจสอบ';
+    return 'เป็นข้อสังเกตที่ควรตรวจร่วมกับแหล่งที่มาของลิงก์ ไม่ใช่การยืนยันว่าเว็บไซต์เป็น phishing';
+  };
+  for (const reason of positive) {
+    append(riskReasons, reason.title || reason.label || 'ข้อควรตรวจสอบจาก URL',
+      [reason.detail, meaning(reason)].filter(Boolean).join(' '));
+  }
+  if (!riskReasons.length && rule > 0) {
+    append(riskReasons, 'มีข้อควรตรวจสอบจากผลตรวจในเครื่อง', 'ผลตรวจระบุข้อควรระวัง แต่ไม่มีรายละเอียดรายข้อ จึงยังระบุสาเหตุเฉพาะไม่ได้');
+  }
+  if (modelOnly) {
+    append(riskReasons, 'โมเดลประเมินว่าควรระวัง', 'ผลของโมเดลถึงเกณฑ์เตือน แต่ยังไม่มีหลักฐานเสี่ยงจากกฎ URL สนับสนุน ควรตรวจเพิ่มเติมและยังยืนยัน phishing ไม่ได้');
+  }
+  try {
+    if (new URL(target).protocol === 'https:') {
+      append(reassuringReasons, 'ใช้ HTTPS', 'การเชื่อมต่อเข้ารหัสช่วยป้องกันข้อมูลระหว่างทาง แต่เว็บไซต์หลอกก็ใช้ HTTPS ได้ จึงต้องตรวจชื่อโดเมนร่วมด้วย');
+    }
+  } catch (_) {}
+  for (const reason of negative) {
+    append(reassuringReasons, reason.title || reason.label, [reason.detail,
+      'เป็นข้อมูลประกอบที่ช่วยลดความกังวลจากรูปแบบลิงก์ แต่ไม่รับรองความปลอดภัยของเนื้อหาหรือทุกหน้า'].filter(Boolean).join(' '));
+  }
+  if (!positive.length && rule === 0) {
+    append(reassuringReasons, 'ยังไม่พบสัญญาณเสี่ยงชัดเจนจากกฎ URL', 'กฎที่ใช้ในการตรวจครั้งนี้ยังไม่มีข้อสังเกตเสี่ยงชัดเจน การไม่พบสัญญาณไม่ได้แปลว่าครอบคลุมทุกวิธีโจมตี');
+  }
+  const verdict = decision === 'block' ? 'ความเสี่ยงสูง: ควรหยุดตรวจสอบก่อน'
+    : decision === 'warn' ? 'ควรระวัง: ตรวจแหล่งที่มาก่อนใช้งาน'
+    : positive.length ? 'คะแนนยังไม่ถึงเกณฑ์เตือน แต่มีข้อควรตรวจสอบจาก URL' : 'ยังไม่พบความเสี่ยงชัดเจนจาก URL';
   return {
-    ok: false,
-    provider: 'local-only',
-    status: 'privacy_mode',
-    privacy_mode: true,
+    ok: false, provider: 'local-only', status, privacy_mode: privacyMode,
     llm: {
-      risk_type: 'Privacy Mode เปิดอยู่',
-      simple_explanation: 'ระบบใช้ Rule evidence และหลักฐานบนหน้าเว็บที่ตรวจภายใน browser เท่านั้น จึงไม่ส่ง URL ไป backend หรือ LLM ในรอบนี้',
-      user_advice: 'ถ้าจะกรอกรหัสผ่าน, OTP, seed phrase หรือข้อมูลบัตร ให้ตรวจโดเมนให้แน่ใจก่อน และควรใช้ Safe Preview เมื่อไม่มั่นใจ',
-      confidence_note: 'โหมดนี้เน้นความเป็นส่วนตัว จึงปิด URL Risk Model backend และคำอธิบายจาก AI ชั่วคราว'
+      risk_type: verdict,
+      simple_explanation: `คะแนน ${score}/100 มาจาก ${source}; ${relation}${modelOnly ? ' คะแนนสูงจากโมเดล แต่ยังไม่มีหลักฐานจากกฎ URL สนับสนุน จึงยังยืนยัน phishing ไม่ได้' : ''}`,
+      user_advice: decision === 'allow' ? 'ตรวจชื่อโดเมนและแหล่งที่มาก่อนกรอกข้อมูลสำคัญ'
+        : 'ตรวจผ่านช่องทางทางการก่อน อย่าเพิ่งกรอกรหัสผ่าน OTP หรือดาวน์โหลดไฟล์',
+      confidence_note: privacyMode ? 'Privacy Mode ใช้ข้อสังเกตในเครื่อง ไม่ส่ง URL ไป backend หรือ Ollama และไม่รับรองเนื้อหาเว็บ'
+        : 'ข้อสังเกตนี้ตรวจจากผลและรูปแบบ URL ไม่ใช่สาเหตุราย feature ของ Random Forest หรือการยืนยันเนื้อหาเว็บ',
+      risk_reasons: riskReasons.slice(0, 4), reassuring_reasons: reassuringReasons.slice(0, 4)
     }
   };
 }
 
+function privacyModeLlmResponse() {
+  return buildLocalExplanation('privacy_mode');
+}
+
 // v2.8 independent LLM token control
 function llmDisabledResponse() {
-  return {
-    ok: false,
-    provider: 'local-only',
-    status: 'llm_disabled',
-    llm: {
-      risk_type: 'ปิดคำอธิบายจาก LLM',
-      simple_explanation: 'ระบบยังใช้ URL Risk Model และหลักฐานหลายชั้นตรวจจับความเสี่ยง แต่ไม่ได้ส่งคำขอไป AI provider ในรอบนี้',
-      user_advice: 'ตรวจสอบโดเมนและเหตุผลที่ระบบแสดงก่อนกรอกข้อมูลสำคัญ',
-      confidence_note: 'LLM ถูกปิดจาก Popup จึงไม่มีการส่งคำขอไป Qwen/Ollama'
-    }
-  };
+  return buildLocalExplanation('llm_disabled');
+}
+
+function updateExplanationButton() {
+  const button = $('retryExplanation');
+  if (!button) return;
+  button.hidden = privacyMode || !llmEnabled;
+  button.disabled = llmRequestPending || privacyMode || !llmEnabled;
+  button.textContent = llmRequestPending ? 'กำลังขอคำอธิบาย…' : 'ขอคำอธิบายจาก Ollama อีกครั้ง';
 }
 
 function renderPrivacyMode() {
@@ -282,16 +389,19 @@ function loadWarningSettings() {
 }
 
 function requestLlmExplanation() {
+  if (llmRequestPending) return;
   if (privacyMode) {
     const response = privacyModeLlmResponse();
     renderLlmExplanation(response);
     renderScoreBreakdown(response);
+    updateExplanationButton();
     return;
   }
   if (!llmEnabled) {
     const response = llmDisabledResponse();
     renderLlmExplanation(response);
     renderScoreBreakdown(response);
+    updateExplanationButton();
     return;
   }
 
@@ -309,17 +419,49 @@ function requestLlmExplanation() {
     blocking_threshold: getNumericWarningParam('blocking_threshold'),
     model_version: getWarningParam('model_version') || null,
     policy_version: getWarningParam('policy_version') || null,
+    feature_schema_version: getWarningParam('feature_schema_version') || null,
     reasons: (result.reasons || []).slice(0, 6).map(flattenReason).filter(Boolean),
+    evidence_reasons: (result.reasons || [])
+      .filter(reason => reason && typeof reason === 'object' && Number.isFinite(reason.points))
+      .slice(0, 8)
+      .map(reason => ({
+        title: String(reason.title || reason.name || reason.label || ''),
+        detail: String(reason.detail || ''),
+        points: reason.points
+      })),
     threat_types: result.threatTypes || [],
     privacy_mode: privacyMode,
     language: 'th'
   };
 
-  chrome.runtime.sendMessage({ type: 'EXPLAIN_WITH_LLM', payload }, response => {
-    renderLlmExplanation(response);
-    renderScoreBreakdown(response);
-  });
+  llmRequestPending = true;
+  const requestSequence = ++llmRequestSequence;
+  const pending = buildLocalExplanation('pending');
+  renderLlmExplanation(pending);
+  renderScoreBreakdown(pending);
+  updateExplanationButton();
+  let timer;
+  const finish = response => {
+    if (requestSequence !== llmRequestSequence || !llmRequestPending) return;
+    clearTimeout(timer);
+    llmRequestPending = false;
+    const display = response?.llm ? response : buildLocalExplanation(response?.status || 'llm_unavailable');
+    renderLlmExplanation(display);
+    renderScoreBreakdown(display);
+    updateExplanationButton();
+  };
+  timer = setTimeout(() => finish(buildLocalExplanation('llm_timeout')), 120000);
+  try {
+    chrome.runtime.sendMessage({ type: 'EXPLAIN_WITH_LLM', payload }, response => {
+      if (chrome.runtime.lastError) finish(buildLocalExplanation('llm_unavailable'));
+      else finish(response);
+    });
+  } catch (_) {
+    finish(buildLocalExplanation('llm_unavailable'));
+  }
 }
+
+$('retryExplanation')?.addEventListener('click', requestLlmExplanation);
 
 $('goBack').addEventListener('click', () => {
   if (history.length > 1) history.back();
@@ -401,6 +543,8 @@ async function initWarningPage() {
   requestLlmExplanation();
 }
 
+renderLlmExplanation(buildLocalExplanation());
+updateExplanationButton();
 renderPrivacyMode();
 initWarningPage();
 
