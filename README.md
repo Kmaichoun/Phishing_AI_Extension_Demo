@@ -4,6 +4,12 @@
 
 ชุดส่งอาจารย์ปรับปรุงวันที่ **29 ตุลาคม 2569 (2026-10-29)** บน branch **`submission/latest-project-20261029`**
 
+## สไลด์นำเสนอ
+
+**[▶ เปิดดูสไลด์ครบ 12 หน้า](docs/submission-20261029/slides/README.md)** · [เปิด PDF](docs/submission-20261029/slides/%E0%B9%80%E0%B8%88%E0%B8%B2%E0%B8%B0%E0%B8%A5%E0%B8%B6%E0%B8%81%E0%B8%A3%E0%B8%B0%E0%B8%9A%E0%B8%9A%E0%B9%81%E0%B8%A5%E0%B8%B0%E0%B8%9C%E0%B8%A5%E0%B8%97%E0%B8%94%E0%B8%AA%E0%B8%AD%E0%B8%9A%20Phish%20Radar%20AI.pdf) · [ดาวน์โหลด PDF](docs/submission-20261029/slides/%E0%B9%80%E0%B8%88%E0%B8%B2%E0%B8%B0%E0%B8%A5%E0%B8%B6%E0%B8%81%E0%B8%A3%E0%B8%B0%E0%B8%9A%E0%B8%9A%E0%B9%81%E0%B8%A5%E0%B8%B0%E0%B8%9C%E0%B8%A5%E0%B8%97%E0%B8%94%E0%B8%AA%E0%B8%AD%E0%B8%9A%20Phish%20Radar%20AI.pdf?raw=1)
+
+[![หน้าปกสไลด์ Phish Radar AI คลิกเพื่อดูครบ 12 หน้า](docs/submission-20261029/slides/previews/slide-01.png)](docs/submission-20261029/slides/README.md)
+
 > เริ่มอ่าน [รายงานภาพรวมสำหรับอาจารย์](docs/submission-20261029/README.md) แล้วอ่าน [การทำงานของระบบ](docs/submission-20261029/SYSTEM_WALKTHROUGH_TH.md), [โมเดลและข้อมูล](docs/submission-20261029/MODEL_AND_DATA_TH.md), [วิธีติดตั้ง/สาธิต](docs/submission-20261029/SETUP_AND_DEMO_TH.md) และ [ผลตรวจสอบชุดส่ง](docs/submission-20261029/VERIFICATION_TH.md)
 
 ## โครงงานทำอะไร
