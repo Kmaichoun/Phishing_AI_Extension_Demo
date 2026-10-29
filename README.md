@@ -25,6 +25,7 @@ Phish Radar AI รับ URL ที่ผู้ใช้ต้องการต
 
 | เอกสาร | เนื้อหา |
 | --- | --- |
+| [สไลด์นำเสนอ (PDF)](docs/submission-20261029/slides/%E0%B9%80%E0%B8%88%E0%B8%B2%E0%B8%B0%E0%B8%A5%E0%B8%B6%E0%B8%81%E0%B8%A3%E0%B8%B0%E0%B8%9A%E0%B8%9A%E0%B9%81%E0%B8%A5%E0%B8%B0%E0%B8%9C%E0%B8%A5%E0%B8%97%E0%B8%94%E0%B8%AA%E0%B8%AD%E0%B8%9A%20Phish%20Radar%20AI.pdf) | สไลด์ที่เจ้าของโครงงานแนบสำหรับนำเสนอ |
 | [รายงานภาพรวม](docs/submission-20261029/README.md) | ปัญหา วัตถุประสงค์ ขอบเขต สิ่งที่พัฒนา และฐาน source |
 | [การทำงานของระบบ](docs/submission-20261029/SYSTEM_WALKTHROUGH_TH.md) | Architecture, request flow, API, Web, Extension, privacy, สมาชิก และ DB |
 | [โมเดล ข้อมูล และผลประเมิน](docs/submission-20261029/MODEL_AND_DATA_TH.md) | รุ่น/hash สูตร/features นโยบาย ที่มาข้อมูล split Recall/FPR และข้อจำกัด |
