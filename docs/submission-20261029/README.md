@@ -43,7 +43,7 @@ Phish Radar AI เป็นโครงงานต้นแบบสำหร�
 | Prediction API | FastAPI; [app.py](../../backend/app.py) | รับ URL คำนวณ features ใช้โมเดลและ calibration คืนคะแนน decision และ metadata |
 | URL features | [feature_extractor.py](../../backend/feature_extractor.py) | โครงสร้าง URL, domain/host/path/query และ feature context ตาม schema ของ model bundle |
 | สมาชิกและข้อมูล | SQLAlchemy + PyMySQL; [ฐานข้อมูล](../../database/mysql/README_TH.md) | ผู้ใช้ Session ประวัติ Feedback และ Audit Events พร้อมตรวจสิทธิ์ใน backend |
-| คำอธิบายและแชต | [llm_explainer.py](../../backend/llm_explainer.py), [chat_router.py](../../backend/chat_router.py) | คำอธิบายแยกจาก prediction และแชตสำหรับสมาชิก รองรับ Ollama และ provider ทางเลือกตามการตั้งค่า |
+| คำอธิบายและแชต | [llm_explainer.py](../../backend/llm_explainer.py), [chat_router.py](../../backend/chat_router.py) | คำอธิบายผ่าน `/explain` รองรับ provider ตามการตั้งค่า; `/chat` สำหรับสมาชิกใช้ Ollama ใน source รุ่นนี้ |
 | หลักฐานการทดลอง | [evidence](../paper/evidence/) | metadata โมเดล ผล evaluation/selection แบบการทดลอง และ provenance ของข้อมูล |
 
 ตารางนี้ระบุความสามารถที่พบใน source การทดสอบฟังก์ชันจริงต้องแยกตามระดับใน [VERIFICATION_TH.md](VERIFICATION_TH.md) โดยเฉพาะข้อจำกัดของ browser, API, DB และ artifact ที่ไม่ได้เผยแพร่
